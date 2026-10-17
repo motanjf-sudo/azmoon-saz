@@ -125,9 +125,13 @@
     /* آزمون‌های قدیمی: \f و \t و \b داخل فرمول به‌اشتباه کاراکتر کنترلی شده‌اند */
     t = t.replace(/\$[^$\n]*\$/g, (seg) => seg.replace(/\f/g, "\\f").replace(/\t/g, "\\t").replace(/\x08/g, "\\b").replace(/\r/g, "\\r"));
     const clean = (a) => a.replace(/\\[()[\]]/g, "").trim();
+    /* داخل $...$ وقتی فرمول حساب می‌شود که حرف فارسی/عربی نداشته باشد و نشانه‌ی ریاضی (عملگر، پرانتز، توان…) یا فقط یک متغیر/عدد باشد */
+    const isMath = (a) =>
+      !/[\u0600-\u06FF]/.test(a) && a.trim() !== "" &&
+      (/[\\^_{}=+\-*/<>()×÷]/.test(a) || /^\s*([A-Za-z]|-?\d+([.,]\d+)?)\s*$/.test(a));
     return t
-      .replace(/\$\$([\s\S]+?)\$\$/g, (m, a) => (/[\\^_{}=+]/.test(a) ? "\\[" + clean(a) + "\\]" : m))
-      .replace(/\$([^$\n]+?)\$/g, (m, a) => (/[\\^_{}]/.test(a) ? "\\(" + clean(a) + "\\)" : m));
+      .replace(/\$\$([\s\S]+?)\$\$/g, (m, a) => (isMath(a) ? "\\[" + clean(a) + "\\]" : m))
+      .replace(/\$([^$\n]+?)\$/g, (m, a) => (isMath(a) ? "\\(" + clean(a) + "\\)" : m));
   }
   function renderMath(root) {
     if (!root || !/[$\\]/.test(root.textContent || "")) return;
