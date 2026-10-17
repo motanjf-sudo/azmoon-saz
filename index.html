@@ -434,6 +434,26 @@
 
   @keyframes grow{from{transform:scaleX(0)}}
 
+  .btn svg{width:18px;height:18px;flex:none}
+  /* AI generator */
+  .ai-card{grid-column:1/-1;border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+  .ai-badge{background:var(--btn-grad);color:var(--on-accent);border-color:transparent}
+  .ai-form label{display:block;margin:18px 0 8px;font-weight:700}
+  .ai-form label:first-child{margin-top:0}
+  .ai-form .seg{max-width:100%;width:100%;flex-wrap:wrap}
+  .ai-form .seg button{flex:1 1 auto;white-space:normal;text-align:center}
+  .drop{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:12px;padding:26px 16px;border:2px dashed var(--line-2);border-radius:18px;background:var(--field);text-align:center;cursor:pointer;color:var(--muted);transition:border-color .25s,background .25s,transform .25s var(--ease)}
+  .drop svg{width:34px;height:34px;color:var(--accent)}
+  .drop strong{color:var(--text);overflow-wrap:anywhere}
+  .drop:hover,.drop.over,.drop:focus-visible{border-color:var(--accent);background:var(--chip);transform:translateY(-2px)}
+  .drop.has{border-style:solid;border-color:var(--accent)}
+  .stepper{display:flex;align-items:center;gap:10px}
+  .stepper button{width:44px;height:44px;border-radius:14px;border:1px solid var(--line-2);background:var(--field);color:var(--accent);font:inherit;font-size:1.3rem;font-weight:800;cursor:pointer;transition:transform .2s,border-color .2s}
+  .stepper button:hover{border-color:var(--accent)}.stepper button:active{transform:scale(.93)}
+  .stepper input{width:76px;text-align:center;font-weight:800}
+  #wait{margin-top:12px}
+  [hidden]{display:none !important}
+
   /* take page progress + states */
   .ap{position:sticky;top:76px;z-index:40;margin:14px 0;padding:10px 16px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--surface-solid) 82%,transparent);
     -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:var(--shadow)}
@@ -639,7 +659,7 @@
   </section>
 
   <main id="app" class="wrap" tabindex="-1"></main>
-  <footer class="foot"></footer>
+  <footer class="foot">ساخته‌شده با ♥ — آزمون‌های خود را بسازید و به اشتراک بگذارید</footer>
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
   <script src="config.js"></script>
