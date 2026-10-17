@@ -559,6 +559,7 @@
   const AI_MAX_BYTES = 4 * 1024 * 1024;
   const AI_FILE_TYPES = {
     pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", doc: "application/msword", rtf: "application/rtf",
   };
 
   function readFileAsB64(file) {
@@ -597,9 +598,22 @@
     return out.slice(0, LIMITS.questions);
   }
 
+  /* مدل‌های قابل انتخاب. provider/model همان چیزی است که به تابع سرور می‌رود. */
+  const AI_MODELS = [
+    { id: "ds-v3", group: "DeepSeek", label: "DeepSeek V3", provider: "deepseek", model: "deepseek-chat", textOnly: true },
+    { id: "ds-v41", group: "DeepSeek", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash", textOnly: true },
+    { id: "claude-sonnet", group: "other", label: "Claude Sonnet 5.5", provider: "perplexity", model: "anthropic/claude-sonnet-5-5" },
+    { id: "claude-haiku", group: "other", label: "Claude Haiku 5.5", provider: "perplexity", model: "anthropic/claude-haiku-5-5" },
+    { id: "claude-opus", group: "other", label: "Claude Opus 5.5", provider: "perplexity", model: "anthropic/claude-opus-5-5" },
+    { id: "gpt-luna", group: "other", label: "GPT-6 Luna", provider: "perplexity", model: "openai/gpt-6-luna" },
+    { id: "gpt-sol", group: "other", label: "GPT-6.1 Sol", provider: "perplexity", model: "openai/gpt-6.1-sol" },
+    { id: "glm", group: "other", label: "GLM 5.3", provider: "perplexity", model: "perplexity/glm-5.3" },
+  ];
+  const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[2];
+
   function viewAI() {
     setTitle("ساخت آزمون با هوش مصنوعی");
-    const st = { src: "file", engine: "gemini", mode: "mixed", level: "medium", count: 10, file: null };
+    const st = { src: "file", mid: "claude-sonnet", mode: "mixed", level: "medium", count: 10, file: null };
     let busy = false;
     let ctl = null;
 
@@ -612,11 +626,14 @@
       "<h1>ساخت آزمون با هوش مصنوعی</h1>" +
       '<p class="muted">فایل یا موضوع را بدهید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
       '<div class="card ai-form">' +
-      '<label>موتور هوش مصنوعی</label>' + seg("engine", [["gemini", "جمینی (PDF و عکس هم می‌خواند)"], ["deepseek", "دیپ‌سیک (فقط متن و موضوع)"]]) +
+      '<label for="mid">مدل هوش مصنوعی</label><select id="mid">' +
+      ["DeepSeek", "other"].map((g) => '<optgroup label="' + (g === "other" ? "سایر مدل‌ها" : g) + '">' +
+        AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.textOnly ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
+      "</select>" +
       '<label>منبع سؤال‌ها</label>' + seg("src", [["file", "از روی فایل"], ["topic", "فقط موضوع (بدون فایل)"]]) +
       '<div id="srcFile"><div class="drop" id="drop" tabindex="0" role="button" aria-label="انتخاب فایل">' + ICONS.upload +
-      '<strong id="dropT">فایل را اینجا بکشید یا انتخاب کنید</strong><span class="hint">PDF، متن (TXT یا MD) یا عکس، حداکثر ۴ مگابایت</span></div>' +
-      '<input id="file" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,application/pdf,text/plain,text/markdown,image/png,image/jpeg,image/webp" hidden></div>' +
+      '<strong id="dropT">فایل را اینجا بکشید یا انتخاب کنید</strong><span class="hint">PDF، Word، متن (TXT یا MD) یا عکس، حداکثر ۴ مگابایت</span></div>' +
+      '<input id="file" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,.docx,.doc,.rtf,application/pdf,text/plain,text/markdown,image/png,image/jpeg,image/webp" hidden></div>' +
       '<div id="srcTopic" hidden><label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off"></div>' +
       '<div id="topicExtra"><label for="note">توضیح اضافه (اختیاری)</label><input id="note" type="text" maxlength="300" placeholder="مثلاً: فقط از فصل دوم سؤال بده" autocomplete="off"></div>' +
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
@@ -647,6 +664,7 @@
       });
     });
 
+    $("mid").addEventListener("change", () => { st.mid = $("mid").value; msg.innerHTML = ""; });
     const setCount = (n) => { st.count = Math.min(30, Math.max(1, n)); $("count").value = faNum(st.count); };
     const parseCount = () => {
       const t = $("count").value.replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g, "");
@@ -668,7 +686,7 @@
       if (!f) return;
       const ext = (f.name.split(".").pop() || "").toLowerCase();
       const isText = ext === "txt" || ext === "md";
-      if (!isText && !AI_FILE_TYPES[ext]) return fail("این نوع فایل پشتیبانی نمی‌شود. PDF، TXT، MD یا عکس انتخاب کنید.");
+      if (!isText && !AI_FILE_TYPES[ext]) return fail("این نوع فایل پشتیبانی نمی‌شود. PDF، Word، TXT، MD یا عکس انتخاب کنید.");
       if (f.size > AI_MAX_BYTES) return fail("حجم فایل بیشتر از ۴ مگابایت است.");
       if (!f.size) return fail("فایل خالی است.");
       st.file = f;
@@ -686,12 +704,13 @@
       if (busy) return;
       msg.innerHTML = "";
       setCount(parseCount());
-      const body = { provider: st.engine, mode: st.mode, difficulty: st.level, count: st.count };
+      const M = aiModel(st.mid);
+      const body = { provider: M.provider, model: M.model, mode: st.mode, difficulty: st.level, count: st.count };
       try {
         if (st.src === "file") {
           if (!st.file) return fail("ابتدا یک فایل انتخاب کنید یا گزینه‌ی «فقط موضوع» را بزنید.");
           const ext = (st.file.name.split(".").pop() || "").toLowerCase();
-          if (st.engine === "deepseek" && ext !== "txt" && ext !== "md") return fail("دیپ‌سیک فقط فایل متنی (TXT یا MD) می‌خواند. برای PDF و عکس «جمینی» را انتخاب کنید.");
+          if (M.textOnly && ext !== "txt" && ext !== "md") return fail("«" + M.label + "» فقط فایل متنی (TXT یا MD) می‌خواند. برای PDF، Word و عکس یکی از مدل‌های Claude یا GPT را انتخاب کنید.");
           if (ext === "txt" || ext === "md") {
             const t = await readFileAsText(st.file);
             if (!t.trim()) return fail("فایل متنی خالی است.");
