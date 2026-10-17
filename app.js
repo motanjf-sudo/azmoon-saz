@@ -724,7 +724,8 @@
             body: JSON.stringify(body),
           });
         } catch (e) {
-          throw new Error(e && e.name === "AbortError" ? "ساخت آزمون بیش از حد طول کشید. دوباره تلاش کنید." : "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.");
+          console.error("generate fetch failed", e);
+          throw new Error(e && e.name === "AbortError" ? "ساخت آزمون بیش از حد طول کشید. دوباره تلاش کنید." : "ارتباط با تابع هوش مصنوعی برقرار نشد (مرحله‌ی ساخت سؤال‌ها). جزئیات: " + (e && e.message ? e.message : "نامشخص"));
         }
         let d = null;
         try { d = await res.json(); } catch (e) { /* ignore */ }
@@ -733,12 +734,17 @@
         if (!questions.length) throw new Error("آزمون معتبری ساخته نشد. دوباره تلاش کنید.");
         const secret = randomSecret();
         const title = String((d && d.title) || "").trim().slice(0, LIMITS.title) || "آزمون";
-        const id = await rpc("create_quiz", {
+        let id;
+        try {
+          id = await rpc("create_quiz", {
           p_title: title,
           p_description: String((d && d.description) || "").trim().slice(0, LIMITS.desc),
           p_questions: questions,
           p_secret: secret,
-        });
+          });
+        } catch (e2) {
+          throw new Error("سؤال‌ها ساخته شد ولی ذخیره‌ی آزمون در پایگاه‌داده نشد: " + e2.message);
+        }
         store.addQuiz({ id: id, secret: secret, title: title });
         location.hash = "#/m/" + encodeURIComponent(id) + "/" + secret + "?new=1";
       } catch (e) {
