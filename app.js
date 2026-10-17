@@ -42,6 +42,8 @@
     tick: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     cross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>',
+    upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
     doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
   };
 
@@ -215,7 +217,9 @@
           '<div class="draft-actions"><a class="btn small" href="#/create/' + draft.type + '?draft=1">ادامه‌ی پیش‌نویس</a>' +
           '<button class="btn small danger" type="button" id="dropDraft">حذف</button></div></div>'
         : "") +
-      '<div class="types">' + ["tf", "mcq", "essay", "mixed"].map(card).join("") + "</div>";
+      '<div class="types"><a class="card type-card ai-card" href="#/create/ai"><span class="ti">' + ICONS.spark + '</span><h3>ساخت با هوش مصنوعی <span class="soon-badge ai-badge">جدید</span></h3>' +
+      "<p>یک فایل (PDF، متن یا عکس) بدهید یا فقط موضوع را بنویسید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید.</p></a>" +
+      ["tf", "mcq", "essay", "mixed"].map(card).join("") + "</div>";
     const dropBtn = document.getElementById("dropDraft");
     if (dropBtn) dropBtn.addEventListener("click", () => { store.del("quizDraft"); viewChoose(); });
   }
@@ -548,6 +552,211 @@
     };
   }
 
+
+  /* ---------- ساخت آزمون با هوش مصنوعی ---------- */
+  const AI_MAX_BYTES = 4 * 1024 * 1024;
+  const AI_FILE_TYPES = {
+    pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp",
+  };
+
+  function readFileAsB64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error("خواندن فایل ممکن نشد."));
+      r.onload = () => resolve(String(r.result).split(",")[1] || "");
+      r.readAsDataURL(file);
+    });
+  }
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error("خواندن فایل ممکن نشد."));
+      r.onload = () => resolve(String(r.result));
+      r.readAsText(file, "utf-8");
+    });
+  }
+
+  /* خروجی سرور را قبل از ساخت آزمون دوباره بررسی می‌کنیم */
+  function normalizeAI(d) {
+    const out = [];
+    (d && Array.isArray(d.questions) ? d.questions : []).forEach((q) => {
+      const text = String((q && q.text) || "").trim().slice(0, LIMITS.text);
+      if (!text || !q) return;
+      if (q.type === "tf") {
+        if (q.correct === 0 || q.correct === 1) out.push({ type: "tf", text: text, options: ["درست", "نادرست"], correct: q.correct });
+        return;
+      }
+      const opts = (Array.isArray(q.options) ? q.options : []).map((o) => String(o == null ? "" : o).trim().slice(0, LIMITS.opt));
+      if (opts.length < LIMITS.minOpts || opts.length > LIMITS.maxOpts || opts.some((o) => !o)) return;
+      if (new Set(opts.map((o) => o.toLowerCase())).size !== opts.length) return;
+      if (!Number.isInteger(q.correct) || q.correct < 0 || q.correct >= opts.length) return;
+      out.push({ type: "mcq", text: text, options: opts, correct: q.correct });
+    });
+    return out.slice(0, LIMITS.questions);
+  }
+
+  function viewAI() {
+    setTitle("ساخت آزمون با هوش مصنوعی");
+    const st = { src: "file", engine: "gemini", mode: "mixed", level: "medium", count: 10, file: null };
+    let busy = false;
+    let ctl = null;
+
+    const seg = (name, items) =>
+      '<div class="seg" role="group" data-seg="' + name + '">' +
+      items.map((i) => '<button type="button" data-v="' + i[0] + '" aria-pressed="' + String(st[name] === i[0]) + '">' + i[1] + "</button>").join("") + "</div>";
+
+    app.innerHTML =
+      '<a class="back" href="#/create">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
+      "<h1>ساخت آزمون با هوش مصنوعی</h1>" +
+      '<p class="muted">فایل یا موضوع را بدهید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
+      '<div class="card ai-form">' +
+      '<label>موتور هوش مصنوعی</label>' + seg("engine", [["gemini", "جمینی (PDF و عکس هم می‌خواند)"], ["deepseek", "دیپ‌سیک (فقط متن و موضوع)"]]) +
+      '<label>منبع سؤال‌ها</label>' + seg("src", [["file", "از روی فایل"], ["topic", "فقط موضوع (بدون فایل)"]]) +
+      '<div id="srcFile"><div class="drop" id="drop" tabindex="0" role="button" aria-label="انتخاب فایل">' + ICONS.upload +
+      '<strong id="dropT">فایل را اینجا بکشید یا انتخاب کنید</strong><span class="hint">PDF، متن (TXT یا MD) یا عکس، حداکثر ۴ مگابایت</span></div>' +
+      '<input id="file" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,application/pdf,text/plain,text/markdown,image/png,image/jpeg,image/webp" hidden></div>' +
+      '<div id="srcTopic" hidden><label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off"></div>' +
+      '<div id="topicExtra"><label for="note">توضیح اضافه (اختیاری)</label><input id="note" type="text" maxlength="300" placeholder="مثلاً: فقط از فصل دوم سؤال بده" autocomplete="off"></div>' +
+      '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
+      '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
+      '<label for="count">تعداد سؤال</label><div class="stepper"><button type="button" id="cm" aria-label="کمتر">−</button><input id="count" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="cp" aria-label="بیشتر">+</button><span class="hint">از ۱ تا ۳۰</span></div>' +
+      "</div>" +
+      '<div id="msg"></div>' +
+      '<div class="actions"><a class="btn ghost" href="#/create">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' ساخت آزمون و دریافت لینک</button></div>' +
+      '<p class="hint" id="wait" hidden>در حال ساخت آزمون… معمولاً ۱۰ تا ۶۰ ثانیه طول می‌کشد. این صفحه را نبندید.</p>';
+
+    const $ = (id) => document.getElementById(id);
+    const msg = $("msg");
+    const fail = (t) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + "</div>"; };
+
+    app.querySelectorAll(".seg").forEach((g) => {
+      g.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b || busy) return;
+        const k = g.dataset.seg;
+        st[k] = b.dataset.v;
+        g.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        if (k === "src") {
+          $("srcFile").hidden = st.src !== "file";
+          $("srcTopic").hidden = st.src !== "topic";
+          $("topicExtra").hidden = st.src !== "file";
+          msg.innerHTML = "";
+        }
+      });
+    });
+
+    const setCount = (n) => { st.count = Math.min(30, Math.max(1, n)); $("count").value = faNum(st.count); };
+    const parseCount = () => {
+      const t = $("count").value.replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g, "");
+      return t ? parseInt(t, 10) : st.count;
+    };
+    $("cm").addEventListener("click", () => { if (!busy) setCount(parseCount() - 1); });
+    $("cp").addEventListener("click", () => { if (!busy) setCount(parseCount() + 1); });
+    $("count").addEventListener("blur", () => setCount(parseCount()));
+
+    /* انتخاب فایل */
+    const fileInput = $("file");
+    const drop = $("drop");
+    const showFile = () => {
+      $("dropT").textContent = st.file ? st.file.name : "فایل را اینجا بکشید یا انتخاب کنید";
+      drop.classList.toggle("has", !!st.file);
+    };
+    const pickFile = (f) => {
+      msg.innerHTML = "";
+      if (!f) return;
+      const ext = (f.name.split(".").pop() || "").toLowerCase();
+      const isText = ext === "txt" || ext === "md";
+      if (!isText && !AI_FILE_TYPES[ext]) return fail("این نوع فایل پشتیبانی نمی‌شود. PDF، TXT، MD یا عکس انتخاب کنید.");
+      if (f.size > AI_MAX_BYTES) return fail("حجم فایل بیشتر از ۴ مگابایت است.");
+      if (!f.size) return fail("فایل خالی است.");
+      st.file = f;
+      showFile();
+    };
+    drop.addEventListener("click", () => { if (!busy) fileInput.click(); });
+    drop.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && !busy) { e.preventDefault(); fileInput.click(); } });
+    fileInput.addEventListener("change", () => { pickFile(fileInput.files[0]); fileInput.value = ""; });
+    ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+    drop.addEventListener("drop", (e) => { if (!busy && e.dataTransfer && e.dataTransfer.files) pickFile(e.dataTransfer.files[0]); });
+
+    const go = $("go");
+    go.addEventListener("click", async () => {
+      if (busy) return;
+      msg.innerHTML = "";
+      setCount(parseCount());
+      const body = { provider: st.engine, mode: st.mode, difficulty: st.level, count: st.count };
+      try {
+        if (st.src === "file") {
+          if (!st.file) return fail("ابتدا یک فایل انتخاب کنید یا گزینه‌ی «فقط موضوع» را بزنید.");
+          const ext = (st.file.name.split(".").pop() || "").toLowerCase();
+          if (st.engine === "deepseek" && ext !== "txt" && ext !== "md") return fail("دیپ‌سیک فقط فایل متنی (TXT یا MD) می‌خواند. برای PDF و عکس «جمینی» را انتخاب کنید.");
+          if (ext === "txt" || ext === "md") {
+            const t = await readFileAsText(st.file);
+            if (!t.trim()) return fail("فایل متنی خالی است.");
+            body.text = t;
+          } else {
+            body.file = { media_type: AI_FILE_TYPES[ext], data: await readFileAsB64(st.file) };
+          }
+          const note = $("note").value.trim();
+          if (note) body.topic = note;
+        } else {
+          const t = $("topic").value.trim();
+          if (!t) { $("topic").classList.add("bad"); $("topic").focus(); return fail("موضوع آزمون را بنویسید."); }
+          body.topic = t;
+        }
+      } catch (e) { return fail(e.message); }
+
+      busy = true;
+      go.disabled = true;
+      go.classList.add("loading");
+      $("wait").hidden = false;
+      ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 130000);
+      try {
+        let res;
+        try {
+          res = await fetch(cfg.SUPABASE_URL + "/functions/v1/generate-quiz", {
+            method: "POST",
+            signal: ctl.signal,
+            headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+            body: JSON.stringify(body),
+          });
+        } catch (e) {
+          throw new Error(e && e.name === "AbortError" ? "ساخت آزمون بیش از حد طول کشید. دوباره تلاش کنید." : "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.");
+        }
+        let d = null;
+        try { d = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) throw new Error((d && d.error) || (res.status === 404 ? "بخش هوش مصنوعی هنوز روی سرور راه‌اندازی نشده است." : "خطایی رخ داد (" + res.status + ")."));
+        const questions = normalizeAI(d);
+        if (!questions.length) throw new Error("آزمون معتبری ساخته نشد. دوباره تلاش کنید.");
+        const secret = randomSecret();
+        const title = String((d && d.title) || "").trim().slice(0, LIMITS.title) || "آزمون";
+        const id = await rpc("create_quiz", {
+          p_title: title,
+          p_description: String((d && d.description) || "").trim().slice(0, LIMITS.desc),
+          p_questions: questions,
+          p_secret: secret,
+        });
+        store.addQuiz({ id: id, secret: secret, title: title });
+        location.hash = "#/m/" + encodeURIComponent(id) + "/" + secret + "?new=1";
+      } catch (e) {
+        if (ctl && ctl.signal.aborted && !busy) return;
+        fail(e.message);
+        busy = false;
+        go.disabled = false;
+        go.classList.remove("loading");
+        $("wait").hidden = true;
+      } finally {
+        clearTimeout(timer);
+      }
+    });
+
+    return function cleanup() {
+      busy = false;
+      if (ctl) ctl.abort();
+    };
+  }
+
   /* ---------- شرکت در آزمون ---------- */
   async function viewTake(id, token) {
     setTitle();
@@ -775,7 +984,8 @@
       if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
       else viewManage(parts[1], parts[2], /(^|&)new=1(&|$)/.test(query), token);
     } else if (parts[0] === "create") {
-      if (ACTIVE_MODES.indexOf(parts[1]) >= 0) cleanup = viewBuild(parts[1], /(^|&)draft=1(&|$)/.test(query));
+      if (parts[1] === "ai") cleanup = viewAI();
+      else if (ACTIVE_MODES.indexOf(parts[1]) >= 0) cleanup = viewBuild(parts[1], /(^|&)draft=1(&|$)/.test(query));
       else viewChoose();
     } else {
       viewHome();
