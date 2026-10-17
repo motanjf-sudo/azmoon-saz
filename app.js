@@ -554,6 +554,8 @@
 
 
   /* ---------- ساخت آزمون با هوش مصنوعی ---------- */
+  /* اسم نشانی تابع روی Supabase (در لیست Edge Functions ستون URL را ببینید) */
+  const AI_FN = "node-api";
   const AI_MAX_BYTES = 4 * 1024 * 1024;
   const AI_FILE_TYPES = {
     pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp",
@@ -715,7 +717,7 @@
       try {
         let res;
         try {
-          res = await fetch(cfg.SUPABASE_URL + "/functions/v1/generate-quiz", {
+          res = await fetch(cfg.SUPABASE_URL + "/functions/v1/" + AI_FN, {
             method: "POST",
             signal: ctl.signal,
             headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
