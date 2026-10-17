@@ -602,6 +602,8 @@
   const AI_MODELS = [
     { id: "ds-v3", group: "DeepSeek", label: "DeepSeek V3", provider: "deepseek", model: "deepseek-chat", textOnly: true },
     { id: "ds-v41", group: "DeepSeek", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash", textOnly: true },
+    { id: "gem-argon", group: "Gemini", label: "Gemini 4 Argon", provider: "gemini", model: "gemini-4-argon" },
+    { id: "gem-flash", group: "Gemini", label: "Gemini 3.8 Flash", provider: "gemini", model: "gemini-3.8-flash" },
     { id: "claude-sonnet", group: "other", label: "Claude Sonnet 5.5", provider: "perplexity", model: "anthropic/claude-sonnet-5-5" },
     { id: "claude-haiku", group: "other", label: "Claude Haiku 5.5", provider: "perplexity", model: "anthropic/claude-haiku-5-5" },
     { id: "claude-opus", group: "other", label: "Claude Opus 5.5", provider: "perplexity", model: "anthropic/claude-opus-5-5" },
@@ -627,7 +629,7 @@
       '<p class="muted">فایل یا موضوع را بدهید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
       '<div class="card ai-form">' +
       '<label for="mid">مدل هوش مصنوعی</label><select id="mid">' +
-      ["DeepSeek", "other"].map((g) => '<optgroup label="' + (g === "other" ? "سایر مدل‌ها" : g) + '">' +
+      ["DeepSeek", "Gemini", "other"].map((g) => '<optgroup label="' + (g === "other" ? "سایر مدل‌ها" : g) + '">' +
         AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.textOnly ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
       "</select>" +
       '<label>منبع سؤال‌ها</label>' + seg("src", [["file", "از روی فایل"], ["topic", "فقط موضوع (بدون فایل)"]]) +
@@ -748,7 +750,11 @@
         }
         let d = null;
         try { d = await res.json(); } catch (e) { /* ignore */ }
-        if (!res.ok) throw new Error((d && d.error) || (res.status === 404 ? "بخش هوش مصنوعی هنوز روی سرور راه‌اندازی نشده است." : "خطایی رخ داد (" + res.status + ")."));
+        if (!res.ok) {
+          if (d && d.detail) console.error("AI detail:", d.detail);
+          const base = (d && d.error) || (res.status === 404 ? "بخش هوش مصنوعی هنوز روی سرور راه‌اندازی نشده است." : "خطایی رخ داد (" + res.status + ").");
+          throw new Error(base + (d && d.detail ? " (جزئیات فنی: " + d.detail + ")" : ""));
+        }
         const questions = normalizeAI(d);
         if (!questions.length) throw new Error("آزمون معتبری ساخته نشد. دوباره تلاش کنید.");
         const secret = randomSecret();
