@@ -90,6 +90,61 @@
     return n;
   }
 
+
+  /* ---------- نمایش فرمول‌های ریاضی (LaTeX) با KaTeX؛ فقط وقتی متنی علامت $ دارد بارگذاری می‌شود ---------- */
+  const KATEX = "https://cdnjs.cloudflare.com/ajax/libs/katex/0.16.11/";
+  let katexP = null;
+  function loadKatex() {
+    if (window.renderMathInElement) return Promise.resolve(true);
+    if (katexP) return katexP;
+    const add = (tag, attrs) => new Promise((res, rej) => {
+      const n = document.createElement(tag);
+      Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
+      n.onload = () => res();
+      n.onerror = () => rej(new Error("load"));
+      document.head.appendChild(n);
+    });
+    katexP = add("link", { rel: "stylesheet", href: KATEX + "katex.min.css" })
+      .then(() => add("script", { src: KATEX + "katex.min.js" }))
+      .then(() => add("script", { src: KATEX + "contrib/auto-render.min.js" }))
+      .then(() => true)
+      .catch(() => { katexP = null; return false; });
+    return katexP;
+  }
+  /* $...$ فقط وقتی فرمول حساب می‌شود که داخلش نشانه‌ی ریاضی باشد (تا «۵ دلار و ۱۰ دلار» خراب نشود) */
+  function normalizeMath(t) {
+    /* آزمون‌های قدیمی: \f و \t و \b داخل فرمول به‌اشتباه کاراکتر کنترلی شده‌اند */
+    t = t.replace(/\$[^$\n]*\$/g, (seg) => seg.replace(/\f/g, "\\f").replace(/\t/g, "\\t").replace(/\x08/g, "\\b").replace(/\r/g, "\\r"));
+    return t
+      .replace(/\$\$([\s\S]+?)\$\$/g, (m, a) => (/[\\^_{}=+]/.test(a) ? "\\[" + a + "\\]" : m))
+      .replace(/\$([^$\n]+?)\$/g, (m, a) => (/[\\^_{}]/.test(a) ? "\\(" + a + "\\)" : m));
+  }
+  function renderMath(root) {
+    if (!root || !/[$\\]/.test(root.textContent || "")) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (/^(INPUT|TEXTAREA|SCRIPT|STYLE|OPTION)$/.test(n.parentNode.nodeName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
+    const nodes = [];
+    while (w.nextNode()) nodes.push(w.currentNode);
+    let any = false;
+    nodes.forEach((n) => {
+      if (n.data.indexOf("$") < 0) return;
+      const v = normalizeMath(n.data);
+      if (v !== n.data) { n.data = v; any = true; }
+    });
+    if (!any && !/\\[(\[]/.test(root.textContent)) return;
+    loadKatex().then((ok) => {
+      if (!ok || !window.renderMathInElement || !root.isConnected) return;
+      try {
+        window.renderMathInElement(root, {
+          delimiters: [{ left: "\\[", right: "\\]", display: true }, { left: "\\(", right: "\\)", display: false }],
+          throwOnError: false,
+          ignoredTags: ["script", "style", "textarea", "input", "option"],
+        });
+      } catch (e) { /* ignore */ }
+    });
+  }
+
   async function rpc(name, args) {
     let res;
     try {
@@ -826,6 +881,7 @@
       qs.map((q, i) => '<fieldset class="card qcard" data-i="' + i + '">' + qHtml(q, i) + "</fieldset>").join("") +
       '<div id="msg"></div><button class="btn" type="submit" id="submitBtn">ثبت پاسخ‌ها</button></form>';
 
+    renderMath(app);
     const form = document.getElementById("f");
     const nameEl = document.getElementById("name");
     const msg = document.getElementById("msg");
@@ -911,6 +967,7 @@
       '<div class="card"><p class="muted center">نمره‌ی شما</p><div class="score">' + faNum(r.score) + " از " + faNum(r.total) + '</div><p class="muted center">' + faNum(pct) + "٪</p></div>" +
       "<h2>مرور پاسخ‌ها</h2>" + qs.map(review).join("") +
       '<div class="actions"><button class="btn" type="button" id="again">شرکت دوباره</button><a class="btn ghost" href="#/create">ساخت آزمون خودم</a></div>';
+    renderMath(app);
     document.getElementById("again").addEventListener("click", () => { viewTake(quiz.id, token); window.scrollTo(0, 0); });
     window.scrollTo(0, 0);
   }
@@ -965,6 +1022,7 @@
       '<div class="actions"><a class="btn ghost" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a></div>";
 
     copyHandlers(app);
+    renderMath(app);
     document.getElementById("refresh").addEventListener("click", () => viewManage(id, secret, false, token));
     const share = document.getElementById("shareBtn");
     if (share) share.addEventListener("click", () => { navigator.share({ title: d.title, url: take }).catch(() => {}); });
