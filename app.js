@@ -97,27 +97,37 @@
   function loadKatex() {
     if (window.renderMathInElement) return Promise.resolve(true);
     if (katexP) return katexP;
-    const add = (tag, attrs) => new Promise((res, rej) => {
-      const n = document.createElement(tag);
-      Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
+    const addScript = (src) => new Promise((res, rej) => {
+      const n = document.createElement("script");
+      n.src = src;
+      n.onload = () => res();
+      n.onerror = () => { n.remove(); rej(new Error("load")); };
+      document.head.appendChild(n);
+    });
+    const addCss = (href) => new Promise((res, rej) => {
+      const n = document.createElement("link");
+      n.rel = "stylesheet";
+      n.href = href;
       n.onload = () => res();
       n.onerror = () => rej(new Error("load"));
       document.head.appendChild(n);
     });
-    katexP = add("link", { rel: "stylesheet", href: KATEX + "katex.min.css" })
-      .then(() => add("script", { src: KATEX + "katex.min.js" }))
-      .then(() => add("script", { src: KATEX + "contrib/auto-render.min.js" }))
-      .then(() => true)
-      .catch(() => { katexP = null; return false; });
+    /* اول فایل داخل خود سایت (katex-bundle.js، همه‌چیز در یک فایل)، اگر نبود از cdnjs */
+    katexP = addScript("katex-bundle.js")
+      .catch(() => addCss(KATEX + "katex.min.css").then(() => addScript(KATEX + "katex.min.js")).then(() => addScript(KATEX + "contrib/auto-render.min.js")))
+      .then(() => !!window.renderMathInElement)
+      .catch(() => false)
+      .then((ok) => { if (!ok) katexP = null; return ok; });
     return katexP;
   }
   /* $...$ فقط وقتی فرمول حساب می‌شود که داخلش نشانه‌ی ریاضی باشد (تا «۵ دلار و ۱۰ دلار» خراب نشود) */
   function normalizeMath(t) {
     /* آزمون‌های قدیمی: \f و \t و \b داخل فرمول به‌اشتباه کاراکتر کنترلی شده‌اند */
     t = t.replace(/\$[^$\n]*\$/g, (seg) => seg.replace(/\f/g, "\\f").replace(/\t/g, "\\t").replace(/\x08/g, "\\b").replace(/\r/g, "\\r"));
+    const clean = (a) => a.replace(/\\[()[\]]/g, "").trim();
     return t
-      .replace(/\$\$([\s\S]+?)\$\$/g, (m, a) => (/[\\^_{}=+]/.test(a) ? "\\[" + a + "\\]" : m))
-      .replace(/\$([^$\n]+?)\$/g, (m, a) => (/[\\^_{}]/.test(a) ? "\\(" + a + "\\)" : m));
+      .replace(/\$\$([\s\S]+?)\$\$/g, (m, a) => (/[\\^_{}=+]/.test(a) ? "\\[" + clean(a) + "\\]" : m))
+      .replace(/\$([^$\n]+?)\$/g, (m, a) => (/[\\^_{}]/.test(a) ? "\\(" + clean(a) + "\\)" : m));
   }
   function renderMath(root) {
     if (!root || !/[$\\]/.test(root.textContent || "")) return;
