@@ -1093,13 +1093,57 @@
       '<div class="stat"><b>' + faNum(Math.round(best * 100)) + "٪</b><span>بهترین نمره</span></div></div>" +
       '<div class="card"><h2>نتایج</h2>' +
       (subs.length
-        ? '<div style="overflow-x:auto"><table><thead><tr><th>نام</th><th>نمره</th><th>زمان</th></tr></thead><tbody>' +
-          subs.map((s) => "<tr><td>" + esc(s.name) + "</td><td>" + faNum(s.score) + " از " + faNum(s.total) + "</td><td>" + esc(when(s.created_at)) + "</td></tr>").join("") +
+        ? '<div style="overflow-x:auto"><table><thead><tr><th>نام</th><th>نمره</th><th>زمان</th><th></th></tr></thead><tbody>' +
+          subs.map((s, i) => '<tr class="srow"><td>' + esc(s.name) + "</td><td>" + faNum(s.score) + " از " + faNum(s.total) + "</td><td>" + esc(when(s.created_at)) + '</td><td class="det-cell"><button class="btn ghost small" type="button" data-det="' + i + '" aria-haspopup="dialog">مشاهده جزئیات</button></td></tr>').join("") +
           '</tbody></table></div><div class="actions"><button class="btn ghost small" type="button" id="csv">دانلود CSV</button><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button></div>'
         : '<p class="muted">هنوز کسی شرکت نکرده است. لینک آزمون را برای دیگران بفرستید.</p><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button>') +
       "</div>" +
       (subs.length && qs.length ? '<div class="card"><h2>آمار هر سؤال <span class="hint">(درصد پاسخ درست)</span></h2>' + qstat + "</div>" : "") +
       '<div class="actions"><a class="btn ghost" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a></div>";
+
+    /* جزئیات پاسخ هر شرکت‌کننده (فقط در سایت؛ در CSV نیست) */
+    const detailHtml = (s) => {
+      const ans = Array.isArray(s.answers) ? s.answers : [];
+      return qs.map((q, i) => {
+        const mine = ans[i];
+        const opts = Array.isArray(q.options) ? q.options : [];
+        const has = Number.isInteger(mine) && mine >= 0 && mine < opts.length;
+        const right = has && mine === q.correct;
+        const state = !has ? ["r-skip", "بدون پاسخ"] : right ? ["r-ok", "درست"] : ["r-bad", "غلط"];
+        const row = (label, text, cls) => '<div class="dl ' + cls + '"><span class="dl-k">' + label + '</span><span class="dl-v">' + esc(text) + "</span></div>";
+        let body = row("پاسخ شرکت‌کننده", has ? opts[mine] : "پاسخی نداده", has ? (right ? "r-ok" : "r-bad") : "r-skip");
+        if (!right && opts[q.correct] != null) body += row("پاسخ درست", opts[q.correct], "r-ok");
+        return '<div class="dq ' + state[0] + '"><div class="dq-top"><span class="dq-n">' + faNum(i + 1) + '</span><span class="dq-t">' + esc(q.text) + '</span><span class="dq-s ' + state[0] + '">' + state[1] + "</span></div>" + body + "</div>";
+      }).join("");
+    };
+    let closeModal = null;
+    const openDetails = (s, opener) => {
+      if (closeModal) closeModal();
+      const ov = document.createElement("div");
+      ov.className = "modal";
+      ov.innerHTML = '<div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="mdT"><div class="modal-head"><h2 id="mdT">جزئیات پاسخ‌ها<span class="sub">' + esc(s.name) + " — " + faNum(s.score) + " از " + faNum(s.total) + '</span></h2><button class="btn ghost small" type="button" id="mdX">بستن</button></div><div class="modal-body">' + (qs.length ? detailHtml(s) : '<p class="muted">جزئیاتی موجود نیست.</p>') + "</div></div>";
+      document.body.appendChild(ov);
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const onKey = (e) => { if (e.key === "Escape") closeModal(); };
+      closeModal = () => {
+        document.removeEventListener("keydown", onKey);
+        document.body.style.overflow = prevOverflow;
+        ov.remove();
+        closeModal = null;
+        if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+      };
+      document.addEventListener("keydown", onKey);
+      ov.addEventListener("click", (e) => { if (e.target === ov) closeModal(); });
+      ov.querySelector("#mdX").addEventListener("click", () => closeModal());
+      ov.querySelector("#mdX").focus({ preventScroll: true });
+      renderMath(ov);
+      const prevCleanup = cleanup;
+      cleanup = () => { if (closeModal) closeModal(); if (prevCleanup) prevCleanup(); };
+    };
+    app.querySelectorAll("[data-det]").forEach((btn) => {
+      btn.addEventListener("click", () => openDetails(subs[Number(btn.getAttribute("data-det"))], btn));
+    });
 
     copyHandlers(app);
     renderMath(app);
