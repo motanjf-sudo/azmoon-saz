@@ -1,4 +1,4 @@
-/* آزمون‌ساز: منطق برنامه
+/* پازمونک: منطق برنامه
  * مسیرها:
  *   #/                          صفحه‌ی اصلی
  *   #/create                    انتخاب مدل آزمون
@@ -11,7 +11,7 @@
 
   const cfg = window.AZMOON_CONFIG || {};
   const app = document.getElementById("app");
-  const BASE_TITLE = "آزمون‌ساز";
+  const BASE_TITLE = "پازمونک";
   const LIMITS = { title: 200, desc: 2000, text: 500, opt: 300, questions: 100, minOpts: 2, maxOpts: 8 };
 
   /* نوع سؤال‌ها (فیلد type هر سؤال که به سرور می‌رود) */
@@ -198,7 +198,7 @@
   };
 
   function setTitle(t) {
-    document.title = t ? t + " | " + BASE_TITLE : BASE_TITLE + " | آزمون بسازید، لینک بدهید، نتیجه ببینید";
+    document.title = t ? t + " | " + BASE_TITLE : BASE_TITLE + " | ساخت آزمون آنلاین رایگان با هوش مصنوعی";
   }
 
   function copyHandlers(root) {
