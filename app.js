@@ -294,11 +294,13 @@
   }
 
   /* ---------- سازنده‌ی آزمون ---------- */
-  function viewBuild(mode, wantDraft) {
+  function viewBuild(mode, wantDraft, edit) {
     const M = MODES[mode];
     const allowed = M.types;
     const mixed = allowed.length > 1;
-    setTitle("ساخت آزمون " + M.label);
+    setTitle(edit ? "ویرایش آزمون" : "ساخت آزمون " + M.label);
+    const backHref = edit ? "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret : "#/create";
+    const nSubs = edit ? edit.submissions : 0;
 
     let uid = 0;
     const questions = [];
@@ -307,7 +309,22 @@
     let descVal = "";
     let restored = false;
 
-    if (wantDraft) {
+    if (edit) {
+      titleVal = String(edit.title || "").slice(0, LIMITS.title);
+      descVal = String(edit.description || "").slice(0, LIMITS.desc);
+      edit.questions.slice(0, LIMITS.questions).forEach((s) => {
+        if (!s) return;
+        const q = newQ(s.type === "tf" ? "tf" : "mcq");
+        q.text = String(s.text || "").slice(0, LIMITS.text);
+        const c = Number.isInteger(s.correct) ? s.correct : null;
+        if (q.type === "tf") q.tf = c === 0 || c === 1 ? c : null;
+        else {
+          if (Array.isArray(s.options) && s.options.length >= LIMITS.minOpts) q.options = s.options.slice(0, LIMITS.maxOpts).map((o) => String(o).slice(0, LIMITS.opt));
+          q.correct = c != null && c >= 0 && c < q.options.length ? c : null;
+        }
+        questions.push(q);
+      });
+    } else if (wantDraft) {
       const d = draftInfo();
       if (d && d.type === mode) {
         restored = true;
@@ -328,9 +345,16 @@
     if (!questions.length) questions.push(newQ(allowed[0]));
 
     app.innerHTML =
-      '<a class="back" href="#/create">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
-      "<h1>ساخت آزمون</h1>" +
-      '<p class="muted">مدل انتخابی: <span class="badge">' + esc(M.label) + "</span> — سؤال‌ها را بنویسید و پاسخ درست را مشخص کنید. پیش‌نویس شما خودکار ذخیره می‌شود.</p>" +
+      '<a class="back" href="' + backHref + '">' + ICONS.back + (edit ? " بازگشت به نتایج و لینک‌ها" : " بازگشت به انتخاب مدل") + "</a>" +
+      (edit ? "<h1>ویرایش آزمون</h1>" : "<h1>ساخت آزمون</h1>") +
+      (edit
+        ? '<p class="muted">سؤال‌ها، گزینه‌ها و پاسخ درست را تغییر دهید. لینک آزمون همان می‌ماند.</p>'
+        : '<p class="muted">مدل انتخابی: <span class="badge">' + esc(M.label) + "</span> — سؤال‌ها را بنویسید و پاسخ درست را مشخص کنید. پیش‌نویس شما خودکار ذخیره می‌شود.</p>") +
+      (edit && nSubs > 0
+        ? '<div class="card warn-card" role="alert"><strong>⚠️ این آزمون تا الان ' + faNum(nSubs) + " شرکت‌کننده داشته است.</strong>" +
+          "<p>با ذخیره‌ی تغییرات، <b>همه‌ی نتایج قبلی برای همیشه پاک می‌شوند</b>، چون با سؤال‌های جدید قابل مقایسه نیستند. اگر نمی‌خواهید نتایج از بین برود، ویرایش نکنید.</p>" +
+          '<label class="chk"><input type="checkbox" id="confirmClear"><span>متوجه‌ام و می‌خواهم نتایج قبلی پاک شوند</span></label></div>'
+        : "") +
       (restored ? '<div class="card draft" id="restoredNote"><div><strong>پیش‌نویس قبلی بازیابی شد</strong></div><div class="draft-actions"><button class="btn small danger" type="button" id="freshBtn">شروع تازه</button></div></div>' : "") +
       '<div class="card" id="meta">' +
       '<label for="title">عنوان آزمون</label><input id="title" type="text" maxlength="' + LIMITS.title + '" autocomplete="off">' +
@@ -338,7 +362,7 @@
       '<div id="qs"></div>' +
       '<div class="card add-card"><span class="add-lbl">افزودن سؤال:</span><div class="add-btns" id="addBtns"></div></div>' +
       '<div id="msg"></div>' +
-      '<div class="actions"><a class="btn ghost" href="#/create">' + ICONS.back + ' بازگشت</a><button class="btn" id="save" type="button">ساخت آزمون و دریافت لینک</button></div>';
+      '<div class="actions"><a class="btn ghost" href="' + backHref + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="save" type="button">' + (edit ? "ذخیره‌ی تغییرات" : "ساخت آزمون و دریافت لینک") + "</button></div>";
 
     const qsBox = document.getElementById("qs");
     const titleEl = document.getElementById("title");
@@ -359,10 +383,10 @@
     const hasContent = () => titleEl.value.trim() || questions.some((q) => q.text.trim() || q.options.some((o) => o.trim()));
     const saveDraft = () => {
       draftTimer = 0;
-      if (finished) return;
+      if (finished || edit) return;
       if (hasContent()) store.set("quizDraft", draftPayload());
     };
-    const touch = () => { if (finished) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 400); };
+    const touch = () => { if (finished || edit) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 400); };
     titleEl.addEventListener("input", () => { titleEl.classList.remove("bad"); msg.innerHTML = ""; touch(); });
     descEl.addEventListener("input", touch);
 
@@ -593,10 +617,31 @@
         }
         return;
       }
-      const secret = randomSecret();
+      if (edit && nSubs > 0 && !document.getElementById("confirmClear").checked) {
+        const cb = document.getElementById("confirmClear");
+        msg.innerHTML = '<div class="err" role="alert">برای ذخیره، باید تیک تأیید پاک شدن نتایج قبلی را بزنید.</div>';
+        cb.closest(".warn-card").scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "center" });
+        cb.focus({ preventScroll: true });
+        return;
+      }
+      const secret = edit ? edit.secret : randomSecret();
       saveBtn.disabled = true;
       saveBtn.classList.add("loading");
       try {
+        if (edit) {
+          const r = await rpc("update_quiz", {
+            p_id: edit.id,
+            p_secret: edit.secret,
+            p_title: titleEl.value.trim(),
+            p_description: descEl.value.trim(),
+            p_questions: serialize(),
+            p_confirm_clear: nSubs > 0,
+          });
+          finished = true;
+          store.addQuiz({ id: edit.id, secret: edit.secret, title: titleEl.value.trim() });
+          location.hash = "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret + "?updated=1" + (r && r.cleared ? "&cleared=" + r.cleared : "");
+          return;
+        }
         const id = await rpc("create_quiz", {
           p_title: titleEl.value.trim(),
           p_description: descEl.value.trim(),
@@ -617,10 +662,28 @@
 
     return function cleanup() {
       clearTimeout(draftTimer);
-      if (!finished && hasContent()) store.set("quizDraft", draftPayload());
+      if (!finished && !edit && hasContent()) store.set("quizDraft", draftPayload());
     };
   }
 
+
+  /* ---------- ویرایش آزمون ---------- */
+  async function viewEdit(id, secret, token) {
+    setTitle("ویرایش آزمون");
+    app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
+    let d;
+    try { d = await rpc("get_results", { p_id: id, p_secret: secret }); } catch (e) { if (token !== routeToken) return; return showError(e.message, () => viewEdit(id, secret, token)); }
+    if (token !== routeToken) return;
+    const c = viewBuild("mixed", false, {
+      id: id,
+      secret: secret,
+      title: d.title,
+      description: d.description,
+      questions: Array.isArray(d.questions) ? d.questions : [],
+      submissions: Array.isArray(d.submissions) ? d.submissions.length : 0,
+    });
+    if (token === routeToken) cleanup = c; else if (c) c();
+  }
 
   /* ---------- ساخت آزمون با هوش مصنوعی ---------- */
   /* اسم نشانی تابع روی Supabase (در لیست Edge Functions ستون URL را ببینید) */
@@ -987,11 +1050,12 @@
   }
 
   /* ---------- مدیریت و نتایج ---------- */
-  async function viewManage(id, secret, isNew, token) {
+  async function viewManage(id, secret, isNew, token, flags) {
+    flags = flags || {};
     setTitle();
     app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
     let d;
-    try { d = await rpc("get_results", { p_id: id, p_secret: secret }); } catch (e) { if (token !== routeToken) return; return showError(e.message, () => viewManage(id, secret, isNew, token)); }
+    try { d = await rpc("get_results", { p_id: id, p_secret: secret }); } catch (e) { if (token !== routeToken) return; return showError(e.message, () => viewManage(id, secret, isNew, token, flags)); }
     if (token !== routeToken) return;
     setTitle("نتایج: " + d.title);
 
@@ -1014,13 +1078,15 @@
 
     app.innerHTML =
       "<h1>" + esc(d.title) + "</h1>" +
-      (isNew ? '<div class="card created"><strong>آزمون ساخته شد 🎉</strong></div>' : "") +
+      (isNew ? '<div class="card created"><strong>آزمون ساخته شد 🎉</strong><div class="hint">اگر سؤالی یا پاسخ درستی اشتباه است، با دکمه‌ی «ویرایش آزمون» در همین صفحه اصلاحش کنید.</div></div>' : "") +
+      (flags.updated ? '<div class="card created"><strong>تغییرات ذخیره شد ✅</strong>' + (flags.cleared ? '<div class="hint">' + faNum(flags.cleared) + " نتیجه‌ی قبلی پاک شد.</div>" : "") + "</div>" : "") +
       '<div class="card"><h2>لینک آزمون <span class="hint">(این را برای شرکت‌کنندگان بفرستید)</span></h2>' +
       '<div class="linkbox"><input id="l1" type="text" readonly value="' + esc(take) + '" aria-label="لینک آزمون"><button class="btn small" type="button" data-copy="#l1">کپی</button></div>' +
       '<h2 style="margin-top:18px">لینک مدیریت <span class="hint">(فقط برای خودتان)</span></h2>' +
       '<div class="linkbox"><input id="l2" type="text" readonly value="' + esc(manage) + '" aria-label="لینک مدیریت"><button class="btn small" type="button" data-copy="#l2">کپی</button></div>' +
       '<div class="warn">لینک مدیریت را نگه دارید و به کسی ندهید. فقط با همین لینک می‌توانید نتایج را ببینید و اگر گم شود قابل بازیابی نیست.</div>' +
       '<div class="actions"><a class="btn ghost small" href="#/q/' + encodeURIComponent(id) + '">پیش‌نمایش آزمون</a>' +
+      '<a class="btn small" href="#/edit/' + encodeURIComponent(id) + "/" + secret + '">ویرایش آزمون</a>' +
       (navigator.share ? '<button class="btn small" type="button" id="shareBtn">اشتراک‌گذاری</button>' : "") + "</div></div>" +
       '<div class="stats"><div class="stat"><b>' + faNum(subs.length) + "</b><span>شرکت‌کننده</span></div>" +
       '<div class="stat"><b>' + faNum(Math.round(avg * 100)) + "٪</b><span>میانگین</span></div>" +
@@ -1087,7 +1153,10 @@
       else viewTake(parts[1], token);
     } else if (parts[0] === "m") {
       if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
-      else viewManage(parts[1], parts[2], /(^|&)new=1(&|$)/.test(query), token);
+      else viewManage(parts[1], parts[2], /(^|&)new=1(&|$)/.test(query), token, { updated: /(^|&)updated=1(&|$)/.test(query), cleared: +((/(^|&)cleared=(\d+)/.exec(query) || [])[2] || 0) });
+    } else if (parts[0] === "edit") {
+      if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
+      else viewEdit(parts[1], parts[2], token);
     } else if (parts[0] === "create") {
       if (parts[1] === "ai") cleanup = viewAI();
       else if (ACTIVE_MODES.indexOf(parts[1]) >= 0) cleanup = viewBuild(parts[1], /(^|&)draft=1(&|$)/.test(query));
