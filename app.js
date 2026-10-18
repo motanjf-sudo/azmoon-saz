@@ -1060,7 +1060,6 @@
     setTitle("نتایج: " + d.title);
 
     const take = baseUrl() + "#/q/" + id;
-    const manage = baseUrl() + "#/m/" + id + "/" + secret;
     const subs = Array.isArray(d.submissions) ? d.submissions : [];
     const qs = Array.isArray(d.questions) ? d.questions : [];
     const ratio = (s) => (s.total ? s.score / s.total : 0);
@@ -1080,11 +1079,8 @@
       "<h1>" + esc(d.title) + "</h1>" +
       (isNew ? '<div class="card created"><strong>آزمون ساخته شد 🎉</strong><div class="hint">اگر سؤالی یا پاسخ درستی اشتباه است، با دکمه‌ی «ویرایش آزمون» در همین صفحه اصلاحش کنید.</div></div>' : "") +
       (flags.updated ? '<div class="card created"><strong>تغییرات ذخیره شد ✅</strong>' + (flags.cleared ? '<div class="hint">' + faNum(flags.cleared) + " نتیجه‌ی قبلی پاک شد.</div>" : "") + "</div>" : "") +
-      '<div class="card"><h2>لینک آزمون <span class="hint">(این را برای شرکت‌کنندگان بفرستید)</span></h2>' +
+      '<div class="card"><h2>لینک آزمون</h2>' +
       '<div class="linkbox"><input id="l1" type="text" readonly value="' + esc(take) + '" aria-label="لینک آزمون"><button class="btn small" type="button" data-copy="#l1">کپی</button></div>' +
-      '<h2 style="margin-top:18px">لینک مدیریت <span class="hint">(فقط برای خودتان)</span></h2>' +
-      '<div class="linkbox"><input id="l2" type="text" readonly value="' + esc(manage) + '" aria-label="لینک مدیریت"><button class="btn small" type="button" data-copy="#l2">کپی</button></div>' +
-      '<div class="warn">لینک مدیریت را نگه دارید و به کسی ندهید. فقط با همین لینک می‌توانید نتایج را ببینید و اگر گم شود قابل بازیابی نیست.</div>' +
       '<div class="actions"><a class="btn ghost small" href="#/q/' + encodeURIComponent(id) + '">پیش‌نمایش آزمون</a>' +
       '<a class="btn small" href="#/edit/' + encodeURIComponent(id) + "/" + secret + '">ویرایش آزمون</a>' +
       (navigator.share ? '<button class="btn small" type="button" id="shareBtn">اشتراک‌گذاری</button>' : "") + "</div></div>" +
