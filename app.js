@@ -1167,6 +1167,340 @@
     });
   }
 
+
+  /* ---------- ثبت‌نام و ورود با شماره‌ی موبایل ---------- */
+  const AUTH_FN = "auth-otp";
+  const auth = {
+    get() {
+      const v = store.get("session", null);
+      return v && typeof v.token === "string" && typeof v.phone === "string" ? v : null;
+    },
+    set(v) { store.set("session", v); syncAuthBtn(); },
+    clear() { store.del("session"); syncAuthBtn(); },
+  };
+
+  function syncAuthBtn() {
+    const b = document.getElementById("authBtn");
+    if (!b) return;
+    const on = !!auth.get();
+    b.textContent = on ? "حساب من" : "ثبت‌نام";
+    b.setAttribute("href", on ? "#/account" : "#/signup");
+  }
+
+  async function authCall(body) {
+    let res;
+    try {
+      res = await fetch(cfg.SUPABASE_URL + "/functions/v1/" + AUTH_FN, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      return { ok: false, error: "network", message: "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید." };
+    }
+    let d = null;
+    try { d = await res.json(); } catch (e) { /* ignore */ }
+    if (d && typeof d.ok === "boolean") return d;
+    return {
+      ok: false,
+      error: "server",
+      message: res.status === 404 ? "بخش ثبت‌نام هنوز روی سرور راه‌اندازی نشده است." : "خطایی رخ داد (" + res.status + "). دوباره تلاش کنید.",
+    };
+  }
+
+  const toLatinDigits = (s) => String(s).replace(/[۰-۹]/g, (d) => FA.indexOf(d)).replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+  function cleanPhone(v) {
+    let d = toLatinDigits(v).replace(/\D/g, "");
+    if (d.indexOf("0098") === 0) d = "0" + d.slice(4);
+    else if (d.indexOf("98") === 0 && d.length >= 12) d = "0" + d.slice(2);
+    else if (d.charAt(0) === "9") d = "0" + d;
+    return d.slice(0, 11);
+  }
+  const validPhone = (p) => /^09\d{9}$/.test(p);
+  const showPhone = (p) => faNum(p.slice(0, 4) + " " + p.slice(4, 7) + " " + p.slice(7));
+  const mmss = (sec) => faNum(Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"));
+
+  const LOGO_CHECK = '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 21l6.2 6.2L29 13.5"/></svg>';
+
+  function ringSvg() {
+    let ticks = "";
+    for (let i = 0; i < 12; i++) {
+      const big = i % 3 === 0;
+      ticks += '<line class="tk' + (big ? " big" : "") + '" x1="60" y1="' + (big ? 7 : 8.5) + '" x2="60" y2="' + (big ? 14 : 12) + '" transform="rotate(' + i * 30 + ' 60 60)"/>';
+    }
+    return '<svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2A9D6F"/><stop offset="1" stop-color="#0F5132"/></linearGradient></defs>' +
+      '<circle class="track" cx="60" cy="60" r="46"/>' +
+      '<circle class="prog" id="ringProg" cx="60" cy="60" r="46" pathLength="100"/>' +
+      '<g>' + ticks + "</g>" +
+      '<circle class="hand" id="ringHand" cx="60" cy="14" r="4.6"/></svg>';
+  }
+
+  function viewSignup() {
+    setTitle("ثبت‌نام");
+    if (auth.get()) { location.hash = "#/account"; return null; }
+
+    app.innerHTML =
+      '<div class="auth-wrap"><div class="card auth-card">' +
+      '<div class="auth-logo">' + LOGO_CHECK + "</div>" +
+      '<div id="authStep"></div></div>' +
+      '<div class="actions" style="justify-content:center"><a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a></div></div>";
+    const box = document.getElementById("authStep");
+
+    let alive = true;
+    let raf = 0;
+    let navTimer = 0;
+    let phone = "";
+
+    const stopTimers = () => { cancelAnimationFrame(raf); raf = 0; };
+    const mount = (html) => { stopTimers(); box.innerHTML = '<div class="auth-step">' + html + "</div>"; return box.firstChild; };
+
+    /* ----- مرحله‌ی ۱: شماره ----- */
+    function stepPhone(prefill) {
+      mount(
+        "<h1>ثبت‌نام</h1>" +
+        '<p class="sub">شماره‌ی موبایل‌تان را وارد کنید تا یک کد تأیید برایتان بفرستیم. اگر قبلاً ثبت‌نام کرده‌اید، وارد حساب‌تان می‌شوید.</p>' +
+        '<form id="phoneForm" novalidate><label for="ph">شماره‌ی موبایل</label>' +
+        '<input id="ph" class="auth-input" type="text" inputmode="numeric" autocomplete="tel" maxlength="14" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-describedby="phMsg">' +
+        '<div class="auth-msg" id="phMsg" role="alert"></div>' +
+        '<button class="btn wide" id="phGo" type="submit">دریافت کد</button></form>'
+      );
+      const ph = document.getElementById("ph");
+      const msg = document.getElementById("phMsg");
+      const go = document.getElementById("phGo");
+      ph.value = faNum(prefill || "");
+      ph.addEventListener("input", () => {
+        const c = cleanPhone(ph.value);
+        ph.value = faNum(c);
+        ph.classList.remove("bad");
+        msg.textContent = "";
+      });
+      document.getElementById("phoneForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const p = cleanPhone(ph.value);
+        if (!validPhone(p)) {
+          ph.classList.add("bad");
+          msg.className = "auth-msg m-err";
+          msg.textContent = "شماره‌ی موبایل معتبر نیست. مثل ۰۹۱۲۳۴۵۶۷۸۹ وارد کنید.";
+          ph.focus();
+          return;
+        }
+        go.disabled = true; go.classList.add("loading"); msg.textContent = "";
+        const r = await authCall({ action: "send", phone: p });
+        if (!alive) return;
+        go.disabled = false; go.classList.remove("loading");
+        if (r.ok) { phone = p; stepCode(r); return; }
+        msg.className = "auth-msg m-err";
+        msg.textContent = r.message || "ارسال کد ناموفق بود.";
+        if (r.retry_in) msg.textContent += " (" + faNum(r.retry_in) + " ثانیه)";
+      });
+      if (!reduceMotion()) setTimeout(() => { if (alive) ph.focus({ preventScroll: true }); }, 350);
+      else ph.focus({ preventScroll: true });
+    }
+
+    /* ----- مرحله‌ی ۲: کد + ساعت دایره‌ای ----- */
+    function stepCode(info) {
+      mount(
+        "<h1>کد تأیید</h1>" +
+        '<p class="sub">کد ۶ رقمی به شماره‌ی <span class="auth-phone">' + showPhone(phone) + "</span> ارسال شد. " +
+        '<button class="auth-link" id="editPh" type="button">ویرایش شماره</button></p>' +
+        '<div class="ring" id="ring" role="timer" aria-label="زمان باقی‌مانده تا انقضای کد">' + ringSvg() +
+        '<div class="ring-t"><b id="ringT">۲:۰۰</b><span>زمان باقی‌مانده</span></div></div>' +
+        '<div class="otp" id="otp" role="group" aria-label="کد ۶ رقمی">' +
+        [0, 1, 2, 3, 4, 5].map((i) => '<input type="text" inputmode="numeric" maxlength="1" autocomplete="' + (i === 0 ? "one-time-code" : "off") + '" aria-label="رقم ' + faNum(i + 1) + '">').join("") +
+        "</div>" +
+        (info.dev_code ? '<div class="auth-dev">حالت آزمایشی (ارسال پیامک هنوز فعال نیست): کد شما <b>' + faNum(info.dev_code) + "</b></div>" : "") +
+        '<div class="auth-msg info" id="cMsg" role="alert"></div>' +
+        '<button class="auth-link" id="resend" type="button" disabled></button>'
+      );
+      const ring = document.getElementById("ring");
+      const prog = document.getElementById("ringProg");
+      const hand = document.getElementById("ringHand");
+      const timeEl = document.getElementById("ringT");
+      const otp = document.getElementById("otp");
+      const boxes = Array.prototype.slice.call(otp.querySelectorAll("input"));
+      const msg = document.getElementById("cMsg");
+      const resend = document.getElementById("resend");
+
+      let total = (info.expires_in || 120) * 1000;
+      let deadline = Date.now() + total;
+      let resendAt = Date.now() + (info.resend_in || 60) * 1000;
+      let expired = false;
+      let busy = false;
+      let lastSec = -1;
+
+      const setMsg = (t, cls) => { msg.className = "auth-msg " + (cls === "err" ? "m-err" : "info"); msg.textContent = t || ""; };
+      const getCode = () => boxes.map((b) => b.dataset.d || "").join("");
+      const clearBoxes = () => { boxes.forEach((b) => { b.value = ""; b.dataset.d = ""; b.classList.remove("filled"); }); };
+      const lock = (v) => boxes.forEach((b) => { b.disabled = v; });
+
+      function paint() {
+        const now = Date.now();
+        const left = Math.max(0, deadline - now);
+        const used = 1 - left / total;
+        prog.style.strokeDashoffset = String(100 * used);
+        hand.style.transform = "rotate(" + 360 * used + "deg)";
+        const sec = Math.ceil(left / 1000);
+        if (sec !== lastSec) {
+          lastSec = sec;
+          timeEl.textContent = mmss(sec);
+          ring.classList.toggle("low", sec <= 10 && sec > 0);
+        }
+        const rl = Math.ceil((resendAt - now) / 1000);
+        if (rl > 0) { resend.disabled = true; resend.textContent = "ارسال دوباره‌ی کد (" + faNum(rl) + ")"; }
+        else { resend.disabled = false; resend.textContent = "ارسال دوباره‌ی کد"; }
+        if (left <= 0 && !expired) {
+          expired = true;
+          ring.classList.remove("low"); ring.classList.add("off");
+          lock(true);
+          setMsg("زمان کد تمام شد. یک کد جدید بگیرید.", "err");
+        }
+        if (!(expired && rl <= 0)) raf = requestAnimationFrame(paint);
+      }
+
+      async function submit() {
+        if (busy || expired) return;
+        const code = getCode();
+        if (code.length !== 6) return;
+        busy = true; lock(true); setMsg("در حال بررسی…", "info");
+        const r = await authCall({ action: "verify", phone: phone, code: code });
+        if (!alive) return;
+        busy = false;
+        if (r.ok) { auth.set({ token: r.token, phone: r.phone }); stepWelcome(!!r.created); return; }
+        if (r.error === "wrong") {
+          otp.classList.remove("bad-code"); void otp.offsetWidth; otp.classList.add("bad-code");
+          const left = Number(r.attempts_left || 0);
+          setMsg("کد اشتباه است." + (left > 0 ? " " + faNum(left) + " بار دیگر می‌توانید تلاش کنید." : " دیگر نمی‌توانید تلاش کنید؛ یک کد جدید بگیرید."), "err");
+          setTimeout(() => {
+            if (!alive) return;
+            otp.classList.remove("bad-code"); clearBoxes();
+            if (left > 0 && !expired) { lock(false); boxes[0].focus(); }
+          }, 650);
+          return;
+        }
+        if (r.error === "network" || r.error === "server") { lock(false); setMsg(r.message, "err"); return; }
+        /* منقضی یا قفل */
+        otp.classList.add("bad-code");
+        setMsg(r.message || "کد معتبر نیست. یک کد جدید بگیرید.", "err");
+        resendAt = Math.min(resendAt, Date.now());
+        if (!raf) raf = requestAnimationFrame(paint);
+      }
+
+      function fill(start, digits) {
+        let i = start;
+        for (let k = 0; k < digits.length && i < 6; k++, i++) {
+          boxes[i].dataset.d = digits[k];
+          boxes[i].value = FA[digits[k]];
+          boxes[i].classList.add("filled");
+        }
+        const next = Math.min(i, 5);
+        boxes[next].focus();
+        if (getCode().length === 6) submit();
+      }
+
+      boxes.forEach((b, i) => {
+        b.addEventListener("input", () => {
+          const d = toLatinDigits(b.value).replace(/\D/g, "");
+          setMsg("");
+          otp.classList.remove("bad-code");
+          if (!d) { b.value = ""; b.dataset.d = ""; b.classList.remove("filled"); return; }
+          b.value = ""; b.dataset.d = ""; b.classList.remove("filled");
+          fill(i, d);
+        });
+        b.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !b.value && i > 0) {
+            boxes[i - 1].value = ""; boxes[i - 1].dataset.d = ""; boxes[i - 1].classList.remove("filled");
+            boxes[i - 1].focus(); e.preventDefault();
+          } else if (e.key === "ArrowLeft" && i > 0) { boxes[i - 1].focus(); e.preventDefault(); }
+          else if (e.key === "ArrowRight" && i < 5) { boxes[i + 1].focus(); e.preventDefault(); }
+        });
+        b.addEventListener("focus", () => { try { b.select(); } catch (e) { /* ignore */ } });
+        b.addEventListener("paste", (e) => {
+          const t = (e.clipboardData && e.clipboardData.getData("text")) || "";
+          const d = toLatinDigits(t).replace(/\D/g, "").slice(0, 6);
+          if (!d) return;
+          e.preventDefault();
+          clearBoxes();
+          fill(0, d);
+        });
+      });
+
+      resend.addEventListener("click", async () => {
+        if (resend.disabled) return;
+        resend.disabled = true;
+        const r = await authCall({ action: "send", phone: phone });
+        if (!alive) return;
+        if (r.ok) {
+          total = (r.expires_in || 120) * 1000;
+          deadline = Date.now() + total;
+          resendAt = Date.now() + (r.resend_in || 60) * 1000;
+          expired = false; lastSec = -1;
+          ring.classList.remove("off", "low");
+          clearBoxes(); lock(false); otp.classList.remove("bad-code");
+          setMsg("کد جدید ارسال شد.", "info");
+          const dev = box.querySelector(".auth-dev b");
+          if (r.dev_code && dev) dev.textContent = faNum(r.dev_code);
+          boxes[0].focus();
+          cancelAnimationFrame(raf); raf = requestAnimationFrame(paint);
+        } else {
+          setMsg(r.message || "ارسال دوباره ناموفق بود.", "err");
+          if (r.retry_in) resendAt = Date.now() + r.retry_in * 1000;
+          if (!raf) raf = requestAnimationFrame(paint);
+        }
+      });
+      document.getElementById("editPh").addEventListener("click", () => stepPhone(phone));
+
+      paint();
+      if (!reduceMotion()) setTimeout(() => { if (alive && !expired) boxes[0].focus({ preventScroll: true }); }, 350);
+      else boxes[0].focus({ preventScroll: true });
+    }
+
+    /* ----- موفقیت: خودکار وارد می‌شود ----- */
+    function stepWelcome(created) {
+      mount(
+        '<div class="auth-welcome"><div class="ring done" id="ring">' + ringSvg() +
+        '<div class="okmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>' +
+        "<h1>" + (created ? "ثبت‌نام شما انجام شد 🎉" : "خوش آمدید 👋") + "</h1>" +
+        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به صفحه‌ی اصلی…</p>" +
+        '<a class="btn wide" href="#/">ورود به سایت</a></div>'
+      );
+      const prog = document.getElementById("ringProg");
+      prog.style.strokeDashoffset = "100";
+      requestAnimationFrame(() => requestAnimationFrame(() => { prog.style.strokeDashoffset = "0"; }));
+      navTimer = setTimeout(() => { if (alive) location.hash = "#/"; }, 1700);
+    }
+
+    stepPhone("");
+    return function cleanup() { alive = false; stopTimers(); clearTimeout(navTimer); };
+  }
+
+  function viewAccount() {
+    setTitle("حساب من");
+    const s = auth.get();
+    if (!s) { location.hash = "#/signup"; return null; }
+    app.innerHTML =
+      '<div class="auth-wrap"><div class="card auth-card"><div class="auth-logo">' + LOGO_CHECK + "</div>" +
+      '<div class="auth-step"><h1>حساب من</h1><p class="sub">با این شماره وارد شده‌اید:</p>' +
+      '<div class="acc-phone">' + showPhone(s.phone) + "</div>" +
+      '<a class="btn wide" href="#/create">ساخت آزمون</a>' +
+      '<button class="btn ghost wide" id="logout" type="button">خروج از حساب</button></div></div></div>';
+    document.getElementById("logout").addEventListener("click", async (e) => {
+      const b = e.currentTarget;
+      b.disabled = true; b.classList.add("loading");
+      const cur = auth.get();
+      if (cur) await authCall({ action: "logout", token: cur.token });
+      auth.clear();
+      location.hash = "#/";
+    });
+    return null;
+  }
+
+  async function validateSession() {
+    const s = auth.get();
+    if (!s || !cfg.SUPABASE_URL) return;
+    const r = await authCall({ action: "me", token: s.token });
+    if (r && r.ok === false && r.error === "no_session") { auth.clear(); if (/^#\/account/.test(location.hash)) location.hash = "#/signup"; }
+  }
+
   /* ---------- مسیریابی ---------- */
   let routeToken = 0;
   let cleanup = null;
@@ -1197,6 +1531,10 @@
     } else if (parts[0] === "edit") {
       if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
       else viewEdit(parts[1], parts[2], token);
+    } else if (parts[0] === "signup") {
+      cleanup = viewSignup();
+    } else if (parts[0] === "account") {
+      cleanup = viewAccount();
     } else if (parts[0] === "create") {
       if (parts[1] === "ai") cleanup = viewAI();
       else if (ACTIVE_MODES.indexOf(parts[1]) >= 0) cleanup = viewBuild(parts[1], /(^|&)draft=1(&|$)/.test(query));
@@ -1208,5 +1546,7 @@
   }
 
   window.addEventListener("hashchange", route);
+  syncAuthBtn();
   route();
+  validateSession();
 })();
