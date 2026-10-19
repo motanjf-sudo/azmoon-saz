@@ -736,18 +736,12 @@
     { id: "ds-v41", group: "DeepSeek", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash", textOnly: true },
     { id: "gem-argon", group: "Gemini", label: "Gemini 4 Argon", provider: "gemini", model: "gemini-4-argon" },
     { id: "gem-flash", group: "Gemini", label: "Gemini 3.8 Flash", provider: "gemini", model: "gemini-3.8-flash" },
-    { id: "claude-sonnet", group: "other", label: "Claude Sonnet 5.5", provider: "perplexity", model: "anthropic/claude-sonnet-5-5" },
-    { id: "claude-haiku", group: "other", label: "Claude Haiku 5.5", provider: "perplexity", model: "anthropic/claude-haiku-5-5" },
-    { id: "claude-opus", group: "other", label: "Claude Opus 5.5", provider: "perplexity", model: "anthropic/claude-opus-5-5" },
-    { id: "gpt-luna", group: "other", label: "GPT-6 Luna", provider: "perplexity", model: "openai/gpt-6-luna" },
-    { id: "gpt-sol", group: "other", label: "GPT-6.1 Sol", provider: "perplexity", model: "openai/gpt-6.1-sol" },
-    { id: "glm", group: "other", label: "GLM 5.3", provider: "perplexity", model: "perplexity/glm-5.3" },
   ];
-  const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[2];
+  const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[3];
 
   function viewAI() {
     setTitle("ساخت آزمون با هوش مصنوعی");
-    const st = { src: "file", mid: "claude-sonnet", mode: "mixed", level: "medium", count: 10, file: null };
+    const st = { src: "file", mid: "gem-flash", mode: "mixed", level: "medium", count: 10, file: null };
     let busy = false;
     let ctl = null;
 
@@ -761,7 +755,7 @@
       '<p class="muted">فایل یا موضوع را بدهید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
       '<div class="card ai-form">' +
       '<label for="mid">مدل هوش مصنوعی</label><select id="mid">' +
-      ["DeepSeek", "Gemini", "other"].map((g) => '<optgroup label="' + (g === "other" ? "سایر مدل‌ها" : g) + '">' +
+      ["DeepSeek", "Gemini"].map((g) => '<optgroup label="' + g + '">' +
         AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.textOnly ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
       "</select>" +
       '<label>منبع سؤال‌ها</label>' + seg("src", [["file", "از روی فایل"], ["topic", "فقط موضوع (بدون فایل)"]]) +
@@ -1301,12 +1295,12 @@
     function stepCode(info) {
       mount(
         "<h1>کد تأیید</h1>" +
-        '<p class="sub">کد ۶ رقمی به شماره‌ی <span class="auth-phone">' + showPhone(phone) + "</span> ارسال شد. " +
+        '<p class="sub">کد ۵ رقمی به شماره‌ی <span class="auth-phone">' + showPhone(phone) + "</span> ارسال شد. " +
         '<button class="auth-link" id="editPh" type="button">ویرایش شماره</button></p>' +
         '<div class="ring" id="ring" role="timer" aria-label="زمان باقی‌مانده تا انقضای کد">' + ringSvg() +
         '<div class="ring-t"><b id="ringT">۲:۰۰</b><span>زمان باقی‌مانده</span></div></div>' +
-        '<div class="otp" id="otp" role="group" aria-label="کد ۶ رقمی">' +
-        [0, 1, 2, 3, 4, 5].map((i) => '<input type="text" inputmode="numeric" maxlength="1" autocomplete="' + (i === 0 ? "one-time-code" : "off") + '" aria-label="رقم ' + faNum(i + 1) + '">').join("") +
+        '<div class="otp" id="otp" role="group" aria-label="کد ۵ رقمی">' +
+        [0, 1, 2, 3, 4].map((i) => '<input type="text" inputmode="numeric" maxlength="1" autocomplete="' + (i === 0 ? "one-time-code" : "off") + '" aria-label="رقم ' + faNum(i + 1) + '">').join("") +
         "</div>" +
         (info.dev_code ? '<div class="auth-dev">حالت آزمایشی (ارسال پیامک هنوز فعال نیست): کد شما <b>' + faNum(info.dev_code) + "</b></div>" : "") +
         '<div class="auth-msg info" id="cMsg" role="alert"></div>' +
@@ -1360,7 +1354,7 @@
       async function submit() {
         if (busy || expired) return;
         const code = getCode();
-        if (code.length !== 6) return;
+        if (code.length !== 5) return;
         busy = true; lock(true); setMsg("در حال بررسی…", "info");
         const r = await authCall({ action: "verify", phone: phone, code: code });
         if (!alive) return;
@@ -1387,14 +1381,14 @@
 
       function fill(start, digits) {
         let i = start;
-        for (let k = 0; k < digits.length && i < 6; k++, i++) {
+        for (let k = 0; k < digits.length && i < 5; k++, i++) {
           boxes[i].dataset.d = digits[k];
           boxes[i].value = FA[digits[k]];
           boxes[i].classList.add("filled");
         }
-        const next = Math.min(i, 5);
+        const next = Math.min(i, 4);
         boxes[next].focus();
-        if (getCode().length === 6) submit();
+        if (getCode().length === 5) submit();
       }
 
       boxes.forEach((b, i) => {
@@ -1411,12 +1405,12 @@
             boxes[i - 1].value = ""; boxes[i - 1].dataset.d = ""; boxes[i - 1].classList.remove("filled");
             boxes[i - 1].focus(); e.preventDefault();
           } else if (e.key === "ArrowLeft" && i > 0) { boxes[i - 1].focus(); e.preventDefault(); }
-          else if (e.key === "ArrowRight" && i < 5) { boxes[i + 1].focus(); e.preventDefault(); }
+          else if (e.key === "ArrowRight" && i < 4) { boxes[i + 1].focus(); e.preventDefault(); }
         });
         b.addEventListener("focus", () => { try { b.select(); } catch (e) { /* ignore */ } });
         b.addEventListener("paste", (e) => {
           const t = (e.clipboardData && e.clipboardData.getData("text")) || "";
-          const d = toLatinDigits(t).replace(/\D/g, "").slice(0, 6);
+          const d = toLatinDigits(t).replace(/\D/g, "").slice(0, 5);
           if (!d) return;
           e.preventDefault();
           clearBoxes();
