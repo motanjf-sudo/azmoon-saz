@@ -435,18 +435,15 @@
   .ring .prog{fill:none;stroke:url(#ringGrad);stroke-width:7;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:0;transform:rotate(-90deg);transform-origin:60px 60px;transition:stroke .4s}
   .ring .tk{stroke:var(--line-2);stroke-width:1.6;stroke-linecap:round}
   .ring .tk.big{stroke-width:2.4}
-  .ring .hand{fill:var(--surface-solid);stroke:var(--accent);stroke-width:3;transform-origin:60px 60px;transition:stroke .4s}
   .ring-t{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;pointer-events:none}
   .ring-t b{font-size:1.9rem;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;direction:ltr}
   .ring-t span{font-size:.78rem;color:var(--muted)}
   .ring.low .prog{stroke:#C4921C}
-  .ring.low .hand{stroke:#C4921C}
   .ring.low .ring-t b{color:#8a6410;animation:pulseTxt 1s ease-in-out infinite}
   .ring.off .prog{stroke:var(--line-2)}
-  .ring.off .hand{display:none}
   @keyframes pulseTxt{50%{transform:scale(1.08)}}
   .ring.done .prog{stroke:var(--ok);transition:stroke-dashoffset .6s var(--ease),stroke .3s}
-  .ring.done .tk,.ring.done .hand{display:none}
+  .ring.done .tk{display:none}
   .ring .okmark{position:absolute;inset:0;display:grid;place-items:center;color:var(--ok)}
   .ring .okmark svg{width:58px;height:58px}
   .ring .okmark path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .6s .25s var(--ease) forwards}
