@@ -1226,7 +1226,7 @@
       '<circle class="track" cx="60" cy="60" r="46"/>' +
       '<circle class="prog" id="ringProg" cx="60" cy="60" r="46" pathLength="100"/>' +
       '<g>' + ticks + "</g>" +
-      '<circle class="hand" id="ringHand" cx="60" cy="14" r="4.6"/></svg>';
+      '</svg>';
   }
 
   function viewSignup() {
@@ -1304,11 +1304,10 @@
         "</div>" +
         (info.dev_code ? '<div class="auth-dev">حالت آزمایشی (ارسال پیامک هنوز فعال نیست): کد شما <b>' + faNum(info.dev_code) + "</b></div>" : "") +
         '<div class="auth-msg info" id="cMsg" role="alert"></div>' +
-        '<button class="auth-link" id="resend" type="button" disabled></button>'
+        '<button class="btn ghost wide" id="resend" type="button" hidden>ارسال دوباره‌ی کد</button>'
       );
       const ring = document.getElementById("ring");
       const prog = document.getElementById("ringProg");
-      const hand = document.getElementById("ringHand");
       const timeEl = document.getElementById("ringT");
       const otp = document.getElementById("otp");
       const boxes = Array.prototype.slice.call(otp.querySelectorAll("input"));
@@ -1317,7 +1316,6 @@
 
       let total = (info.expires_in || 120) * 1000;
       let deadline = Date.now() + total;
-      let resendAt = Date.now() + (info.resend_in || 60) * 1000;
       let expired = false;
       let busy = false;
       let lastSec = -1;
@@ -1327,28 +1325,27 @@
       const clearBoxes = () => { boxes.forEach((b) => { b.value = ""; b.dataset.d = ""; b.classList.remove("filled"); }); };
       const lock = (v) => boxes.forEach((b) => { b.disabled = v; });
 
+      function showResend() { resend.hidden = false; resend.disabled = false; }
+
       function paint() {
         const now = Date.now();
         const left = Math.max(0, deadline - now);
         const used = 1 - left / total;
         prog.style.strokeDashoffset = String(100 * used);
-        hand.style.transform = "rotate(" + 360 * used + "deg)";
         const sec = Math.ceil(left / 1000);
         if (sec !== lastSec) {
           lastSec = sec;
           timeEl.textContent = mmss(sec);
           ring.classList.toggle("low", sec <= 10 && sec > 0);
         }
-        const rl = Math.ceil((resendAt - now) / 1000);
-        if (rl > 0) { resend.disabled = true; resend.textContent = "ارسال دوباره‌ی کد (" + faNum(rl) + ")"; }
-        else { resend.disabled = false; resend.textContent = "ارسال دوباره‌ی کد"; }
         if (left <= 0 && !expired) {
           expired = true;
           ring.classList.remove("low"); ring.classList.add("off");
           lock(true);
           setMsg("زمان کد تمام شد. یک کد جدید بگیرید.", "err");
+          showResend();
         }
-        if (!(expired && rl <= 0)) raf = requestAnimationFrame(paint);
+        if (!expired) raf = requestAnimationFrame(paint);
       }
 
       async function submit() {
@@ -1369,14 +1366,15 @@
             otp.classList.remove("bad-code"); clearBoxes();
             if (left > 0 && !expired) { lock(false); boxes[0].focus(); }
           }, 650);
+          if (left <= 0) { lock(true); showResend(); }
           return;
         }
         if (r.error === "network" || r.error === "server") { lock(false); setMsg(r.message, "err"); return; }
         /* منقضی یا قفل */
         otp.classList.add("bad-code");
+        lock(true);
         setMsg(r.message || "کد معتبر نیست. یک کد جدید بگیرید.", "err");
-        resendAt = Math.min(resendAt, Date.now());
-        if (!raf) raf = requestAnimationFrame(paint);
+        showResend();
       }
 
       function fill(start, digits) {
@@ -1420,13 +1418,14 @@
 
       resend.addEventListener("click", async () => {
         if (resend.disabled) return;
-        resend.disabled = true;
+        resend.disabled = true; resend.classList.add("loading");
         const r = await authCall({ action: "send", phone: phone });
         if (!alive) return;
+        resend.classList.remove("loading");
         if (r.ok) {
           total = (r.expires_in || 120) * 1000;
           deadline = Date.now() + total;
-          resendAt = Date.now() + (r.resend_in || 60) * 1000;
+          resend.hidden = true;
           expired = false; lastSec = -1;
           ring.classList.remove("off", "low");
           clearBoxes(); lock(false); otp.classList.remove("bad-code");
@@ -1436,9 +1435,8 @@
           boxes[0].focus();
           cancelAnimationFrame(raf); raf = requestAnimationFrame(paint);
         } else {
-          setMsg(r.message || "ارسال دوباره ناموفق بود.", "err");
-          if (r.retry_in) resendAt = Date.now() + r.retry_in * 1000;
-          if (!raf) raf = requestAnimationFrame(paint);
+          setMsg((r.message || "ارسال دوباره ناموفق بود.") + (r.retry_in ? " (" + faNum(r.retry_in) + " ثانیه)" : ""), "err");
+          resend.disabled = false;
         }
       });
       document.getElementById("editPh").addEventListener("click", () => stepPhone(phone));
