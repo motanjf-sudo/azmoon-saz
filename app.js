@@ -739,6 +739,17 @@
   ];
   const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[3];
 
+  /* قفل کامل برنامه هنگام ساخت آزمون با هوش مصنوعی */
+  let genLockHash = null;
+  const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = ""; return ""; };
+  function setGenLock(on) {
+    const els = document.querySelectorAll("header.top, footer.foot, #app");
+    els.forEach((el) => { if (on) el.setAttribute("inert", ""); else el.removeAttribute("inert"); });
+    document.documentElement.classList.toggle("gen-lock", on);
+    if (on) { genLockHash = location.hash; window.addEventListener("beforeunload", onBeforeUnload); }
+    else { genLockHash = null; window.removeEventListener("beforeunload", onBeforeUnload); }
+  }
+
   function viewAI() {
     setTitle("ساخت آزمون با هوش مصنوعی");
     const st = { src: "file", mid: "gem-flash", mode: "mixed", level: "medium", count: 10, file: null };
@@ -770,7 +781,7 @@
       "</div>" +
       '<div id="msg"></div>' +
       '<div class="actions"><a class="btn ghost" href="#/create">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' ساخت آزمون و دریافت لینک</button></div>' +
-      '<p class="hint" id="wait" hidden>در حال ساخت آزمون… معمولاً ۱۰ تا ۶۰ ثانیه طول می‌کشد. این صفحه را نبندید.</p>';
+      '<p class="hint" id="wait" hidden>در حال ساخت آزمون… معمولاً ۱۰ تا ۶۰ ثانیه طول می‌کشد. تا پایان کار، همه‌ی دکمه‌ها قفل است. این صفحه را نبندید و از آن خارج نشوید.</p>';
 
     const $ = (id) => document.getElementById(id);
     const msg = $("msg");
@@ -859,6 +870,7 @@
       go.disabled = true;
       go.classList.add("loading");
       $("wait").hidden = false;
+      setGenLock(true);
       ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), 130000);
       try {
@@ -897,8 +909,10 @@
           throw new Error("سؤال‌ها ساخته شد ولی ذخیره‌ی آزمون در پایگاه‌داده نشد: " + e2.message);
         }
         store.addQuiz({ id: id, secret: secret, title: title });
+        setGenLock(false);
         location.hash = "#/m/" + encodeURIComponent(id) + "/" + secret + "?new=1";
       } catch (e) {
+        setGenLock(false);
         if (ctl && ctl.signal.aborted && !busy) return;
         fail(e.message);
         busy = false;
@@ -912,6 +926,7 @@
 
     return function cleanup() {
       busy = false;
+      setGenLock(false);
       if (ctl) ctl.abort();
     };
   }
@@ -1537,7 +1552,13 @@
     if (!initial) app.focus({ preventScroll: true });
   }
 
-  window.addEventListener("hashchange", route);
+  window.addEventListener("hashchange", () => {
+    if (genLockHash !== null) {
+      if (location.hash !== genLockHash) location.replace(genLockHash);
+      return;
+    }
+    route();
+  });
   syncAuthBtn();
   route();
   validateSession();
