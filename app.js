@@ -743,7 +743,7 @@
   let genLockHash = null;
   const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = ""; return ""; };
   function setGenLock(on) {
-    const els = document.querySelectorAll("header.top, footer.foot, #app");
+    const els = document.querySelectorAll("header.top, #app");
     els.forEach((el) => { if (on) el.setAttribute("inert", ""); else el.removeAttribute("inert"); });
     document.documentElement.classList.toggle("gen-lock", on);
     if (on) { genLockHash = location.hash; window.addEventListener("beforeunload", onBeforeUnload); }
@@ -1528,6 +1528,8 @@
     const okId = (s) => /^[A-Za-z0-9_-]{1,64}$/.test(s || "");
 
     if (!initial) window.scrollTo(0, 0);
+    const hb = document.getElementById("homeBtn");
+    if (hb) { if (parts.length === 0) hb.setAttribute("aria-current", "page"); else hb.removeAttribute("aria-current"); }
 
     if (parts[0] === "q") {
       if (!okId(parts[1])) showError("لینک آزمون نامعتبر است.");
@@ -1559,6 +1561,8 @@
     }
     route();
   });
+  const homeBtn = document.getElementById("homeBtn");
+  if (homeBtn) homeBtn.addEventListener("click", () => { if (!location.hash || location.hash === "#/" || location.hash === "#") window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" }); });
   syncAuthBtn();
   route();
   validateSession();
