@@ -30,6 +30,19 @@
   };
   const ACTIVE_MODES = ["tf", "mcq", "mixed"];
 
+  /* بزرگ‌شدن خودکار کادرهای چندخطی (متن طولانی و فرمول در موبایل بریده نشود) */
+  function grow(t) {
+    if (!t || !t.isConnected) return;
+    t.style.height = "auto";
+    if (t.scrollHeight > 0) t.style.height = t.scrollHeight + 2 + "px";
+  }
+  function autoGrow(t) {
+    t.addEventListener("input", () => grow(t));
+    requestAnimationFrame(() => requestAnimationFrame(() => grow(t)));
+  }
+  /* متن ساده‌ی یک سؤال برای عنوان‌های کوتاه: فرمول‌ها با «(فرمول)» جایگزین می‌شوند */
+  const plainQ = (t) => String(t == null ? "" : t).replace(/\$\$[\s\S]*?\$\$|\$[^$\n]*\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g, " (فرمول) ").replace(/\s+/g, " ").trim();
+
   const ICONS = {
     list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="7" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="5" cy="17" r="1.6"/><path d="M10 7h10M10 12h10M10 17h10"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3.2 3.2L12 5.5"/><path d="M13.5 15l5.5 5.5M19 15l-5.5 5.5"/><path d="M20.5 3.5L3.5 20.5" stroke-opacity=".4" stroke-dasharray="1.2 2.4"/></svg>',
@@ -367,6 +380,7 @@
     const qsBox = document.getElementById("qs");
     const titleEl = document.getElementById("title");
     const descEl = document.getElementById("desc");
+    autoGrow(descEl);
     const msg = document.getElementById("msg");
     titleEl.value = titleVal;
     descEl.value = descVal;
@@ -433,8 +447,10 @@
         const radio = el("input", { type: "radio", name: "c" + q.id, "aria-label": "گزینه‌ی " + faNum(i + 1) + " پاسخ درست است" });
         radio.checked = q.correct === i;
         radio.addEventListener("change", () => { q.correct = i; clearInvalid(card); touch(); });
-        const text = el("input", { type: "text", maxlength: String(LIMITS.opt), placeholder: "گزینه‌ی " + faNum(i + 1), "aria-label": "متن گزینه‌ی " + faNum(i + 1) });
+        const text = el("textarea", { class: "optx", rows: "1", maxlength: String(LIMITS.opt), placeholder: "گزینه‌ی " + faNum(i + 1), "aria-label": "متن گزینه‌ی " + faNum(i + 1) });
         text.value = val;
+        text.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
+        autoGrow(text);
         text.addEventListener("input", () => { q.options[i] = text.value; text.classList.remove("bad"); clearInvalid(card); touch(); });
         const rm = el("button", { class: "btn small danger", type: "button", "aria-label": "حذف گزینه‌ی " + faNum(i + 1), html: "×" });
         rm.disabled = q.options.length <= LIMITS.minOpts;
@@ -443,7 +459,7 @@
           q.options.splice(i, 1);
           if (q.correct === i) q.correct = null; else if (q.correct != null && q.correct > i) q.correct -= 1;
           buildAnswers(card, q);
-          const ins = card.querySelectorAll(".opts input[type=text]");
+          const ins = card.querySelectorAll(".opts .optx");
           if (ins.length) ins[Math.min(i, ins.length - 1)].focus();
           touch();
         });
@@ -456,7 +472,7 @@
         if (q.options.length >= LIMITS.maxOpts) return;
         q.options.push("");
         buildAnswers(card, q);
-        const ins = card.querySelectorAll(".opts input[type=text]");
+        const ins = card.querySelectorAll(".opts .optx");
         ins[ins.length - 1].focus();
         touch();
       });
@@ -523,6 +539,7 @@
       card.appendChild(el("div", { class: "q-head" }, head));
       const ta = el("textarea", { class: "qtext", id: "qt" + q.id, maxlength: String(LIMITS.text), "aria-label": "متن سؤال" });
       ta.value = q.text;
+      autoGrow(ta);
       ta.addEventListener("input", () => { q.text = ta.value; ta.classList.remove("bad"); clearInvalid(card); touch(); });
       card.appendChild(el("label", { for: "qt" + q.id, text: "متن سؤال" }));
       card.appendChild(ta);
@@ -576,7 +593,7 @@
           if (q.tf == null) return fail(card.querySelector(".tf input"), "پاسخ درست سؤال " + n + " را مشخص کنید.");
           continue;
         }
-        const inputs = Array.from(card.querySelectorAll(".opts input[type=text]"));
+        const inputs = Array.from(card.querySelectorAll(".opts .optx"));
         const emptyIdx = q.options.findIndex((o) => !o.trim());
         if (emptyIdx >= 0) return fail(inputs[emptyIdx], "همه‌ی گزینه‌های سؤال " + n + " را پر کنید.");
         const seen = {};
@@ -1074,13 +1091,13 @@
     const ratio = (s) => (s.total ? s.score / s.total : 0);
     const avg = subs.length ? subs.reduce((a, s) => a + ratio(s), 0) / subs.length : 0;
     const best = subs.length ? Math.max.apply(null, subs.map(ratio)) : 0;
-    const when = (v) => { const t = new Date(v); return isNaN(t) ? "" : t.toLocaleString("fa-IR"); };
+    const when = (v) => { const t = new Date(v); return isNaN(t) ? "" : t.toLocaleDateString("fa-IR") + " — " + t.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }); };
 
     const qstat = qs.map((q, i) => {
       const ok = subs.filter((s) => Array.isArray(s.answers) && s.answers[i] === q.correct).length;
       const p = subs.length ? Math.round((ok / subs.length) * 100) : 0;
       const txt = String(q.text || "");
-      return '<div class="qstat"><div class="qs-top"><span class="qs-n">' + faNum(i + 1) + '</span><span class="qs-t">' + esc(txt.length > 90 ? txt.slice(0, 90) + "…" : txt) +
+      return '<div class="qstat"><div class="qs-top"><span class="qs-n">' + faNum(i + 1) + '</span><span class="qs-t">' + esc(plainQ(txt).length > 90 ? plainQ(txt).slice(0, 90) + "…" : plainQ(txt)) +
         '</span><span class="badge">' + esc(QTYPES[typeOf(q.type)].short) + '</span><span class="qs-p">' + faNum(p) + '٪</span></div><div class="bar" role="img" aria-label="' + faNum(p) + ' درصد درست"><i style="--w:' + (p / 100) + '"></i></div></div>';
     }).join("");
 
@@ -1098,8 +1115,8 @@
       '<div class="stat"><b>' + faNum(Math.round(best * 100)) + "٪</b><span>بهترین نمره</span></div></div>" +
       '<div class="card"><h2>نتایج</h2>' +
       (subs.length
-        ? '<div style="overflow-x:auto"><table><thead><tr><th>نام</th><th>نمره</th><th>زمان</th><th></th></tr></thead><tbody>' +
-          subs.map((s, i) => '<tr class="srow"><td>' + esc(s.name) + "</td><td>" + faNum(s.score) + " از " + faNum(s.total) + "</td><td>" + esc(when(s.created_at)) + '</td><td class="det-cell"><button class="btn ghost small" type="button" data-det="' + i + '" aria-haspopup="dialog">مشاهده جزئیات</button></td></tr>').join("") +
+        ? '<div style="overflow-x:auto"><table class="rtbl"><thead><tr><th>نام</th><th>نمره</th><th>زمان</th><th></th></tr></thead><tbody>' +
+          subs.map((s, i) => '<tr class="srow"><td class="c-name">' + esc(s.name) + '</td><td class="c-score" data-l="نمره">' + faNum(s.score) + " از " + faNum(s.total) + '</td><td class="c-time" data-l="زمان">' + esc(when(s.created_at)) + '</td><td class="det-cell"><button class="btn ghost small" type="button" data-det="' + i + '" aria-haspopup="dialog">مشاهده جزئیات</button></td></tr>').join("") +
           '</tbody></table></div><div class="actions"><button class="btn ghost small" type="button" id="csv">دانلود CSV</button><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button></div>'
         : '<p class="muted">هنوز کسی شرکت نکرده است. لینک آزمون را برای دیگران بفرستید.</p><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button>') +
       "</div>" +
