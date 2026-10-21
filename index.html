@@ -165,6 +165,8 @@
   .brand span{background:var(--h-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
   .logo{width:40px;height:40px;flex:none;filter:drop-shadow(0 6px 10px rgba(11,61,46,.3))}
   .logo .lg-bg{fill:url(#lgrad)}
+  html.gen-lock .top,html.gen-lock .foot{opacity:.5;filter:saturate(.6);transition:opacity .3s}
+  html.gen-lock body{cursor:progress}
   .brand:hover .logo{animation:wiggle .6s var(--ease)}
   .tools{display:flex;align-items:center;gap:10px}
   .icon-btn{width:42px;height:42px;display:inline-grid;place-items:center;border-radius:13px;border:1px solid var(--line);
