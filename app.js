@@ -1205,13 +1205,64 @@
     clear() { store.del("session"); syncAuthBtn(); },
   };
 
+  const cleanName = (v) => String(v == null ? "" : v).replace(/\s+/g, " ").trim();
+  const validName = (n) => n.length >= 2 && n.length <= 60;
+  const initialOf = (n) => { const c = Array.from(cleanName(n))[0]; return c ? c.toUpperCase() : ""; };
+  const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.8-5.4 7.2-5.4s6.3 1.8 7.2 5.4"/></svg>';
+
+  async function doLogout(btn) {
+    if (btn) { btn.disabled = true; btn.classList.add("loading"); }
+    const cur = auth.get();
+    if (cur) await authCall({ action: "logout", token: cur.token });
+    auth.clear();
+    location.hash = "#/";
+  }
+
+  /* دکمه‌ی «ثبت‌نام» بعد از ورود به یک آواتار دایره‌ای (با اسم و شماره) تبدیل می‌شود */
+  function closeProfile() {
+    const pop = document.getElementById("profPop"), btn = document.getElementById("profBtn");
+    if (pop) pop.hidden = true;
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+  function openProfile() {
+    const pop = document.getElementById("profPop"), btn = document.getElementById("profBtn");
+    if (!pop || !btn) return;
+    pop.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    const r = btn.getBoundingClientRect(), w = pop.offsetWidth, vw = document.documentElement.clientWidth;
+    pop.style.top = Math.round(r.bottom + 10) + "px";
+    pop.style.left = Math.round(Math.max(12, Math.min(r.left, vw - w - 12))) + "px";
+  }
   function syncAuthBtn() {
     const b = document.getElementById("authBtn");
+    const wrap = document.getElementById("profWrap");
     if (!b) return;
-    const on = !!auth.get();
-    b.textContent = on ? "حساب من" : "ثبت‌نام";
-    b.setAttribute("href", on ? "#/account" : "#/signup");
+    const s = auth.get();
+    b.style.display = s ? "none" : "";
+    if (!wrap) return;
+    wrap.hidden = !s;
+    if (!s) { wrap.innerHTML = ""; return; }
+    const nm = cleanName(s.name);
+    const av = nm ? "<span>" + esc(initialOf(nm)) + "</span>" : USER_ICON;
+    wrap.innerHTML =
+      '<button class="prof-btn" id="profBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="profPop" aria-label="پروفایل' + (nm ? "؛ " + esc(nm) : "") + '">' + av + "</button>" +
+      '<div class="prof-pop" id="profPop" role="dialog" aria-label="اطلاعات حساب" hidden>' +
+      '<div class="prof-av">' + av + "</div>" +
+      '<div class="prof-name">' + (nm ? esc(nm) : "کاربر پازمونک") + "</div>" +
+      '<div class="prof-phone" dir="ltr">' + showPhone(s.phone) + "</div>" +
+      '<button class="btn ghost small wide" id="profOut" type="button">خروج از حساب</button></div>';
+    document.getElementById("profBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const pop = document.getElementById("profPop");
+      if (pop.hidden) openProfile(); else closeProfile();
+    });
+    document.getElementById("profPop").addEventListener("click", (e) => e.stopPropagation());
+    document.getElementById("profOut").addEventListener("click", (e) => { closeProfile(); doLogout(e.currentTarget); });
   }
+  document.addEventListener("click", closeProfile);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { const pop = document.getElementById("profPop"); if (pop && !pop.hidden) { closeProfile(); const b = document.getElementById("profBtn"); if (b) b.focus(); } } });
+  window.addEventListener("resize", closeProfile);
+  window.addEventListener("hashchange", closeProfile);
 
   async function authCall(body) {
     let res;
@@ -1276,6 +1327,7 @@
     let raf = 0;
     let navTimer = 0;
     let phone = "";
+    let fullName = "";
 
     const stopTimers = () => { cancelAnimationFrame(raf); raf = 0; };
     const mount = (html) => { stopTimers(); box.innerHTML = '<div class="auth-step">' + html + "</div>"; return box.firstChild; };
@@ -1285,15 +1337,20 @@
       mount(
         "<h1>ثبت‌نام</h1>" +
         '<p class="sub">شماره‌ی موبایل‌تان را وارد کنید تا یک کد تأیید برایتان بفرستیم. اگر قبلاً ثبت‌نام کرده‌اید، وارد حساب‌تان می‌شوید.</p>' +
-        '<form id="phoneForm" novalidate><label for="ph">شماره‌ی موبایل</label>' +
+        '<form id="phoneForm" novalidate><label for="nm">نام و نام خانوادگی</label>' +
+        '<input id="nm" class="auth-input auth-name" type="text" autocomplete="name" maxlength="60" placeholder="مثلاً علی رضایی" aria-describedby="phMsg">' +
+        '<label for="ph">شماره‌ی موبایل</label>' +
         '<input id="ph" class="auth-input" type="text" inputmode="numeric" autocomplete="tel" maxlength="14" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-describedby="phMsg">' +
         '<div class="auth-msg" id="phMsg" role="alert"></div>' +
         '<button class="btn wide" id="phGo" type="submit">دریافت کد</button></form>'
       );
       const ph = document.getElementById("ph");
+      const nmEl = document.getElementById("nm");
       const msg = document.getElementById("phMsg");
       const go = document.getElementById("phGo");
       ph.value = faNum(prefill || "");
+      nmEl.value = fullName;
+      nmEl.addEventListener("input", () => { nmEl.classList.remove("bad"); msg.textContent = ""; });
       ph.addEventListener("input", () => {
         const c = cleanPhone(ph.value);
         ph.value = faNum(c);
@@ -1302,6 +1359,14 @@
       });
       document.getElementById("phoneForm").addEventListener("submit", async (e) => {
         e.preventDefault();
+        const n = cleanName(nmEl.value);
+        if (!validName(n)) {
+          nmEl.classList.add("bad");
+          msg.className = "auth-msg m-err";
+          msg.textContent = "نام و نام خانوادگی‌تان را وارد کنید (حداقل ۲ حرف).";
+          nmEl.focus();
+          return;
+        }
         const p = cleanPhone(ph.value);
         if (!validPhone(p)) {
           ph.classList.add("bad");
@@ -1314,13 +1379,14 @@
         const r = await authCall({ action: "send", phone: p });
         if (!alive) return;
         go.disabled = false; go.classList.remove("loading");
-        if (r.ok) { phone = p; stepCode(r); return; }
+        if (r.ok) { phone = p; fullName = n; stepCode(r); return; }
         msg.className = "auth-msg m-err";
         msg.textContent = r.message || "ارسال کد ناموفق بود.";
         if (r.retry_in) msg.textContent += " (" + faNum(r.retry_in) + " ثانیه)";
       });
-      if (!reduceMotion()) setTimeout(() => { if (alive) ph.focus({ preventScroll: true }); }, 350);
-      else ph.focus({ preventScroll: true });
+      const first = fullName ? ph : nmEl;
+      if (!reduceMotion()) setTimeout(() => { if (alive) first.focus({ preventScroll: true }); }, 350);
+      else first.focus({ preventScroll: true });
     }
 
     /* ----- مرحله‌ی ۲: کد + ساعت دایره‌ای ----- */
@@ -1385,10 +1451,10 @@
         const code = getCode();
         if (code.length !== 5) return;
         busy = true; lock(true); setMsg("در حال بررسی…", "info");
-        const r = await authCall({ action: "verify", phone: phone, code: code });
+        const r = await authCall({ action: "verify", phone: phone, code: code, name: fullName });
         if (!alive) return;
         busy = false;
-        if (r.ok) { auth.set({ token: r.token, phone: r.phone }); stepWelcome(!!r.created); return; }
+        if (r.ok) { auth.set({ token: r.token, phone: r.phone, name: cleanName(r.name || fullName) }); stepWelcome(!!r.created); return; }
         if (r.error === "wrong") {
           otp.classList.remove("bad-code"); void otp.offsetWidth; otp.classList.add("bad-code");
           const left = Number(r.attempts_left || 0);
@@ -1484,6 +1550,7 @@
         '<div class="auth-welcome"><div class="ring done" id="ring">' + ringSvg() +
         '<div class="okmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>' +
         "<h1>" + (created ? "ثبت‌نام شما انجام شد 🎉" : "خوش آمدید 👋") + "</h1>" +
+        (fullName ? '<p class="auth-hello">' + esc(fullName) + "</p>" : "") +
         '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به صفحه‌ی اصلی…</p>" +
         '<a class="btn wide" href="#/">ورود به سایت</a></div>'
       );
@@ -1503,18 +1570,11 @@
     if (!s) { location.hash = "#/signup"; return null; }
     app.innerHTML =
       '<div class="auth-wrap"><div class="card auth-card"><div class="auth-logo">' + LOGO_CHECK + "</div>" +
-      '<div class="auth-step"><h1>حساب من</h1><p class="sub">با این شماره وارد شده‌اید:</p>' +
+      '<div class="auth-step"><h1>حساب من</h1><p class="sub">' + (cleanName(s.name) ? "<strong>" + esc(cleanName(s.name)) + "</strong><br>" : "") + "با این شماره وارد شده‌اید:</p>" +
       '<div class="acc-phone">' + showPhone(s.phone) + "</div>" +
       '<a class="btn wide" href="#/create">ساخت آزمون</a>' +
       '<button class="btn ghost wide" id="logout" type="button">خروج از حساب</button></div></div></div>';
-    document.getElementById("logout").addEventListener("click", async (e) => {
-      const b = e.currentTarget;
-      b.disabled = true; b.classList.add("loading");
-      const cur = auth.get();
-      if (cur) await authCall({ action: "logout", token: cur.token });
-      auth.clear();
-      location.hash = "#/";
-    });
+    document.getElementById("logout").addEventListener("click", (e) => doLogout(e.currentTarget));
     return null;
   }
 
@@ -1523,6 +1583,7 @@
     if (!s || !cfg.SUPABASE_URL) return;
     const r = await authCall({ action: "me", token: s.token });
     if (r && r.ok === false && r.error === "no_session") { auth.clear(); if (/^#\/account/.test(location.hash)) location.hash = "#/signup"; }
+    else if (r && r.ok && cleanName(r.name) !== cleanName(s.name)) auth.set({ token: s.token, phone: s.phone, name: cleanName(r.name) });
   }
 
   /* ---------- مسیریابی ---------- */
