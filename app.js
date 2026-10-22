@@ -980,7 +980,8 @@
       (quiz.description ? '<p class="muted">' + esc(quiz.description) + "</p>" : "") +
       '<div class="ap" role="status" aria-live="polite"><div class="ap-top"><span id="apTxt"></span></div><div class="ap-bar"><i id="apBar"></i></div></div>' +
       '<form id="f" novalidate>' +
-      '<div class="card"><label for="name">نام شما</label><input id="name" type="text" maxlength="100" autocomplete="name"></div>' +
+      '<div class="card" id="nameCard"><div id="nameAcc" class="name-acc" hidden></div>' +
+      '<div id="nameField"><label for="name">نام شما</label><input id="name" type="text" maxlength="100" autocomplete="name"></div></div>' +
       qs.map((q, i) => '<fieldset class="card qcard" data-i="' + i + '">' + qHtml(q, i) + "</fieldset>").join("") +
       '<div id="msg"></div><button class="btn" type="submit" id="submitBtn">ثبت پاسخ‌ها</button></form>';
 
@@ -989,6 +990,23 @@
     const nameEl = document.getElementById("name");
     const msg = document.getElementById("msg");
     nameEl.value = lastName;
+    const nameAcc = document.getElementById("nameAcc");
+    const nameField = document.getElementById("nameField");
+    /* اگر کاربر وارد حسابش شده باشد، نتیجه با نام حساب ثبت می‌شود و اسمی پرسیده نمی‌شود */
+    const accName = () => { const a = auth.get(); const n = a ? cleanName(a.name) : ""; return validName(n) ? n : ""; };
+    const syncNameCard = () => {
+      const an = accName();
+      nameAcc.hidden = !an;
+      nameField.hidden = !!an;
+      if (an) nameAcc.innerHTML = '<span class="mini-av">' + esc(initialOf(an)) + '</span><div><div class="hint">نتیجه با نام حساب شما ثبت می‌شود</div><strong>' + esc(an) + "</strong></div>";
+    };
+    syncNameCard();
+    const onAuth = () => {
+      if (token !== routeToken || !nameCard.isConnected) { window.removeEventListener("authchange", onAuth); return; }
+      syncNameCard();
+    };
+    const nameCard = document.getElementById("nameCard");
+    window.addEventListener("authchange", onAuth);
 
     const updateProgress = () => {
       const done = answers.filter((a) => a !== null).length;
@@ -1015,7 +1033,8 @@
       e.preventDefault();
       const fail = (t) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + "</div>"; };
       msg.innerHTML = "";
-      const name = nameEl.value.trim();
+      syncNameCard();
+      const name = accName() || nameEl.value.trim();
       if (!name) {
         fail("نام خود را وارد کنید.");
         nameEl.classList.add("bad");
@@ -1041,7 +1060,7 @@
       try {
         const r = await rpc("submit_quiz", { p_id: id, p_name: name, p_answers: answers });
         if (token !== routeToken) return;
-        store.set("lastName", name);
+        if (!accName()) store.set("lastName", name);
         showResult(quiz, qs, answers, r, token);
       } catch (err) {
         btn.disabled = false;
@@ -1201,8 +1220,8 @@
       const v = store.get("session", null);
       return v && typeof v.token === "string" && typeof v.phone === "string" ? v : null;
     },
-    set(v) { store.set("session", v); syncAuthBtn(); },
-    clear() { store.del("session"); syncAuthBtn(); },
+    set(v) { store.set("session", v); syncAuthBtn(); window.dispatchEvent(new Event("authchange")); },
+    clear() { store.del("session"); syncAuthBtn(); window.dispatchEvent(new Event("authchange")); },
   };
 
   const cleanName = (v) => String(v == null ? "" : v).replace(/\s+/g, " ").trim();
