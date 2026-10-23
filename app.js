@@ -208,7 +208,52 @@
       l.unshift(item);
       this.set("myQuizzes", l.slice(0, 50));
     },
+    removeQuiz(id) {
+      this.set("myQuizzes", this.get("myQuizzes", []).filter((x) => x && x.id !== id));
+    },
+    localQuizzes() {
+      return this.get("myQuizzes", []).filter((m) => m && m.id && m.secret);
+    },
   };
+
+  /* ذخیره‌ی آزمون: اگر کاربر وارد شده باشد روی حساب (شماره‌اش) ذخیره می‌شود، وگرنه روی همین دستگاه.
+     اگر ذخیره روی حساب نشد (مثلاً قطعی اینترنت)، آزمون روی دستگاه نگه داشته می‌شود تا گم نشود. */
+  async function keepQuiz(item) {
+    const s = auth.get();
+    if (s) {
+      try {
+        const r = await rpc("account_claim", { p_token: s.token, p_id: item.id, p_secret: item.secret });
+        if (r && r.ok) { store.removeQuiz(item.id); return; }
+        if (r && r.error === "no_session") auth.clear();
+      } catch (e) { /* روی دستگاه نگه می‌داریم */ }
+    }
+    store.addQuiz(item);
+  }
+
+  /* انتقال آزمون‌های روی دستگاه به حساب + خواندن فهرست حساب */
+  let accountJob = null;
+  function loadAccountQuizzes(s) {
+    if (accountJob) return accountJob;
+    accountJob = (async () => {
+      try {
+        for (const m of store.localQuizzes()) {
+          let r;
+          try { r = await rpc("account_claim", { p_token: s.token, p_id: m.id, p_secret: m.secret }); } catch (e) { return { items: [], error: true }; }
+          if (r && r.ok) store.removeQuiz(m.id);
+          else if (r && r.error === "no_session") { auth.clear(); return { items: [], loggedOut: true }; }
+          else if (r && r.error === "not_found") store.removeQuiz(m.id);
+        }
+        let r;
+        try { r = await rpc("account_quizzes", { p_token: s.token }); } catch (e) { return { items: [], error: true }; }
+        if (r && r.ok && Array.isArray(r.items)) return { items: r.items };
+        if (r && r.error === "no_session") { auth.clear(); return { items: [], loggedOut: true }; }
+        return { items: [], error: true };
+      } finally {
+        accountJob = null;
+      }
+    })();
+    return accountJob;
+  }
 
   function setTitle(t) {
     document.title = t ? t + " | " + BASE_TITLE : BASE_TITLE + " | ساخت آزمون آنلاین رایگان با هوش مصنوعی";
@@ -245,26 +290,57 @@
   }
 
   /* ---------- صفحه‌ی اصلی ---------- */
+  let homeTok = null;
+  const isHomeHash = () => !location.hash || location.hash === "#" || location.hash === "#/";
+
   function viewHome() {
     setTitle();
-    const mine = store.get("myQuizzes", []).filter((m) => m && m.id && m.secret);
-    if (!mine.length) {
+    const sess = auth.get();
+    homeTok = sess ? sess.token : "";
+
+    const draw = (items, note) => {
+      if (!items.length) {
+        app.innerHTML =
+          (note || "") +
+          '<div class="card empty">' + ICONS.doc +
+          "<h2>هنوز آزمونی نساخته‌اید</h2>" +
+          '<p class="muted">با چند کلیک اولین آزمون خود را بسازید و لینکش را برای دیگران بفرستید.</p>' +
+          '<a class="btn" href="#/create">ساخت اولین آزمون</a></div>';
+        return;
+      }
       app.innerHTML =
-        '<div class="card empty">' + ICONS.doc +
-        "<h2>هنوز آزمونی نساخته‌اید</h2>" +
-        '<p class="muted">با چند کلیک اولین آزمون خود را بسازید و لینکش را برای دیگران بفرستید.</p>' +
-        '<a class="btn" href="#/create">ساخت اولین آزمون</a></div>';
-      return;
-    }
-    app.innerHTML =
-      '<div class="card"><h2>آزمون‌هایی که روی این دستگاه ساخته‌اید</h2>' +
-      mine.map((m) =>
-        '<div class="mine-row"><span class="mine-t">' + esc(m.title) + "</span>" +
-        '<a class="btn small ghost" href="#/q/' + encodeURIComponent(m.id) + '">باز کردن</a>' +
-        '<a class="btn small" href="#/m/' + encodeURIComponent(m.id) + "/" + encodeURIComponent(m.secret) + '">نتایج</a></div>'
-      ).join("") + "</div>" +
-      '<div class="actions"><a class="btn" href="#/create">ساخت آزمون جدید</a></div>';
+        (note || "") +
+        '<div class="card"><h2>' + (sess ? "آزمون‌های شما" : "آزمون‌هایی که روی این دستگاه ساخته‌اید") + "</h2>" +
+        items.map((m) =>
+          '<div class="mine-row"><span class="mine-t">' + esc(m.title) +
+          (m.participants != null ? '<small class="mine-n">' + faNum(m.participants) + " شرکت‌کننده</small>" : "") + "</span>" +
+          '<a class="btn small ghost" href="#/q/' + encodeURIComponent(m.id) + '">باز کردن</a>' +
+          '<a class="btn small" href="#/m/' + encodeURIComponent(m.id) + "/" + encodeURIComponent(m.secret) + '">نتایج</a></div>'
+        ).join("") +
+        (sess ? "" : '<p class="hint">برای اینکه آزمون‌هایتان روی حسابتان بماند و از هر دستگاهی ببینیدشان، <a href="#/signup">ثبت‌نام کنید</a>.</p>') +
+        "</div>" +
+        '<div class="actions"><a class="btn" href="#/create">ساخت آزمون جدید</a></div>';
+    };
+
+    if (!sess) { draw(store.localQuizzes(), ""); return; }
+
+    const my = routeToken;
+    app.innerHTML = '<div class="card"><p class="muted">در حال بارگذاری آزمون‌های شما…</p></div>';
+    loadAccountQuizzes(sess).then((res) => {
+      if (my !== routeToken) return;
+      const left = store.localQuizzes().filter((m) => !res.items.some((x) => x.id === m.id));
+      let note = "";
+      if (res.error) note = '<div class="card warn-card"><strong>فهرست حساب‌تان الان بارگذاری نشد.</strong><div class="hint">اتصال اینترنت را بررسی کنید و صفحه را دوباره باز کنید. آزمون‌هایتان گم نشده‌اند.</div></div>';
+      else if (left.length) note = '<div class="hint">بعضی آزمون‌ها هنوز فقط روی این دستگاه هستند و بعداً به حساب منتقل می‌شوند.</div>';
+      draw(res.items.concat(left), note);
+    });
   }
+
+  /* با ورود یا خروج کاربر، فهرست صفحه‌ی اصلی دوباره ساخته می‌شود */
+  window.addEventListener("authchange", () => {
+    const cur = (auth.get() || {}).token || "";
+    if (isHomeHash() && cur !== homeTok && cfg.SUPABASE_URL) viewHome();
+  });
 
   /* ---------- انتخاب مدل آزمون ---------- */
   function draftInfo() {
@@ -655,7 +731,7 @@
             p_confirm_clear: nSubs > 0,
           });
           finished = true;
-          store.addQuiz({ id: edit.id, secret: edit.secret, title: titleEl.value.trim() });
+          await keepQuiz({ id: edit.id, secret: edit.secret, title: titleEl.value.trim() });
           location.hash = "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret + "?updated=1" + (r && r.cleared ? "&cleared=" + r.cleared : "");
           return;
         }
@@ -668,7 +744,7 @@
         finished = true;
         clearTimeout(draftTimer);
         store.del("quizDraft");
-        store.addQuiz({ id: id, secret: secret, title: titleEl.value.trim() });
+        await keepQuiz({ id: id, secret: secret, title: titleEl.value.trim() });
         location.hash = "#/m/" + encodeURIComponent(id) + "/" + secret + "?new=1";
       } catch (e) {
         saveBtn.disabled = false;
@@ -925,7 +1001,7 @@
         } catch (e2) {
           throw new Error("سؤال‌ها ساخته شد ولی ذخیره‌ی آزمون در پایگاه‌داده نشد: " + e2.message);
         }
-        store.addQuiz({ id: id, secret: secret, title: title });
+        await keepQuiz({ id: id, secret: secret, title: title });
         setGenLock(false);
         location.hash = "#/m/" + encodeURIComponent(id) + "/" + secret + "?new=1";
       } catch (e) {
