@@ -1308,7 +1308,8 @@
   async function doLogout(btn) {
     if (btn) { btn.disabled = true; btn.classList.add("loading"); }
     const cur = auth.get();
-    if (cur) await authCall({ action: "logout", token: cur.token });
+    /* خروج فوری: نشست روی دستگاه همین حالا پاک می‌شود و ابطال سمت سرور در پس‌زمینه انجام می‌شود */
+    if (cur) { try { authCall({ action: "logout", token: cur.token }).catch(() => {}); } catch (e) { /* بی‌اهمیت */ } }
     auth.clear();
     location.hash = "#/";
   }
