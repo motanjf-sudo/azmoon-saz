@@ -311,7 +311,7 @@
           '<div class="card empty">' + ICONS.doc +
           "<h2>هنوز آزمونی نساخته‌اید</h2>" +
           '<p class="muted">با چند کلیک اولین آزمون خود را بسازید و لینکش را برای دیگران بفرستید.</p>' +
-          '<a class="btn" href="#/create">ساخت اولین آزمون</a></div>';
+          '<div class="actions" style="justify-content:center"><a class="btn" href="#/create">ساخت اولین آزمون</a>' + (sess ? '<a class="btn ghost" href="#/groups">گروه‌ها</a>' : "") + "</div></div>";
         return;
       }
       app.innerHTML =
@@ -325,7 +325,7 @@
         ).join("") +
         (sess ? "" : '<p class="hint">این آزمون‌ها فقط روی همین دستگاه هستند. برای اینکه روی حسابتان بمانند و از هر دستگاهی ببینیدشان، <a href="#/signup">وارد شوید یا ثبت‌نام کنید</a>.</p>') +
         "</div>" +
-        '<div class="actions"><a class="btn" href="#/create">ساخت آزمون جدید</a></div>';
+        '<div class="actions"><a class="btn" href="#/create">ساخت آزمون جدید</a>' + (sess ? '<a class="btn ghost" href="#/groups">گروه‌ها</a>' : "") + "</div>";
     };
 
     if (!sess) { draw(store.localQuizzes(), ""); return; }
@@ -346,7 +346,7 @@
   window.addEventListener("authchange", () => {
     const cur = (auth.get() || {}).token || "";
     if (isHomeHash() && cur !== homeTok && cfg.SUPABASE_URL) viewHome();
-    else if (!cur && /^#\/(create|q\/)/.test(location.hash) && !gateOn && genLockHash === null && cfg.SUPABASE_URL) route();
+    else if (!cur && /^#\/(create|q\/|groups|g\/)/.test(location.hash) && !gateOn && genLockHash === null && cfg.SUPABASE_URL) route();
   });
 
   /* ---------- انتخاب مدل آزمون ---------- */
@@ -371,7 +371,7 @@
       const inner = '<span class="ti">' + ICONS[M.icon] + "</span><h3>" + esc(M.label) + (M.soon ? ' <span class="soon-badge">به‌زودی</span>' : "") + "</h3><p>" + esc(M.desc) + "</p>" + demo[m];
       return M.soon
         ? '<div class="card type-card soon" aria-disabled="true">' + inner + "</div>"
-        : '<a class="card type-card" href="#/create/' + m + '">' + inner + "</a>";
+        : '<a class="card type-card" href="' + withG("#/create/" + m) + '" data-base="#/create/' + m + '">' + inner + "</a>";
     };
     app.innerHTML =
       '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
@@ -379,14 +379,67 @@
       '<p class="muted">یکی از مدل‌ها را انتخاب کنید. در مرحله‌ی بعد سؤال‌ها را می‌نویسید.</p>' +
       (draft
         ? '<div class="card draft"><div><strong>پیش‌نویس ذخیره‌شده دارید</strong><div class="hint">' + (draft.title ? esc(draft.title) + " — " : "") + faNum(draft.questions.length) + ' سؤال</div></div>' +
-          '<div class="draft-actions"><a class="btn small" href="#/create/' + draft.type + '?draft=1">ادامه‌ی پیش‌نویس</a>' +
+          '<div class="draft-actions"><a class="btn small" href="' + withG("#/create/" + draft.type + "?draft=1") + '" data-base="#/create/' + draft.type + '?draft=1">ادامه‌ی پیش‌نویس</a>' +
           '<button class="btn small danger" type="button" id="dropDraft">حذف</button></div></div>'
         : "") +
-      '<div class="types"><a class="card type-card ai-card" href="#/create/ai"><span class="ti">' + ICONS.spark + '</span><h3>ساخت با هوش مصنوعی <span class="soon-badge ai-badge">جدید</span></h3>' +
+      '<div class="card aud"><strong>این آزمون برای چه کسانی است؟</strong>' +
+      '<div class="seg" role="group" aria-label="مخاطب آزمون"><button type="button" data-aud="pub" aria-pressed="' + (!createGroup) + '">همه (عمومی)</button><button type="button" data-aud="grp" aria-pressed="' + (!!createGroup) + '">فقط یک گروه</button></div>' +
+      '<p class="hint" id="audHint" style="margin:6px 0 0"></p><div id="audSel" hidden></div></div>' +
+      '<div class="types" id="typesBox"><a class="card type-card ai-card" href="' + withG("#/create/ai") + '" data-base="#/create/ai"><span class="ti">' + ICONS.spark + '</span><h3>ساخت با هوش مصنوعی <span class="soon-badge ai-badge">جدید</span></h3>' +
       "<p>یک فایل (PDF، متن یا عکس) بدهید یا فقط موضوع را بنویسید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید.</p></a>" +
       ["tf", "mcq", "essay", "mixed"].map(card).join("") + "</div>";
     const dropBtn = document.getElementById("dropDraft");
     if (dropBtn) dropBtn.addEventListener("click", () => { store.del("quizDraft"); viewChoose(); });
+
+    /* انتخاب مخاطب: عمومی یا یکی از گروه‌هایی که مدیرش هستید */
+    const myTok = routeToken;
+    const typesBox = document.getElementById("typesBox"), hint = document.getElementById("audHint"), selBox = document.getElementById("audSel");
+    let owned = null;           /* null = هنوز بارگذاری نشده */
+    let loadFailed = false;
+    let grpMode = !!createGroup;
+    const applyLinks = () => {
+      app.querySelectorAll("a[data-base]").forEach((a) => a.setAttribute("href", withG(a.dataset.base)));
+      const locked = grpMode && !createGroup;
+      if (locked) typesBox.setAttribute("inert", ""); else typesBox.removeAttribute("inert");
+    };
+    const renderAud = () => {
+      app.querySelectorAll("button[data-aud]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.aud === "grp") === grpMode)));
+      if (!grpMode) { hint.textContent = "هر کسی که لینک آزمون را داشته باشد و ثبت‌نام کرده باشد می‌تواند شرکت کند."; selBox.hidden = true; applyLinks(); return; }
+      hint.textContent = "فقط اعضای گروه می‌توانند آزمون را ببینند و بدهند.";
+      selBox.hidden = false;
+      if (loadFailed) {
+        selBox.innerHTML = '<div class="err" role="alert">فهرست گروه‌ها بارگذاری نشد.</div><button class="btn small ghost" type="button" id="audRetry">تلاش دوباره</button>';
+        document.getElementById("audRetry").addEventListener("click", loadOwned);
+      } else if (owned === null) {
+        selBox.innerHTML = '<p class="hint">در حال بارگذاری گروه‌ها…</p>';
+      } else if (!owned.length) {
+        selBox.innerHTML = '<p class="hint">شما هنوز گروهی نساخته‌اید.</p><a class="btn small" href="#/groups">ساخت گروه</a>';
+      } else {
+        selBox.innerHTML = '<label for="audGroup" class="hint">گروه:</label><select id="audGroup">' + owned.map((g) => '<option value="' + esc(g.id) + '"' + (g.id === createGroup ? " selected" : "") + ">" + esc(g.name) + "</option>").join("") + "</select>";
+        const sel = document.getElementById("audGroup");
+        if (!createGroup) createGroup = sel.value;
+        sel.addEventListener("change", () => { createGroup = sel.value; applyLinks(); });
+      }
+      applyLinks();
+    };
+    const loadOwned = async () => {
+      loadFailed = false;
+      try {
+        const gs = await ensureGroups(true);
+        if (myTok !== routeToken) return;
+        owned = gs.filter((g) => g.role === "owner");
+        if (createGroup && !owned.some((g) => g.id === createGroup)) { createGroup = ""; if (grpMode && owned.length) createGroup = owned[0].id; }
+      } catch (e) { if (myTok !== routeToken) return; loadFailed = true; }
+      renderAud();
+    };
+    app.querySelectorAll("button[data-aud]").forEach((b) => b.addEventListener("click", () => {
+      grpMode = b.dataset.aud === "grp";
+      if (!grpMode) createGroup = "";
+      else if (owned && owned.length && !createGroup) createGroup = owned[0].id;
+      renderAud();
+    }));
+    renderAud();
+    loadOwned();
   }
 
   /* ---------- سازنده‌ی آزمون ---------- */
@@ -395,7 +448,8 @@
     const allowed = M.types;
     const mixed = allowed.length > 1;
     setTitle(edit ? "ویرایش آزمون" : "ساخت آزمون " + M.label);
-    const backHref = edit ? "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret : "#/create";
+    if (!edit) setTimeout(fillGroupChip, 0);
+    const backHref = edit ? "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret : withG("#/create");
     const nSubs = edit ? edit.submissions : 0;
 
     let uid = 0;
@@ -442,7 +496,7 @@
 
     app.innerHTML =
       '<a class="back" href="' + backHref + '">' + ICONS.back + (edit ? " بازگشت به نتایج و لینک‌ها" : " بازگشت به انتخاب مدل") + "</a>" +
-      (edit ? "<h1>ویرایش آزمون</h1>" : "<h1>ساخت آزمون</h1>") +
+      (edit ? "<h1>ویرایش آزمون</h1>" : "<h1>ساخت آزمون</h1>" + (createGroup ? '<div id="grpChipBox">' + groupChip(groupName(createGroup)) + "</div>" : "")) +
       (edit
         ? '<p class="muted">سؤال‌ها، گزینه‌ها و پاسخ درست را تغییر دهید. لینک آزمون همان می‌ماند.</p>'
         : '<p class="muted">مدل انتخابی: <span class="badge">' + esc(M.label) + "</span> — سؤال‌ها را بنویسید و پاسخ درست را مشخص کنید. پیش‌نویس شما خودکار ذخیره می‌شود.</p>") +
@@ -748,6 +802,7 @@
           p_questions: serialize(),
           p_secret: secret,
           p_token: tokenOf(),
+          p_group: createGroup || null,
         });
         finished = true;
         clearTimeout(draftTimer);
@@ -853,6 +908,7 @@
 
   function viewAI() {
     setTitle("ساخت آزمون با هوش مصنوعی");
+    setTimeout(fillGroupChip, 0);
     const st = { src: "file", mid: "gem-flash", mode: "mixed", level: "medium", count: 10, file: null };
     let busy = false;
     let ctl = null;
@@ -862,8 +918,8 @@
       items.map((i) => '<button type="button" data-v="' + i[0] + '" aria-pressed="' + String(st[name] === i[0]) + '">' + i[1] + "</button>").join("") + "</div>";
 
     app.innerHTML =
-      '<a class="back" href="#/create">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
-      "<h1>ساخت آزمون با هوش مصنوعی</h1>" +
+      '<a class="back" href="' + withG("#/create") + '">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
+      "<h1>ساخت آزمون با هوش مصنوعی</h1>" + (createGroup ? '<div id="grpChipBox">' + groupChip(groupName(createGroup)) + "</div>" : "") +
       '<p class="muted">فایل یا موضوع را بدهید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
       '<div class="card ai-form">' +
       '<label for="mid">مدل هوش مصنوعی</label><select id="mid">' +
@@ -881,7 +937,7 @@
       '<label for="count">تعداد سؤال</label><div class="stepper"><button type="button" id="cm" aria-label="کمتر">−</button><input id="count" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="cp" aria-label="بیشتر">+</button><span class="hint">از ۱ تا ۳۰</span></div>' +
       "</div>" +
       '<div id="msg"></div>' +
-      '<div class="actions"><a class="btn ghost" href="#/create">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' ساخت آزمون و دریافت لینک</button></div>' +
+      '<div class="actions"><a class="btn ghost" href="' + withG("#/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' ساخت آزمون و دریافت لینک</button></div>' +
       '<p class="hint" id="wait" hidden>در حال ساخت آزمون… معمولاً ۱۰ تا ۶۰ ثانیه طول می‌کشد. تا پایان کار، همه‌ی دکمه‌ها قفل است. این صفحه را نبندید و از آن خارج نشوید.</p>';
 
     const $ = (id) => document.getElementById(id);
@@ -1006,6 +1062,7 @@
           p_questions: questions,
           p_secret: secret,
           p_token: tokenOf(),
+          p_group: createGroup || null,
           });
         } catch (e2) {
           throw new Error("سؤال‌ها ساخته شد ولی ذخیره‌ی آزمون در پایگاه‌داده نشد: " + e2.message);
@@ -1062,6 +1119,7 @@
 
     app.innerHTML =
       "<h1>" + esc(quiz.title) + "</h1>" +
+      (quiz.group_name ? groupChip(quiz.group_name) : "") +
       (quiz.description ? '<p class="muted">' + esc(quiz.description) + "</p>" : "") +
       '<div class="ap" role="status" aria-live="polite"><div class="ap-top"><span id="apTxt"></span></div><div class="ap-bar"><i id="apBar"></i></div></div>' +
       '<form id="f" novalidate>' +
@@ -1207,6 +1265,7 @@
 
     app.innerHTML =
       "<h1>" + esc(d.title) + "</h1>" +
+      (d.group_name ? groupChip(d.group_name) + '<p class="hint" style="margin-top:-6px">این آزمون فقط برای اعضای گروه باز می‌شود.</p>' : "") +
       (isNew ? '<div class="card created"><strong>آزمون ساخته شد 🎉</strong><div class="hint">اگر سؤالی یا پاسخ درستی اشتباه است، با دکمه‌ی «ویرایش آزمون» در همین صفحه اصلاحش کنید.</div></div>' : "") +
       (flags.updated ? '<div class="card created"><strong>تغییرات ذخیره شد ✅</strong>' + (flags.cleared ? '<div class="hint">' + faNum(flags.cleared) + " نتیجه‌ی قبلی پاک شد.</div>" : "") + "</div>" : "") +
       '<div class="card"><h2>لینک آزمون</h2>' +
@@ -1657,8 +1716,8 @@
         '<div class="okmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>' +
         "<h1>" + (created ? "ثبت‌نام شما انجام شد 🎉" : "خوش آمدید 👋") + "</h1>" +
         (fullName ? '<p class="auth-hello">' + esc(fullName) + "</p>" : "") +
-        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به " + (/^q\//.test(signupNext) ? "آزمون…" : signupNext ? "صفحه‌ی ساخت آزمون…" : "صفحه‌ی اصلی…") + "</p>" +
-        '<a class="btn wide" href="' + nextHash + '">' + (/^q\//.test(signupNext) ? "ادامه و شرکت در آزمون" : signupNext ? "ادامه و ساخت آزمون" : "ورود به سایت") + "</a></div>"
+        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به " + (/^q\//.test(signupNext) ? "آزمون…" : /^(groups|g\/)/.test(signupNext) ? "گروه‌ها…" : signupNext ? "صفحه‌ی ساخت آزمون…" : "صفحه‌ی اصلی…") + "</p>" +
+        '<a class="btn wide" href="' + nextHash + '">' + (/^q\//.test(signupNext) ? "ادامه و شرکت در آزمون" : /^(groups|g\/)/.test(signupNext) ? "ادامه" : signupNext ? "ادامه و ساخت آزمون" : "ورود به سایت") + "</a></div>"
       );
       const prog = document.getElementById("ringProg");
       prog.style.strokeDashoffset = "100";
@@ -1693,6 +1752,381 @@
   }
 
 
+  /* ---------- گروه‌ها ---------- */
+  const GROUP_ID_RE = /^[0-9a-f]{8}$/;
+  let createGroup = "";        /* گروهِ انتخاب‌شده برای ساخت آزمون ("" یعنی آزمون عمومی) */
+  let groupsCache = null;      /* آخرین فهرست گروه‌ها (برای نام گروه) */
+  const gcall = (name, args) => rpc(name, Object.assign({ p_token: tokenOf() }, args || {}));
+  const withG = (href) => (createGroup ? href + (href.indexOf("?") < 0 ? "?" : "&") + "g=" + createGroup : href);
+  const gInitial = (n) => { const c = Array.from(cleanName(n))[0]; return c ? c.toUpperCase() : "؟"; };
+  const USERS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.2 19.5c.5-3.1 2.8-5 5.8-5s5.3 1.9 5.8 5"/><path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M17.6 14.8c1.9.5 3.2 2.2 3.5 4.7"/></svg>';
+
+  /* پنجره‌ی تأیید با دکمه‌ی «برگشت» (برای جلوگیری از اشتباه) */
+  function askConfirm(o) {
+    return new Promise((resolve) => {
+      const prev = document.activeElement;
+      const ov = document.createElement("div");
+      ov.className = "modal confirm";
+      ov.innerHTML =
+        '<div class="modal-box confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="cfT" aria-describedby="cfD">' +
+        '<h2 id="cfT"></h2><p id="cfD"></p>' +
+        '<div class="actions"><button class="btn ghost" type="button" id="cfNo">برگشت</button><button class="btn' + (o.danger ? " danger" : "") + '" type="button" id="cfYes"></button></div></div>';
+      document.body.appendChild(ov);
+      ov.querySelector("#cfT").textContent = o.title;
+      ov.querySelector("#cfD").textContent = o.text || "";
+      ov.querySelector("#cfYes").textContent = o.yes || "تأیید";
+      const prevOv = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      let done = false;
+      const finish = (v) => {
+        if (done) return;
+        done = true;
+        document.removeEventListener("keydown", onKey, true);
+        window.removeEventListener("hashchange", onHash);
+        document.body.style.overflow = prevOv;
+        ov.remove();
+        if (prev && prev.isConnected && v !== "nav") { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+        resolve(v === true);
+      };
+      const onHash = () => finish("nav");
+      const onKey = (e) => {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false); }
+        else if (e.key === "Tab") {
+          const b = [ov.querySelector("#cfNo"), ov.querySelector("#cfYes")];
+          const i = b.indexOf(document.activeElement);
+          e.preventDefault();
+          b[(i + (e.shiftKey ? -1 : 1) + 2) % 2].focus();
+        }
+      };
+      document.addEventListener("keydown", onKey, true);
+      window.addEventListener("hashchange", onHash);
+      ov.addEventListener("click", (e) => { if (e.target === ov) finish(false); });
+      ov.querySelector("#cfNo").addEventListener("click", () => finish(false));
+      ov.querySelector("#cfYes").addEventListener("click", () => finish(true));
+      ov.querySelector("#cfNo").focus();
+    });
+  }
+
+  /* ----- اعلان دعوت‌ها (نشان روی دکمه‌ی گروه‌ها + پیام داخل برنامه) ----- */
+  const inv = { timer: 0, busy: false, seen: null };
+  function setInviteBadge(n) {
+    const b = document.getElementById("grpBadge");
+    if (!b) return;
+    b.hidden = !(n > 0);
+    b.textContent = n > 99 ? "۹۹+" : faNum(n);
+    const g = document.getElementById("grpBtn");
+    if (g) g.setAttribute("aria-label", n > 0 ? "گروه‌ها؛ " + faNum(n) + " دعوت جدید" : "گروه‌ها");
+  }
+  function inviteToast(text) {
+    const box = document.getElementById("toasts");
+    if (!box) return;
+    const t = el("div", { class: "toast inv-toast", role: "alert" });
+    t.appendChild(el("span", { text: text }));
+    t.appendChild(el("a", { href: "#/groups", text: "مشاهده", onclick: () => t.remove() }));
+    t.appendChild(el("button", { type: "button", "aria-label": "بستن", html: ICONS.cross, onclick: () => t.remove() }));
+    box.appendChild(t);
+    setTimeout(() => t.remove(), 12000);
+  }
+  async function pollInvites() {
+    if (inv.busy || !auth.get() || document.hidden) return;
+    inv.busy = true;
+    try {
+      const r = await gcall("groups_mine");
+      if (!auth.get()) return;
+      const list = (r && Array.isArray(r.invites)) ? r.invites : [];
+      if (r && Array.isArray(r.groups)) groupsCache = r.groups;
+      setInviteBadge(list.length);
+      if (!inv.seen) inv.seen = new Set(store.get("seenInv", []));
+      const fresh = list.filter((x) => !inv.seen.has(x.group_id));
+      if (fresh.length) {
+        fresh.forEach((x) => inv.seen.add(x.group_id));
+        store.set("seenInv", Array.from(inv.seen).slice(-200));
+        if (!/^#\/groups/.test(location.hash)) {
+          inviteToast(fresh.length === 1 ? "دعوت جدید به گروه «" + fresh[0].group_name + "»" : faNum(fresh.length) + " دعوت جدید به گروه دارید");
+        }
+      }
+    } catch (e) { /* اتصال ضعیف؛ دفعه‌ی بعد */ } finally { inv.busy = false; }
+  }
+  function syncInviteWatch() {
+    clearInterval(inv.timer);
+    inv.timer = 0;
+    const g = document.getElementById("grpBtn");
+    if (g) g.hidden = !auth.get();
+    if (!auth.get()) { setInviteBadge(0); groupsCache = null; return; }
+    pollInvites();
+    inv.timer = setInterval(pollInvites, 45000);
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) pollInvites(); });
+  window.addEventListener("focus", () => pollInvites());
+
+  async function ensureGroups(force) {
+    if (groupsCache && !force) return groupsCache;
+    const r = await gcall("groups_mine");
+    groupsCache = (r && Array.isArray(r.groups)) ? r.groups : [];
+    setInviteBadge(r && Array.isArray(r.invites) ? r.invites.length : 0);
+    return groupsCache;
+  }
+  const groupName = (id) => { const g = (groupsCache || []).find((x) => x.id === id); return g ? g.name : ""; };
+  const grpMeta = (g) => (g.role === "owner" ? "مدیر" : "عضو") + " · " + faNum(g.members) + " عضو · " + faNum(g.quizzes) + " آزمون";
+
+  /* ---------- صفحه‌ی گروه‌ها ---------- */
+  function viewGroups(token) {
+    setTitle("گروه‌ها");
+    let data = null;
+    let showForm = false;
+    const ok = () => token === routeToken;
+
+    const load = async (soft) => {
+      if (!soft) app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
+      try {
+        data = await gcall("groups_mine");
+      } catch (e) {
+        if (!ok()) return;
+        if (!soft) return showError(e.message, () => load(false));
+        return;
+      }
+      if (!ok()) return;
+      groupsCache = data.groups || [];
+      setInviteBadge((data.invites || []).length);
+      draw("");
+    };
+
+    const draw = (errMsg) => {
+      const invs = data.invites || [];
+      const gs = data.groups || [];
+      app.innerHTML =
+        '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
+        '<div class="page-head"><h1>گروه‌ها</h1><button class="btn small" id="newGrp" type="button" aria-expanded="' + showForm + '">' + ICONS.plus + " گروه جدید</button></div>" +
+        '<p class="muted">در گروه می‌توانید آزمونی بسازید که فقط اعضای همان گروه آن را ببینند و بدهند.</p>' +
+        (errMsg ? '<div class="err" role="alert">' + esc(errMsg) + "</div>" : "") +
+        '<div id="newBox"></div>' +
+        (invs.length
+          ? '<div class="card"><div class="sec-t"><h2>دعوت‌ها</h2><span class="badge">' + faNum(invs.length) + "</span></div>" +
+            invs.map((x) =>
+              '<div class="grp-row"><span class="av-s" aria-hidden="true">' + esc(gInitial(x.group_name)) + '</span><div class="grp-t"><strong>' + esc(x.group_name) + "</strong><small>دعوت از طرف " + esc(x.from_name) + "</small></div>" +
+              '<div class="grp-a"><button class="btn small" type="button" data-act="acc" data-g="' + esc(x.group_id) + '">پذیرفتن</button>' +
+              '<button class="btn small ghost" type="button" data-act="rej" data-g="' + esc(x.group_id) + '">رد کردن</button></div></div>'
+            ).join("") + "</div>"
+          : "") +
+        (gs.length
+          ? '<div class="card"><div class="sec-t"><h2>گروه‌های من</h2></div>' +
+            gs.map((g) =>
+              '<a class="grp-row" href="#/g/' + esc(g.id) + '"><span class="av-s" aria-hidden="true">' + esc(gInitial(g.name)) + '</span><div class="grp-t"><strong>' + esc(g.name) + "</strong><small>" + esc(grpMeta(g)) + "</small></div>" + '<span class="grp-go">' + ICONS.back + "</span></a>"
+            ).join("") + "</div>"
+          : '<div class="card empty">' + USERS_ICON.replace("<svg", '<svg width="54" height="54"') + "<h2>هنوز در هیچ گروهی نیستید</h2>" +
+            '<p class="muted">یک گروه بسازید و شماره‌ی دوستان یا دانش‌آموزهایتان را دعوت کنید. یا منتظر دعوت بمانید.</p></div>');
+      if (showForm) drawForm();
+      app.querySelector("#newGrp").addEventListener("click", () => { showForm = !showForm; draw(""); if (showForm) { const i = document.getElementById("gName"); if (i) i.focus(); } });
+    };
+
+    const drawForm = () => {
+      const box = document.getElementById("newBox");
+      box.innerHTML =
+        '<div class="card"><h2>گروه جدید</h2><label for="gName">نام گروه</label>' +
+        '<input id="gName" type="text" maxlength="60" autocomplete="off" placeholder="مثلاً: کلاس نهم ۲">' +
+        '<div id="gMsg"></div><div class="actions"><button class="btn ghost" type="button" id="gBack">برگشت</button><button class="btn" type="button" id="gMake">ساخت گروه</button></div></div>';
+      const inp = document.getElementById("gName"), mk = document.getElementById("gMake"), msg = document.getElementById("gMsg");
+      document.getElementById("gBack").addEventListener("click", () => { showForm = false; draw(""); });
+      const go = async () => {
+        const nm = cleanName(inp.value);
+        if (nm.length < 2) { msg.innerHTML = '<div class="err" role="alert">نام گروه را بنویسید (حداقل ۲ حرف).</div>'; inp.focus(); return; }
+        mk.disabled = true; mk.classList.add("loading"); msg.innerHTML = "";
+        try {
+          const r = await gcall("group_create", { p_name: nm });
+          groupsCache = null;
+          if (r && r.id) location.hash = "#/g/" + r.id; else { showForm = false; load(true); }
+        } catch (e) {
+          if (!ok()) return;
+          mk.disabled = false; mk.classList.remove("loading");
+          msg.innerHTML = '<div class="err" role="alert">' + esc(e.message) + "</div>";
+        }
+      };
+      mk.addEventListener("click", go);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+    };
+
+    app.addEventListener("click", onClick);
+    async function onClick(e) {
+      const b = e.target.closest("button[data-act]");
+      if (!b || !app.contains(b)) return;
+      const gid = b.dataset.g;
+      const item = (data.invites || []).find((x) => x.group_id === gid);
+      if (!item) return;
+      const accept = b.dataset.act === "acc";
+      const yes = await askConfirm(accept
+        ? { title: "عضو گروه «" + item.group_name + "» شوید؟", text: "با پذیرفتن، آزمون‌های این گروه را می‌بینید و می‌توانید در آن‌ها شرکت کنید. مدیر گروه نام و شماره‌ی شما را می‌بیند.", yes: "بله، عضو می‌شوم" }
+        : { title: "دعوت رد شود؟", text: "دعوت به گروه «" + item.group_name + "» رد می‌شود و پاک می‌شود. برای عضویت دوباره، مدیر باید دوباره دعوتتان کند.", yes: "بله، رد کن", danger: true });
+      if (!yes || !ok()) return;
+      b.disabled = true; b.classList.add("loading");
+      try {
+        await gcall("group_invite_respond", { p_group: gid, p_accept: accept });
+        if (!ok()) return;
+        groupsCache = null;
+        await load(true);
+        if (ok() && window.__pzToast) window.__pzToast(accept ? "به گروه پیوستید ✓" : "دعوت رد شد");
+      } catch (err) {
+        if (!ok()) return;
+        await load(true);
+        if (ok()) draw(err.message);
+      }
+    }
+
+    load(false);
+    return function cleanup() { app.removeEventListener("click", onClick); };
+  }
+
+  /* ---------- صفحه‌ی یک گروه ---------- */
+  function viewGroup(gid, token) {
+    setTitle("گروه");
+    let g = null;
+    let tab = "quizzes";
+    let phoneVal = "";
+    const ok = () => token === routeToken;
+    const toast = (m) => { if (window.__pzToast) window.__pzToast(m); };
+
+    const load = async (soft) => {
+      if (!soft) app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
+      try { g = await gcall("group_get", { p_group: gid }); }
+      catch (e) { if (!ok()) return; if (!soft) return showError(e.message, () => load(false)); return; }
+      if (!ok()) return;
+      setTitle(g.name);
+      draw("");
+    };
+
+    const owner = () => g && g.role === "owner";
+
+    const quizzesTab = () => {
+      const qs = g.quizzes || [];
+      return (owner() ? '<div class="actions" style="margin-top:6px"><a class="btn" href="#/create?g=' + esc(g.id) + '">' + ICONS.plus + " آزمون جدید برای این گروه</a></div>" : "") +
+        '<div class="card">' +
+        (qs.length
+          ? qs.map((q) =>
+              '<div class="mine-row"><span class="mine-t">' + esc(q.title) + (owner() && q.participants != null ? '<small class="mine-n">' + faNum(q.participants) + " شرکت‌کننده</small>" : "") + "</span>" +
+              (owner()
+                ? '<a class="btn small ghost" href="#/q/' + encodeURIComponent(q.id) + '">باز کردن</a>' + (q.secret ? '<a class="btn small" href="#/m/' + encodeURIComponent(q.id) + "/" + encodeURIComponent(q.secret) + '">نتایج</a>' : "")
+                : '<a class="btn small" href="#/q/' + encodeURIComponent(q.id) + '">شروع آزمون</a>') + "</div>"
+            ).join("")
+          : '<p class="muted" style="margin:0">' + (owner() ? "هنوز آزمونی برای این گروه نساخته‌اید. با دکمه‌ی بالا اولین آزمون را بسازید." : "هنوز آزمونی در این گروه نیست. وقتی مدیر آزمون بسازد، اینجا می‌بینید.") + "</p>") +
+        "</div>";
+    };
+
+    const membersTab = () => {
+      const ms = g.members || [];
+      const pend = g.invites || [];
+      return (owner()
+          ? '<div class="card"><h2>دعوت با شماره‌ی موبایل</h2><p class="hint" style="margin-top:0">شخص فوراً عضو نمی‌شود؛ دعوت را داخل پازمونک می‌بیند و خودش می‌پذیرد یا رد می‌کند.</p>' +
+            '<div class="grp-add"><input id="gPhone" type="text" inputmode="tel" dir="ltr" maxlength="16" autocomplete="off" placeholder="09123456789" aria-label="شماره‌ی موبایل" value="' + esc(phoneVal) + '"><button class="btn" type="button" id="gInv">دعوت</button></div><div id="gMsg"></div></div>'
+          : "") +
+        '<div class="card"><div class="sec-t"><h2>اعضا</h2><span class="badge">' + faNum(ms.length) + "</span></div>" +
+        ms.map((m) =>
+          '<div class="grp-row"><span class="av-s" aria-hidden="true">' + esc(gInitial(m.name)) + '</span><div class="grp-t"><strong>' + esc(m.name) + (m.role === "owner" ? ' <span class="badge">مدیر</span>' : "") + "</strong>" +
+          (owner() && m.phone ? '<small><bdi class="grp-ph">' + esc(showPhone(m.phone)) + "</bdi></small>" : "") + "</div>" +
+          (owner() && m.role === "member" && m.user_id ? '<button class="btn small danger" type="button" data-act="rm" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">حذف</button>' : "") + "</div>"
+        ).join("") + "</div>" +
+        (owner() && pend.length
+          ? '<div class="card"><div class="sec-t"><h2>منتظر پاسخ</h2><span class="badge">' + faNum(pend.length) + "</span></div>" +
+            pend.map((p) =>
+              '<div class="grp-row"><span class="av-s" aria-hidden="true">' + USERS_ICON + '</span><div class="grp-t"><strong><bdi class="grp-ph">' + esc(showPhone(p.phone)) + "</bdi></strong><small>دعوت فرستاده شده</small></div>" +
+              '<button class="btn small ghost" type="button" data-act="cancel" data-p="' + esc(p.phone) + '">لغو دعوت</button></div>'
+            ).join("") + "</div>"
+          : "");
+    };
+
+    const draw = (errMsg) => {
+      app.innerHTML =
+        '<a class="back" href="#/groups">' + ICONS.back + " گروه‌ها</a>" +
+        '<div class="page-head"><h1>' + esc(g.name) + '</h1><span class="badge">' + (owner() ? "مدیر" : "عضو") + "</span></div>" +
+        (errMsg ? '<div class="err" role="alert">' + esc(errMsg) + "</div>" : "") +
+        '<div class="grp-tabs"><div class="seg" role="group" aria-label="بخش‌های گروه">' +
+        '<button type="button" data-tab="quizzes" aria-pressed="' + (tab === "quizzes") + '">آزمون‌ها (' + faNum((g.quizzes || []).length) + ")</button>" +
+        '<button type="button" data-tab="members" aria-pressed="' + (tab === "members") + '">اعضا (' + faNum((g.members || []).length) + ")</button></div></div>" +
+        (tab === "quizzes" ? quizzesTab() : membersTab()) +
+        '<div class="actions"><button class="btn danger" type="button" data-act="' + (owner() ? "del" : "leave") + '">' + (owner() ? "حذف گروه" : "ترک گروه") + "</button></div>";
+      const inp = document.getElementById("gPhone");
+      if (inp) {
+        inp.addEventListener("input", () => { phoneVal = inp.value; });
+        inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); invite(); } });
+      }
+      const ib = document.getElementById("gInv");
+      if (ib) ib.addEventListener("click", invite);
+    };
+
+    const invite = async () => {
+      const inp = document.getElementById("gPhone"), msg = document.getElementById("gMsg"), btn = document.getElementById("gInv");
+      if (!inp) return;
+      const p = cleanPhone(inp.value);
+      if (!validPhone(p)) { msg.innerHTML = '<div class="err" role="alert">شماره‌ی موبایل معتبر نیست. مثل ۰۹۱۲۳۴۵۶۷۸۹ وارد کنید.</div>'; inp.focus(); return; }
+      msg.innerHTML = "";
+      const yes = await askConfirm({ title: "دعوت فرستاده شود؟", text: "برای شماره‌ی " + showPhone(p) + " دعوت‌نامه‌ی گروه «" + g.name + "» فرستاده می‌شود. اگر شماره را اشتباه زده‌اید، «برگشت» را بزنید.", yes: "بله، دعوت را بفرست" });
+      if (!yes || !ok()) return;
+      btn.disabled = true; btn.classList.add("loading");
+      try {
+        await gcall("group_invite", { p_group: gid, p_phone: p });
+        if (!ok()) return;
+        phoneVal = "";
+        groupsCache = null;
+        await load(true);
+        toast("دعوت فرستاده شد ✓");
+      } catch (e) {
+        if (!ok()) return;
+        btn.disabled = false; btn.classList.remove("loading");
+        msg.innerHTML = '<div class="err" role="alert">' + esc(e.message) + "</div>";
+      }
+    };
+
+    const run = async (fn, doneMsg) => {
+      try { await fn(); if (!ok()) return; groupsCache = null; await load(true); if (ok() && doneMsg) toast(doneMsg); }
+      catch (e) { if (!ok()) return; await load(true); if (ok()) draw(e.message); }
+    };
+
+    async function onClick(e) {
+      const t = e.target.closest("button[data-tab]");
+      if (t && app.contains(t)) { tab = t.dataset.tab; draw(""); return; }
+      const b = e.target.closest("button[data-act]");
+      if (!b || !app.contains(b) || !g) return;
+      const act = b.dataset.act;
+      if (act === "rm") {
+        const nm = b.dataset.n, uid = b.dataset.u;
+        if (!(await askConfirm({ title: "«" + nm + "» از گروه حذف شود؟", text: "این شخص دیگر آزمون‌های گروه را نمی‌بیند. نتایجی که قبلاً داده می‌ماند.", yes: "بله، حذف کن", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        run(() => gcall("group_member_remove", { p_group: gid, p_user: uid }), "عضو حذف شد");
+      } else if (act === "cancel") {
+        const ph = b.dataset.p;
+        if (!(await askConfirm({ title: "دعوت لغو شود؟", text: "دعوت برای شماره‌ی " + showPhone(ph) + " لغو می‌شود و او دیگر آن را نمی‌بیند.", yes: "بله، لغو کن", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        run(() => gcall("group_invite_cancel", { p_group: gid, p_phone: ph }), "دعوت لغو شد");
+      } else if (act === "leave") {
+        if (!(await askConfirm({ title: "گروه را ترک می‌کنید؟", text: "دیگر آزمون‌های گروه «" + g.name + "» را نمی‌بینید. برای برگشتن، مدیر باید دوباره دعوتتان کند.", yes: "بله، ترک می‌کنم", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        try { await gcall("group_leave", { p_group: gid }); groupsCache = null; if (ok()) location.hash = "#/groups"; }
+        catch (err) { if (ok()) { b.disabled = false; b.classList.remove("loading"); draw(err.message); } }
+      } else if (act === "del") {
+        if (!(await askConfirm({ title: "گروه «" + g.name + "» حذف شود؟", text: "گروه، همه‌ی آزمون‌های گروه و نتایجشان برای همیشه پاک می‌شود و برگشت ندارد.", yes: "بله، همه را حذف کن", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        try { await gcall("group_delete", { p_group: gid }); groupsCache = null; if (ok()) location.hash = "#/groups"; }
+        catch (err) { if (ok()) { b.disabled = false; b.classList.remove("loading"); draw(err.message); } }
+      }
+    }
+    app.addEventListener("click", onClick);
+    load(false);
+    return function cleanup() { app.removeEventListener("click", onClick); };
+  }
+
+  /* نام گروه روی نشانک بالای صفحه‌ی ساخت آزمون؛ اگر گروه معتبر نبود هشدار می‌دهد */
+  function fillGroupChip() {
+    const gid = createGroup;
+    if (!gid) return;
+    ensureGroups().then((gs) => {
+      const bx = document.getElementById("grpChipBox");
+      if (!bx || gid !== createGroup) return;
+      const g = gs.find((x) => x.id === gid && x.role === "owner");
+      bx.innerHTML = g ? groupChip(g.name) : '<div class="err" role="alert">این گروه پیدا نشد یا شما مدیر آن نیستید؛ آزمون ساخته نمی‌شود. با «بازگشت» یک گروه دیگر یا حالت عمومی را انتخاب کنید.</div>';
+    }).catch(() => {});
+  }
+
+  /* جمله‌ی کوتاه «آزمون گروهی» روی صفحه‌ها */
+  const groupChip = (name) => '<div class="grp-chip">' + USERS_ICON + " آزمون گروهی" + (name ? " · " + esc(name) : "") + "</div>";
+
   /* ---------- قفل «ساخت آزمون»: فقط برای کاربران واردشده ---------- */
   let signupNext = "";
   let gateOn = false;
@@ -1719,7 +2153,8 @@
 
   function viewGate(target, token) {
     const take = /^q\//.test(target);
-    setTitle(take ? "ورود برای شرکت در آزمون" : "ورود برای ساخت آزمون");
+    const grp = /^(groups|g\/)/.test(target);
+    setTitle(grp ? "ورود برای گروه‌ها" : take ? "ورود برای شرکت در آزمون" : "ورود برای ساخت آزمون");
     viewHome();                               /* پس‌زمینه‌ی تار: صفحه‌ی اصلی */
     gateOn = true;
     document.documentElement.classList.add("gate-on");
@@ -1731,8 +2166,8 @@
     g.innerHTML =
       '<div class="gate-box" role="dialog" aria-modal="true" aria-labelledby="gateT" aria-describedby="gateD">' +
       '<div class="gate-ic">' + LOCK_ICON + "</div>" +
-      '<h2 id="gateT">' + (take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
-      '<p id="gateD">' + (take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : "") + "</p>" +
+      '<h2 id="gateT">' + (grp ? "برای دیدن گروه‌ها وارد شوید" : take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
+      '<p id="gateD">' + (grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : grp ? " بعد از ورود، مستقیم به همین صفحه برمی‌گردید." : "") + "</p>" +
       '<a class="btn wide" id="gateGo" href="#/signup?next=' + target + '">ثبت‌نام / ورود</a>' +
       '<a class="gate-back" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
     document.body.appendChild(g);
@@ -1761,6 +2196,8 @@
     const parts = path.split("/").filter(Boolean).map(safeDecode);
     const okId = (s) => /^[A-Za-z0-9_-]{1,64}$/.test(s || "");
 
+    createGroup = parts[0] === "create" ? ((/(^|&)g=([0-9a-f]{8})(&|$)/.exec(query) || [])[2] || "") : "";
+
     if (!initial) window.scrollTo(0, 0);
     const hb = document.getElementById("homeBtn");
     if (hb) { if (parts.length === 0) hb.setAttribute("aria-current", "page"); else hb.removeAttribute("aria-current"); }
@@ -1775,9 +2212,14 @@
     } else if (parts[0] === "edit") {
       if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
       else viewEdit(parts[1], parts[2], token);
+    } else if (parts[0] === "groups") {
+      cleanup = auth.get() ? viewGroups(token) : viewGate("groups", token);
+    } else if (parts[0] === "g") {
+      if (!GROUP_ID_RE.test(parts[1] || "")) showError("لینک گروه نامعتبر است.");
+      else cleanup = auth.get() ? viewGroup(parts[1], token) : viewGate("g/" + parts[1], token);
     } else if (parts[0] === "signup") {
       const nx = ((/(^|&)next=([^&]*)/.exec(query) || [])[2] || "");
-      signupNext = /^(create(\/(tf|mcq|mixed|ai))?|q\/[A-Za-z0-9_-]{1,64})$/.test(nx) ? nx : "";
+      signupNext = /^(create(\/(tf|mcq|mixed|ai))?|q\/[A-Za-z0-9_-]{1,64}|groups|g\/[0-9a-f]{8})$/.test(nx) ? nx : "";
       cleanup = viewSignup();
     } else if (parts[0] === "account") {
       cleanup = viewAccount();
@@ -1802,7 +2244,9 @@
   });
   const homeBtn = document.getElementById("homeBtn");
   if (homeBtn) homeBtn.addEventListener("click", () => { if (!location.hash || location.hash === "#/" || location.hash === "#") window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" }); });
+  window.addEventListener("authchange", syncInviteWatch);
   syncAuthBtn();
   route();
+  syncInviteWatch();
   validateSession();
 })();
