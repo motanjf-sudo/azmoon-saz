@@ -733,6 +733,48 @@
   @keyframes gateUp{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){.gate,.gate-box{animation:none}}
   @media (max-width:480px){.gate{align-items:end;padding:12px 12px max(12px,env(safe-area-inset-bottom))}.gate-box{margin:auto 0 0;padding:26px 18px 16px;border-radius:24px}}
+  /* گروه‌ها */
+  .grp-btn{position:relative;text-decoration:none;color:var(--accent)}
+  .grp-btn .gb{position:absolute;top:-5px;inset-inline-start:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:#C0392B;color:#fff;font-size:.74rem;font-weight:800;line-height:20px;text-align:center;box-shadow:0 0 0 2px var(--bg)}
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .page-head h1{margin:0}
+  .grp-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);color:inherit;text-decoration:none}
+  .grp-row:last-child{border-bottom:0}
+  a.grp-row{border-radius:12px;transition:background .2s,transform .25s var(--ease)}
+  a.grp-row:hover{background:var(--chip)}
+  a.grp-row:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  .grp-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .grp-t strong{overflow-wrap:anywhere}
+  .grp-t small{font-size:.82rem;color:var(--muted);font-weight:500}
+  .grp-a{display:flex;gap:8px;flex-wrap:wrap}
+  .grp-go{width:18px;height:18px;flex:none;color:var(--muted);transform:scaleX(-1)}
+  .av-s{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:900;color:var(--on-accent);background:var(--btn-grad)}
+  .av-s svg{width:55%;height:55%}
+  .grp-ph{direction:ltr;unicode-bidi:isolate;display:inline-block}
+  .sec-t{display:flex;align-items:center;gap:8px;margin:0 0 4px}
+  .sec-t h2{margin:0}
+  .grp-add{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+  .grp-add input{flex:1 1 180px;direction:ltr;text-align:left}
+  .grp-tabs{display:flex;margin:14px 0 4px}
+  .grp-tabs .seg{width:100%}
+  .grp-tabs .seg button{flex:1 1 0;text-align:center}
+  .grp-chip{display:inline-flex;align-items:center;gap:8px;margin:0 0 14px;padding:7px 14px;border-radius:999px;border:1px solid var(--accent);background:var(--chip);color:var(--accent-2);font-weight:700;font-size:.9rem}
+  .grp-chip svg{width:18px;height:18px}
+  .aud .seg{margin:10px 0 4px}
+  .aud select{margin-top:10px}
+  .types[inert]{opacity:.4;filter:saturate(.6)}
+  .modal.confirm{z-index:200}
+  .confirm-box{width:min(420px,100%);padding:22px 20px 18px;text-align:center}
+  .confirm-box h2{margin:0 0 8px;font-size:1.15rem}
+  .confirm-box p{margin:0 0 6px;color:var(--muted);line-height:1.9}
+  .confirm-box .actions{justify-content:center;margin-top:14px}
+  .confirm-box .actions .btn{flex:1 1 140px}
+  .inv-toast{pointer-events:auto;display:flex;align-items:center;gap:12px;max-width:min(94vw,440px);border-radius:18px;padding:10px 12px 10px 16px;animation:toastIn .45s var(--ease)}
+  .inv-toast a{color:var(--on-accent);font-weight:900;text-decoration:underline;white-space:nowrap}
+  .inv-toast button{flex:none;width:30px;height:30px;border:0;border-radius:50%;background:rgba(255,255,255,.2);color:inherit;display:grid;place-items:center;cursor:pointer}
+  .inv-toast button svg{width:14px;height:14px}
+  @media (max-width:360px){.tools{gap:4px}.tools .icon-btn,.tools .prof-btn{width:36px;height:36px}.tools .prof-btn{font-size:1rem}.brand{font-size:1.05rem;gap:8px}}
+  @media (max-width:560px){.grp-row{flex-wrap:wrap}.grp-a{width:100%}.grp-a .btn{flex:1 1 0}.grp-add .btn{flex:1 1 100%}}
   .site-foot{margin-top:auto;width:100%;position:relative;z-index:1;
     background:linear-gradient(135deg,#0B3D2E 0%,#0F5132 55%,#14684A 100%);
     border-top:1px solid rgba(255,255,255,.14);box-shadow:0 -10px 30px rgba(7,42,32,.18);color:#fff}
@@ -784,6 +826,10 @@
         <a class="btn small ghost home-btn" id="homeBtn" href="#/" aria-label="خانه"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H10v-5.5h4v5.5h3.5a1 1 0 0 0 1-1V10"/></svg><span>خانه</span></a>
         <a class="btn small" href="#/create">ساخت آزمون</a>
         <a class="btn small ghost auth-btn" id="authBtn" href="#/signup">ثبت‌نام</a>
+        <a class="icon-btn grp-btn" id="grpBtn" href="#/groups" hidden aria-label="گروه‌ها" title="گروه‌ها">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.2 19.5c.5-3.1 2.8-5 5.8-5s5.3 1.9 5.8 5"/><path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M17.6 14.8c1.9.5 3.2 2.2 3.5 4.7"/></svg>
+          <span class="gb" id="grpBadge" hidden>0</span>
+        </a>
         <div class="prof" id="profWrap" hidden></div>
         <button class="icon-btn" id="themeBtn" type="button" aria-label="تغییر حالت روشن و تیره" title="تغییر حالت روشن و تیره">
           <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -988,6 +1034,7 @@
       var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; box.appendChild(t);
       setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 400); }, 2000);
     }
+    window.__pzToast = toast;
 
     /* ---------- confetti (brand colors) ---------- */
     function confetti() {
