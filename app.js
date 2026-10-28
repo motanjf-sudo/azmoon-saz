@@ -172,6 +172,8 @@
     });
   }
 
+  const tokenOf = () => { const a = auth.get(); return a ? a.token : null; };
+
   async function rpc(name, args) {
     let res;
     try {
@@ -189,7 +191,11 @@
     }
     let data = null;
     try { data = await res.json(); } catch (e) { /* بدنه‌ی خالی */ }
-    if (!res.ok) throw new Error((data && (data.message || data.hint)) || "خطایی رخ داد (" + res.status + ")");
+    if (!res.ok) {
+      const msg = (data && (data.message || data.hint)) || "خطایی رخ داد (" + res.status + ")";
+      if (/دوباره وارد شوید/.test(msg)) auth.clear();   /* نشست منقضی یا نامعتبر است */
+      throw new Error(msg);
+    }
     return data;
   }
 
@@ -340,7 +346,7 @@
   window.addEventListener("authchange", () => {
     const cur = (auth.get() || {}).token || "";
     if (isHomeHash() && cur !== homeTok && cfg.SUPABASE_URL) viewHome();
-    else if (!cur && /^#\/create/.test(location.hash) && !gateOn && genLockHash === null && cfg.SUPABASE_URL) route();
+    else if (!cur && /^#\/(create|q\/)/.test(location.hash) && !gateOn && genLockHash === null && cfg.SUPABASE_URL) route();
   });
 
   /* ---------- انتخاب مدل آزمون ---------- */
@@ -741,6 +747,7 @@
           p_description: descEl.value.trim(),
           p_questions: serialize(),
           p_secret: secret,
+          p_token: tokenOf(),
         });
         finished = true;
         clearTimeout(draftTimer);
@@ -974,7 +981,7 @@
             method: "POST",
             signal: ctl.signal,
             headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
-            body: JSON.stringify(body),
+            body: JSON.stringify(Object.assign({}, body, { token: tokenOf() })),
           });
         } catch (e) {
           console.error("generate fetch failed", e);
@@ -998,6 +1005,7 @@
           p_description: String((d && d.description) || "").trim().slice(0, LIMITS.desc),
           p_questions: questions,
           p_secret: secret,
+          p_token: tokenOf(),
           });
         } catch (e2) {
           throw new Error("سؤال‌ها ساخته شد ولی ذخیره‌ی آزمون در پایگاه‌داده نشد: " + e2.message);
@@ -1030,7 +1038,7 @@
     setTitle();
     app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
     let quiz;
-    try { quiz = await rpc("get_quiz", { p_id: id }); } catch (e) { if (token !== routeToken) return; return showError(e.message, () => viewTake(id, token)); }
+    try { quiz = await rpc("get_quiz", { p_id: id, p_token: tokenOf() }); } catch (e) { if (token !== routeToken) return; return showError(e.message, () => viewTake(id, token)); }
     if (token !== routeToken) return;
     if (!quiz || !Array.isArray(quiz.questions)) return showError("این آزمون پیدا نشد.");
     setTitle(quiz.title);
@@ -1135,7 +1143,7 @@
       btn.disabled = true;
       btn.classList.add("loading");
       try {
-        const r = await rpc("submit_quiz", { p_id: id, p_name: name, p_answers: answers });
+        const r = await rpc("submit_quiz", { p_id: id, p_name: name, p_answers: answers, p_token: tokenOf() });
         if (token !== routeToken) return;
         if (!accName()) store.set("lastName", name);
         showResult(quiz, qs, answers, r, token);
