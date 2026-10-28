@@ -1649,8 +1649,8 @@
         '<div class="okmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>' +
         "<h1>" + (created ? "ثبت‌نام شما انجام شد 🎉" : "خوش آمدید 👋") + "</h1>" +
         (fullName ? '<p class="auth-hello">' + esc(fullName) + "</p>" : "") +
-        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به " + (signupNext ? "صفحه‌ی ساخت آزمون…" : "صفحه‌ی اصلی…") + "</p>" +
-        '<a class="btn wide" href="' + nextHash + '">' + (signupNext ? "ادامه و ساخت آزمون" : "ورود به سایت") + "</a></div>"
+        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به " + (/^q\//.test(signupNext) ? "آزمون…" : signupNext ? "صفحه‌ی ساخت آزمون…" : "صفحه‌ی اصلی…") + "</p>" +
+        '<a class="btn wide" href="' + nextHash + '">' + (/^q\//.test(signupNext) ? "ادامه و شرکت در آزمون" : signupNext ? "ادامه و ساخت آزمون" : "ورود به سایت") + "</a></div>"
       );
       const prog = document.getElementById("ringProg");
       prog.style.strokeDashoffset = "100";
@@ -1710,7 +1710,8 @@
   }
 
   function viewGate(target, token) {
-    setTitle("ورود برای ساخت آزمون");
+    const take = /^q\//.test(target);
+    setTitle(take ? "ورود برای شرکت در آزمون" : "ورود برای ساخت آزمون");
     viewHome();                               /* پس‌زمینه‌ی تار: صفحه‌ی اصلی */
     gateOn = true;
     document.documentElement.classList.add("gate-on");
@@ -1722,8 +1723,8 @@
     g.innerHTML =
       '<div class="gate-box" role="dialog" aria-modal="true" aria-labelledby="gateT" aria-describedby="gateD">' +
       '<div class="gate-ic">' + LOCK_ICON + "</div>" +
-      '<h2 id="gateT">برای ساخت آزمون وارد شوید</h2>' +
-      '<p id="gateD">ساخت آزمون فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل است و کمتر از یک دقیقه طول می‌کشد. شرکت در آزمون‌ها با لینک، بدون ثبت‌نام انجام می‌شود.</p>' +
+      '<h2 id="gateT">' + (take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
+      '<p id="gateD">' + (take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : "") + "</p>" +
       '<a class="btn wide" id="gateGo" href="#/signup?next=' + target + '">ثبت‌نام / ورود</a>' +
       '<a class="gate-back" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
     document.body.appendChild(g);
@@ -1758,6 +1759,7 @@
 
     if (parts[0] === "q") {
       if (!okId(parts[1])) showError("لینک آزمون نامعتبر است.");
+      else if (!auth.get()) cleanup = viewGate("q/" + parts[1], token);
       else viewTake(parts[1], token);
     } else if (parts[0] === "m") {
       if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
@@ -1767,7 +1769,7 @@
       else viewEdit(parts[1], parts[2], token);
     } else if (parts[0] === "signup") {
       const nx = ((/(^|&)next=([^&]*)/.exec(query) || [])[2] || "");
-      signupNext = /^create(\/(tf|mcq|mixed|ai))?$/.test(nx) ? nx : "";
+      signupNext = /^(create(\/(tf|mcq|mixed|ai))?|q\/[A-Za-z0-9_-]{1,64})$/.test(nx) ? nx : "";
       cleanup = viewSignup();
     } else if (parts[0] === "account") {
       cleanup = viewAccount();
