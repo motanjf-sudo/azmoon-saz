@@ -256,7 +256,7 @@
   }
 
   function setTitle(t) {
-    document.title = t ? t + " | " + BASE_TITLE : BASE_TITLE + " | ساخت آزمون آنلاین رایگان با هوش مصنوعی";
+    document.title = t ? t + " | " + BASE_TITLE : BASE_TITLE + " | ساخت آزمون آنلاین با هوش مصنوعی";
   }
 
   function copyHandlers(root) {
@@ -317,7 +317,7 @@
           '<a class="btn small ghost" href="#/q/' + encodeURIComponent(m.id) + '">باز کردن</a>' +
           '<a class="btn small" href="#/m/' + encodeURIComponent(m.id) + "/" + encodeURIComponent(m.secret) + '">نتایج</a></div>'
         ).join("") +
-        (sess ? "" : '<p class="hint">برای اینکه آزمون‌هایتان روی حسابتان بماند و از هر دستگاهی ببینیدشان، <a href="#/signup">ثبت‌نام کنید</a>.</p>') +
+        (sess ? "" : '<p class="hint">این آزمون‌ها فقط روی همین دستگاه هستند. برای اینکه روی حسابتان بمانند و از هر دستگاهی ببینیدشان، <a href="#/signup">وارد شوید یا ثبت‌نام کنید</a>.</p>') +
         "</div>" +
         '<div class="actions"><a class="btn" href="#/create">ساخت آزمون جدید</a></div>';
     };
@@ -340,6 +340,7 @@
   window.addEventListener("authchange", () => {
     const cur = (auth.get() || {}).token || "";
     if (isHomeHash() && cur !== homeTok && cfg.SUPABASE_URL) viewHome();
+    else if (!cur && /^#\/create/.test(location.hash) && !gateOn && genLockHash === null && cfg.SUPABASE_URL) route();
   });
 
   /* ---------- انتخاب مدل آزمون ---------- */
@@ -1410,7 +1411,8 @@
 
   function viewSignup() {
     setTitle("ثبت‌نام");
-    if (auth.get()) { location.hash = "#/account"; return null; }
+    if (auth.get()) { location.hash = signupNext ? "#/" + signupNext : "#/account"; return null; }
+    const nextHash = signupNext ? "#/" + signupNext : "#/";
 
     app.innerHTML =
       '<div class="auth-wrap"><div class="card auth-card">' +
@@ -1647,13 +1649,13 @@
         '<div class="okmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>' +
         "<h1>" + (created ? "ثبت‌نام شما انجام شد 🎉" : "خوش آمدید 👋") + "</h1>" +
         (fullName ? '<p class="auth-hello">' + esc(fullName) + "</p>" : "") +
-        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به صفحه‌ی اصلی…</p>" +
-        '<a class="btn wide" href="#/">ورود به سایت</a></div>'
+        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به " + (signupNext ? "صفحه‌ی ساخت آزمون…" : "صفحه‌ی اصلی…") + "</p>" +
+        '<a class="btn wide" href="' + nextHash + '">' + (signupNext ? "ادامه و ساخت آزمون" : "ورود به سایت") + "</a></div>"
       );
       const prog = document.getElementById("ringProg");
       prog.style.strokeDashoffset = "100";
       requestAnimationFrame(() => requestAnimationFrame(() => { prog.style.strokeDashoffset = "0"; }));
-      navTimer = setTimeout(() => { if (alive) location.hash = "#/"; }, 1700);
+      navTimer = setTimeout(() => { if (alive) location.hash = nextHash; }, 1700);
     }
 
     stepPhone("");
@@ -1682,12 +1684,61 @@
     else if (r && r.ok && cleanName(r.name) !== cleanName(s.name)) auth.set({ token: s.token, phone: s.phone, name: cleanName(r.name) });
   }
 
+
+  /* ---------- قفل «ساخت آزمون»: فقط برای کاربران واردشده ---------- */
+  let signupNext = "";
+  let gateOn = false;
+  const GATE_SEL = "header.top, #hero, #app, #siteFoot";
+  const LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.6"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></svg>';
+
+  function syncHeroNow() {
+    const h = document.getElementById("hero");
+    if (h) h.hidden = !(isHomeHash() || gateOn);
+  }
+
+  function closeGate() {
+    gateOn = false;
+    document.documentElement.classList.remove("gate-on");
+    document.querySelectorAll(GATE_SEL).forEach((el) => el.removeAttribute("inert"));
+    const g = document.getElementById("gate");
+    if (g) g.remove();
+    document.removeEventListener("keydown", onGateKey, true);
+    syncHeroNow();
+  }
+  function onGateKey(e) {
+    if (e.key === "Escape") { e.preventDefault(); location.hash = "#/"; }
+  }
+
+  function viewGate(target, token) {
+    setTitle("ورود برای ساخت آزمون");
+    viewHome();                               /* پس‌زمینه‌ی تار: صفحه‌ی اصلی */
+    gateOn = true;
+    document.documentElement.classList.add("gate-on");
+    syncHeroNow();
+    document.querySelectorAll(GATE_SEL).forEach((el) => el.setAttribute("inert", ""));
+    const g = document.createElement("div");
+    g.className = "gate";
+    g.id = "gate";
+    g.innerHTML =
+      '<div class="gate-box" role="dialog" aria-modal="true" aria-labelledby="gateT" aria-describedby="gateD">' +
+      '<div class="gate-ic">' + LOCK_ICON + "</div>" +
+      '<h2 id="gateT">برای ساخت آزمون وارد شوید</h2>' +
+      '<p id="gateD">ساخت آزمون فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل است و کمتر از یک دقیقه طول می‌کشد. شرکت در آزمون‌ها با لینک، بدون ثبت‌نام انجام می‌شود.</p>' +
+      '<a class="btn wide" id="gateGo" href="#/signup?next=' + target + '">ثبت‌نام / ورود</a>' +
+      '<a class="gate-back" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
+    document.body.appendChild(g);
+    document.addEventListener("keydown", onGateKey, true);
+    setTimeout(() => { if (token === routeToken) { const b = document.getElementById("gateGo"); if (b) b.focus({ preventScroll: true }); } }, 30);
+    return function () { closeGate(); };
+  }
+
   /* ---------- مسیریابی ---------- */
   let routeToken = 0;
   let cleanup = null;
   let first = true;
 
   function route() {
+    if (gateOn) closeGate();
     if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; }
     const token = ++routeToken;
     const initial = first;
@@ -1715,9 +1766,13 @@
       if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
       else viewEdit(parts[1], parts[2], token);
     } else if (parts[0] === "signup") {
+      const nx = ((/(^|&)next=([^&]*)/.exec(query) || [])[2] || "");
+      signupNext = /^create(\/(tf|mcq|mixed|ai))?$/.test(nx) ? nx : "";
       cleanup = viewSignup();
     } else if (parts[0] === "account") {
       cleanup = viewAccount();
+    } else if (parts[0] === "create" && !auth.get()) {
+      cleanup = viewGate(parts.slice(0, 2).join("/"), token);
     } else if (parts[0] === "create") {
       if (parts[1] === "ai") cleanup = viewAI();
       else if (ACTIVE_MODES.indexOf(parts[1]) >= 0) cleanup = viewBuild(parts[1], /(^|&)draft=1(&|$)/.test(query));
