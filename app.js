@@ -2156,6 +2156,35 @@
       }
     }
 
+    /* ---- پیام‌های پاک‌شده: از صفحه برداشته می‌شوند و هیچ ردی نمی‌ماند ---- */
+    function removeMsgs(ids) {
+      let touched = false;
+      for (const id of ids) {
+        const i = msgs.findIndex((x) => x.id === id);
+        if (i < 0) continue;
+        touched = true;
+        const n = nodes.get(id), prev = msgs[i - 1], next = msgs[i + 1];
+        if (n) {
+          const sep = n.previousElementSibling;
+          if (sep && sep.classList.contains("cday")) sep.remove();
+          n.remove();
+        }
+        nodes.delete(id); byId.delete(id);
+        msgs.splice(i, 1);
+        if (menuFor === id) closeMenu();
+        if (editing && editing.id === id) cancelCtx(true);
+        if (replyTo && replyTo.id === id) { replyTo = null; syncCtx(); }
+        if (next) {
+          const nn = nodes.get(next.id);
+          if (nn && (!prev || prev._k !== next._k) && !(nn.previousElementSibling && nn.previousElementSibling.classList.contains("cday"))) wrap.insertBefore(daySep(next), nn);
+          refreshNode(next);
+        }
+      }
+      if (!touched) return;
+      msgs.forEach((x) => { if (x.reply && ids.indexOf(x.reply.id) >= 0) { x.reply = null; refreshNode(x); } });
+      if (ready && !msgs.length && !pend.length) showState("empty");
+    }
+
     /* ---- خطاهایی که یعنی دیگر به گروه دسترسی ندارید ---- */
     function fatal(e) {
       if (!/این گروه پیدا نشد|دوباره وارد شوید/.test(e.message)) return false;
@@ -2221,8 +2250,14 @@
         if (dead) return;
         fails = 0; net.hidden = true;
         if (r.rev > rev) rev = r.rev;
-        if (r.messages.length) { idle = 0; ingest(r.messages, false); if (r.messages.length >= 200) next = 200; }
-        else idle++;
+        const gone = r.gone || [];
+        if (r.messages.length || gone.length) {
+          idle = 0;
+          const wasNear = nearBottom();
+          if (r.messages.length) ingest(r.messages, false);
+          if (gone.length) { removeMsgs(gone); if (wasNear) toBottom(); }
+          if (r.messages.length >= 200) next = 200;
+        } else idle++;
       } catch (e) {
         if (dead || fatal(e)) return;
         fails++;
@@ -2332,7 +2367,7 @@
       try {
         const r = await gcall("chat_delete", { p_msg: m.id });
         if (dead) return;
-        ingest([r], false);
+        keepBottom(() => removeMsgs([r.id]));
       } catch (e) {
         if (dead || fatal(e)) return;
         o.toast(e.message);
@@ -2545,8 +2580,9 @@
         (editName
           ? '<div class="card"><label for="gNewName">نام گروه</label><input id="gNewName" type="text" maxlength="60" autocomplete="off" value="' + esc(g.name) + '">' +
             '<div id="gRenMsg"></div><div class="actions"><button class="btn ghost" type="button" id="gRenBack">برگشت</button><button class="btn" type="button" id="gRenSave">ذخیره‌ی نام</button></div></div>'
-          : '<div class="page-head"><h1>' + esc(g.name) + '</h1><span class="badge">' + (owner() ? "مدیر" : "عضو") + "</span>" +
-            (owner() ? '<button class="btn small ghost" type="button" data-act="rename">تغییر نام</button>' : "") + "</div>") +
+          : '<div class="page-head grp-head"><h1>' + esc(g.name) + "</h1>" +
+            (owner() ? '<button class="btn small ghost" type="button" data-act="rename">تغییر نام گروه</button>' : "") +
+            '<span class="badge">' + (owner() ? "مدیر" : "عضو") + "</span></div>") +
         (errMsg ? '<div class="err" role="alert">' + esc(errMsg) + "</div>" : "") +
         '<div class="grp-tabs"><div class="seg" role="group" aria-label="بخش‌های گروه">' +
         '<button type="button" data-tab="quizzes" aria-pressed="' + (tab === "quizzes") + '">آزمون‌ها (' + faNum((g.quizzes || []).length) + ")</button>" +
