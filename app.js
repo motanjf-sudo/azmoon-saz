@@ -386,7 +386,7 @@
       '<div class="seg" role="group" aria-label="مخاطب آزمون"><button type="button" data-aud="pub" aria-pressed="' + (!createGroup) + '">همه (عمومی)</button><button type="button" data-aud="grp" aria-pressed="' + (!!createGroup) + '">فقط یک گروه</button></div>' +
       '<p class="hint" id="audHint" style="margin:6px 0 0"></p><div id="audSel" hidden></div></div>' +
       '<div class="types" id="typesBox"><a class="card type-card ai-card" href="' + withG("#/create/ai") + '" data-base="#/create/ai"><span class="ti">' + ICONS.spark + '</span><h3>ساخت با هوش مصنوعی <span class="soon-badge ai-badge">جدید</span></h3>' +
-      "<p>یک فایل (PDF، متن یا عکس) بدهید یا فقط موضوع را بنویسید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید.</p></a>" +
+      "<p>یک فایل متنی بدهید یا فقط موضوع را بنویسید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید.</p></a>" +
       ["tf", "mcq", "essay", "mixed"].map(card).join("") + "</div>";
     const dropBtn = document.getElementById("dropDraft");
     if (dropBtn) dropBtn.addEventListener("click", () => { store.del("quizDraft"); viewChoose(); });
@@ -890,10 +890,8 @@
   const AI_MODELS = [
     { id: "ds-v3", group: "DeepSeek", label: "DeepSeek V3", provider: "deepseek", model: "deepseek-chat", textOnly: true },
     { id: "ds-v41", group: "DeepSeek", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash", textOnly: true },
-    { id: "gem-argon", group: "Gemini", label: "Gemini 4 Argon", provider: "gemini", model: "gemini-4-argon" },
-    { id: "gem-flash", group: "Gemini", label: "Gemini 3.8 Flash", provider: "gemini", model: "gemini-3.8-flash" },
   ];
-  const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[3];
+  const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[0];
 
   /* قفل کامل برنامه هنگام ساخت آزمون با هوش مصنوعی */
   let genLockHash = null;
@@ -909,7 +907,7 @@
   function viewAI() {
     setTitle("ساخت آزمون با هوش مصنوعی");
     setTimeout(fillGroupChip, 0);
-    const st = { src: "file", mid: "gem-flash", mode: "mixed", level: "medium", count: 10, file: null };
+    const st = { src: "file", mid: "ds-v3", mode: "mixed", level: "medium", count: 10, file: null };
     let busy = false;
     let ctl = null;
 
@@ -923,13 +921,13 @@
       '<p class="muted">فایل یا موضوع را بدهید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
       '<div class="card ai-form">' +
       '<label for="mid">مدل هوش مصنوعی</label><select id="mid">' +
-      ["DeepSeek", "Gemini"].map((g) => '<optgroup label="' + g + '">' +
+      ["DeepSeek"].map((g) => '<optgroup label="' + g + '">' +
         AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.textOnly ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
       "</select>" +
       '<label>منبع سؤال‌ها</label>' + seg("src", [["file", "از روی فایل"], ["topic", "فقط موضوع (بدون فایل)"]]) +
       '<div id="srcFile"><div class="drop" id="drop" tabindex="0" role="button" aria-label="انتخاب فایل">' + ICONS.upload +
-      '<strong id="dropT">فایل را اینجا بکشید یا انتخاب کنید</strong><span class="hint">PDF، Word، متن (TXT یا MD) یا عکس، حداکثر ۴ مگابایت</span></div>' +
-      '<input id="file" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,.docx,.doc,.rtf,application/pdf,text/plain,text/markdown,image/png,image/jpeg,image/webp" hidden></div>' +
+      '<strong id="dropT">فایل را اینجا بکشید یا انتخاب کنید</strong><span class="hint">فایل متنی (TXT یا MD)، حداکثر ۴ مگابایت</span></div>' +
+      '<input id="file" type="file" accept=".txt,.md,text/plain,text/markdown" hidden></div>' +
       '<div id="srcTopic" hidden><label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off"></div>' +
       '<div id="topicExtra"><label for="note">توضیح اضافه (اختیاری)</label><input id="note" type="text" maxlength="300" placeholder="مثلاً: فقط از فصل دوم سؤال بده" autocomplete="off"></div>' +
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
@@ -982,7 +980,7 @@
       if (!f) return;
       const ext = (f.name.split(".").pop() || "").toLowerCase();
       const isText = ext === "txt" || ext === "md";
-      if (!isText && !AI_FILE_TYPES[ext]) return fail("این نوع فایل پشتیبانی نمی‌شود. PDF، Word، TXT، MD یا عکس انتخاب کنید.");
+      if (!isText && !AI_FILE_TYPES[ext]) return fail("این نوع فایل پشتیبانی نمی‌شود. فایل متنی (TXT یا MD) انتخاب کنید یا «فقط موضوع» را بزنید.");
       if (f.size > AI_MAX_BYTES) return fail("حجم فایل بیشتر از ۴ مگابایت است.");
       if (!f.size) return fail("فایل خالی است.");
       st.file = f;
@@ -1006,7 +1004,7 @@
         if (st.src === "file") {
           if (!st.file) return fail("ابتدا یک فایل انتخاب کنید یا گزینه‌ی «فقط موضوع» را بزنید.");
           const ext = (st.file.name.split(".").pop() || "").toLowerCase();
-          if (M.textOnly && ext !== "txt" && ext !== "md") return fail("«" + M.label + "» فقط فایل متنی (TXT یا MD) می‌خواند. برای PDF، Word و عکس یکی از مدل‌های Claude یا GPT را انتخاب کنید.");
+          if (M.textOnly && ext !== "txt" && ext !== "md") return fail("«" + M.label + "» فقط فایل متنی (TXT یا MD) می‌خواند. فایل PDF، Word و عکس فعلاً پشتیبانی نمی‌شود؛ متن را در یک فایل TXT بگذارید یا «فقط موضوع» را انتخاب کنید.");
           if (ext === "txt" || ext === "md") {
             const t = await readFileAsText(st.file);
             if (!t.trim()) return fail("فایل متنی خالی است.");
