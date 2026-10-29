@@ -1975,6 +1975,506 @@
     return function cleanup() { app.removeEventListener("click", onClick); };
   }
 
+  /* ---------- گپ گروه ---------- */
+  const CHAT_MAX = 2000;      /* حداکثر حرف هر پیام (هم‌خوان با سرور) */
+  const CHAT_KEEP = 400;      /* تعداد پیام نگه‌داشته‌شده در صفحه بعد از پاک‌سازی */
+  const CHAT_TRIM = 600;      /* از این تعداد بیشتر شد، پیام‌های قدیمیِ صفحه حذف می‌شوند */
+  const svgI = (d, w) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (w || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + "</svg>";
+  const CI = {
+    send: svgI('<path d="M21 3 10.5 13.5"/><path d="m21 3-6.5 18-4-7.5L3 9.5z"/>'),
+    reply: svgI('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v3"/>'),
+    copy: svgI('<rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/>'),
+    edit: svgI('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+    trash: svgI('<path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>'),
+    close: svgI('<path d="M6 6l12 12M18 6 6 18"/>', 2.4),
+    down: svgI('<path d="M12 5v14M5 12l7 7 7-7"/>', 2.4),
+  };
+  let chatFmt = null;
+  function chatFmts() {
+    if (chatFmt) return chatFmt;
+    const mk = (o) => { try { return new Intl.DateTimeFormat("fa-IR", o); } catch (e) { return new Intl.DateTimeFormat(undefined, o); } };
+    chatFmt = { time: mk({ hour: "2-digit", minute: "2-digit" }), day: mk({ weekday: "long", day: "numeric", month: "long" }), dayY: mk({ weekday: "long", day: "numeric", month: "long", year: "numeric" }) };
+    return chatFmt;
+  }
+  const dayNum = (d) => d.getFullYear() * 10000 + d.getMonth() * 100 + d.getDate();
+
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; } catch (e) { /* روش جایگزین */ }
+    try {
+      const a = el("textarea", { readonly: true, style: "position:fixed;top:0;opacity:0;pointer-events:none", value: t });
+      document.body.appendChild(a);
+      a.select();
+      a.setSelectionRange(0, t.length);
+      const done = document.execCommand("copy");
+      a.remove();
+      return !!done;
+    } catch (e) { return false; }
+  }
+
+  /* گپ گروه؛ o = { gid, toast, draft, onDraft }؛ تابع پاک‌سازی برمی‌گرداند */
+  function mountChat(box, o) {
+    const gid = o.gid, F = chatFmts();
+    const msgs = [], byId = new Map(), nodes = new Map(), pend = [];
+    let rev = 0, more = false, ready = false, dead = false, fails = 0, idle = 0, sending = 0, busyOlder = false, inflight = false;
+    let timer = 0, replyTo = null, editing = null, menuEl = null, menuFor = 0, unseen = 0, lp = null, lpBlock = 0;
+    const fine = window.matchMedia("(pointer: fine)");
+
+    box.innerHTML =
+      '<div class="chat">' +
+      '<div class="chat-list" role="log" aria-label="پیام‌های گروه" tabindex="0"><div class="chat-more" hidden></div><div class="chat-state"></div><div class="chat-msgs"></div></div>' +
+      '<button type="button" class="chat-new" hidden></button>' +
+      '<div class="chat-net" role="status" hidden>ارتباط قطع است؛ دوباره تلاش می‌کنیم…</div>' +
+      '<div class="chat-ctx" hidden><span class="chat-ctx-i" aria-hidden="true"></span><div class="chat-ctx-t"><b></b><span></span></div><button type="button" class="chat-ctx-x" aria-label="لغو">' + CI.close + "</button></div>" +
+      '<form class="chat-in" autocomplete="off"><textarea rows="1" maxlength="' + CHAT_MAX + '" dir="auto" enterkeyhint="send" placeholder="پیام بنویسید…" aria-label="متن پیام"></textarea>' +
+      '<button class="chat-send" type="submit" aria-label="ارسال" disabled>' + CI.send + "</button></form>" +
+      '<div class="chat-cnt" hidden></div></div>' +
+      '<p class="hint chat-hint"><span class="h-fine">برای پاسخ، کپی، ویرایش یا حذف، روی پیام کلیک راست کنید.</span><span class="h-coarse">برای پاسخ، کپی، ویرایش یا حذف، انگشت را روی پیام نگه دارید.</span></p>';
+    const q = (s) => box.querySelector(s);
+    const list = q(".chat-list"), wrap = q(".chat-msgs"), moreBox = q(".chat-more"), stateEl = q(".chat-state"), newBtn = q(".chat-new"), net = q(".chat-net");
+    const ctx = q(".chat-ctx"), ctxI = q(".chat-ctx-i"), ctxT = q(".chat-ctx-t b"), ctxS = q(".chat-ctx-t span"), form = q(".chat-in"), ta = q("textarea"), sendBtn = q(".chat-send"), cnt = q(".chat-cnt");
+    ta.value = o.draft || "";
+
+    const nearBottom = () => list.scrollHeight - list.scrollTop - list.clientHeight < 90;
+    const toBottom = () => { list.scrollTop = list.scrollHeight; unseen = 0; newBtn.hidden = true; };
+    const keepBottom = (fn) => { const nb = nearBottom(); fn(); if (nb) toBottom(); };
+    const prep = (m) => { m._d = new Date(m.created_at); m._k = dayNum(m._d); return m; };
+    const quote = (r) => { const f = byId.get(r.id); return f ? f : r; };
+
+    function dayLabel(d) {
+      const t = new Date(), k = dayNum(d);
+      if (k === dayNum(t)) return "امروز";
+      if (k === dayNum(new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1))) return "دیروز";
+      return (d.getFullYear() === t.getFullYear() ? F.day : F.dayY).format(d);
+    }
+    const daySep = (m) => el("div", { class: "cday" }, [el("span", { text: dayLabel(m._d) })]);
+
+    function build(m, prev) {
+      const cont = !!prev && prev._k === m._k && prev.u === m.u && m._d - prev._d < 600000;
+      const kids = [];
+      if (!m.mine && !cont) kids.push(el("div", { class: "cn" }, [el("span", { text: m.name }), m.owner ? el("span", { class: "cbadge", text: "مدیر" }) : null]));
+      if (m.reply && !m.deleted) {
+        const r = quote(m.reply);
+        kids.push(el("div", { class: "cq", "data-q": m.reply.id }, [el("b", { text: r.name }), el("span", { text: r.deleted ? "پیام حذف شده" : r.body })]));
+      }
+      kids.push(el("div", { class: "ct", dir: "auto", text: m.deleted ? "این پیام حذف شد" : m.body }));
+      kids.push(el("div", { class: "cf" }, [
+        m.edited && !m.deleted ? el("span", { text: "ویرایش‌شده" }) : null,
+        m.pending ? el("span", { text: "در حال ارسال…" }) : el("time", { datetime: m.created_at, text: F.time.format(m._d) }),
+      ]));
+      return el("div", { class: "cm " + (m.mine ? "me" : "ot") + (cont ? " cont" : "") + (m.pending ? " pending" : ""), "data-id": m.pending ? null : m.id }, [el("div", { class: "cb" + (m.deleted ? " del" : ""), tabindex: "-1" }, kids)]);
+    }
+
+    function appendNode(m, prev) {
+      const frag = document.createDocumentFragment();
+      if (!prev || prev._k !== m._k) frag.appendChild(daySep(m));
+      const n = build(m, prev);
+      n.classList.add("in");
+      nodes.set(m.id, n);
+      frag.appendChild(n);
+      wrap.insertBefore(frag, pend[0] || null);
+    }
+
+    function renderAll() {
+      const frag = document.createDocumentFragment();
+      nodes.clear();
+      msgs.forEach((m, i) => {
+        const prev = msgs[i - 1];
+        if (!prev || prev._k !== m._k) frag.appendChild(daySep(m));
+        const n = build(m, prev);
+        nodes.set(m.id, n);
+        frag.appendChild(n);
+      });
+      pend.forEach((n) => frag.appendChild(n));
+      wrap.textContent = "";
+      wrap.appendChild(frag);
+      closeMenu();
+      renderMore();
+      showState(ready && !msgs.length && !pend.length ? "empty" : "");
+    }
+
+    function refreshNode(m) {
+      const old = nodes.get(m.id);
+      if (!old) return;
+      const nw = build(m, msgs[msgs.indexOf(m) - 1]);
+      const had = old.contains(document.activeElement);
+      old.replaceWith(nw);
+      nodes.set(m.id, nw);
+      if (had) nw.firstChild.focus({ preventScroll: true });
+      if (menuFor === m.id) closeMenu();
+    }
+
+    function showState(kind, msg) {
+      stateEl.textContent = "";
+      stateEl.hidden = !kind;
+      if (!kind) return;
+      if (kind === "loading") stateEl.textContent = "در حال بارگذاری گپ…";
+      else if (kind === "empty") stateEl.textContent = "هنوز پیامی نیست. اولین پیام را شما بنویسید.";
+      else stateEl.append(el("span", { text: msg }), el("button", { class: "btn small ghost", type: "button", text: "تلاش دوباره", onclick: load }));
+    }
+
+    function renderMore() {
+      moreBox.textContent = "";
+      moreBox.hidden = !more;
+      if (more) moreBox.appendChild(el("button", { class: "btn small ghost", type: "button", text: "پیام‌های قدیمی‌تر", onclick: older }));
+    }
+
+    /* ---- ورود پیام‌های تازه یا تغییریافته ---- */
+    function ingest(arr, force) {
+      const wasNear = nearBottom();
+      let added = 0, others = 0, full = false;
+      for (const raw of arr) {
+        const old = byId.get(raw.id);
+        if (old) {
+          if (raw.rev > old.rev) {
+            Object.assign(old, prep(raw));
+            refreshNode(old);
+            msgs.forEach((x) => { if (x.reply && x.reply.id === old.id) refreshNode(x); });
+            if (editing && editing.id === old.id && old.deleted) cancelCtx(true);
+          }
+          continue;
+        }
+        if (msgs.length && raw.id < msgs[0].id) continue;   /* مربوط به تاریخچه‌ی بارگذاری‌نشده است */
+        const m = prep(raw);
+        const last = msgs[msgs.length - 1];
+        if (last && m.id < last.id) full = true;
+        msgs.push(m);
+        byId.set(m.id, m);
+        added++;
+        if (!m.mine) others++;
+        if (!full) appendNode(m, msgs[msgs.length - 2]);
+      }
+      if (!ready) return;
+      if (full) { msgs.sort((a, b) => a.id - b.id); renderAll(); }
+      if (added) showState("");
+      if (force || wasNear) toBottom();
+      else if (others) { unseen += others; newBtn.hidden = false; newBtn.querySelector("span").textContent = unseen > 1 ? faNum(unseen) + " پیام جدید" : "پیام جدید"; }
+      if (msgs.length > CHAT_TRIM && (force || wasNear)) {
+        msgs.splice(0, msgs.length - CHAT_KEEP).forEach((d) => byId.delete(d.id));
+        more = true;
+        renderAll();
+        toBottom();
+      }
+    }
+
+    /* ---- خطاهایی که یعنی دیگر به گروه دسترسی ندارید ---- */
+    function fatal(e) {
+      if (!/این گروه پیدا نشد|دوباره وارد شوید/.test(e.message)) return false;
+      dead = true;
+      clearTimeout(timer);
+      o.toast(/گروه/.test(e.message) ? "دیگر عضو این گروه نیستید." : e.message);
+      location.hash = "#/groups";
+      return true;
+    }
+
+    /* ---- بارگذاری اولیه و قدیمی‌ترها ---- */
+    async function load() {
+      showState("loading");
+      try {
+        const r = await gcall("chat_list", { p_group: gid, p_limit: 40 });
+        if (dead) return;
+        msgs.length = 0; byId.clear();
+        r.messages.forEach((m) => { prep(m); msgs.push(m); byId.set(m.id, m); });
+        rev = r.rev; more = !!r.more; ready = true;
+        renderAll();
+        toBottom();
+        sync();
+        schedule(delay());
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        showState("error", e.message);
+      }
+    }
+
+    async function older() {
+      if (busyOlder || !more || !msgs.length || dead) return;
+      busyOlder = true;
+      const b = moreBox.querySelector("button");
+      if (b) { b.disabled = true; b.classList.add("loading"); }
+      try {
+        const r = await gcall("chat_list", { p_group: gid, p_before: msgs[0].id, p_limit: 40 });
+        if (dead) return;
+        const fresh = r.messages.filter((m) => !byId.has(m.id)).map(prep);
+        fresh.forEach((m) => byId.set(m.id, m));
+        msgs.unshift(...fresh);
+        more = !!r.more;
+        const h = list.scrollHeight, t = list.scrollTop;
+        renderAll();
+        list.scrollTop = t + (list.scrollHeight - h);
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        o.toast(e.message);
+        renderMore();
+      } finally { busyOlder = false; }
+    }
+
+    /* ---- نظرسنجیِ پیام‌های تازه (کُندتر می‌شود وقتی خبری نیست) ---- */
+    const delay = () => (idle < 20 ? 3000 : idle < 60 ? 6000 : 10000);
+    function schedule(ms) { clearTimeout(timer); if (!dead) timer = setTimeout(tick, ms); }
+    async function tick() {
+      timer = 0;
+      if (dead || !ready || document.hidden) return;
+      if (sending || inflight) return schedule(500);
+      inflight = true;
+      let next = delay();
+      try {
+        const r = await gcall("chat_list", { p_group: gid, p_since: rev });
+        if (dead) return;
+        fails = 0; net.hidden = true;
+        if (r.rev > rev) rev = r.rev;
+        if (r.messages.length) { idle = 0; ingest(r.messages, false); if (r.messages.length >= 200) next = 200; }
+        else idle++;
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        fails++;
+        if (fails >= 2) net.hidden = false;
+        next = Math.min(3000 * Math.pow(2, fails), 20000);
+      } finally { inflight = false; }
+      schedule(next);
+    }
+    const onVis = () => { if (!document.hidden && ready) { idle = 0; schedule(0); } };
+    const onOnline = () => { if (ready) schedule(0); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("online", onOnline);
+
+    /* ---- نوشتن، ارسال، ویرایش ---- */
+    function sync() {
+      sendBtn.disabled = !ready || !ta.value.trim();
+      const n = ta.value.length;
+      cnt.hidden = n < 1700;
+      if (!cnt.hidden) cnt.textContent = faNum(n) + " / " + faNum(CHAT_MAX);
+    }
+    function autosize() {
+      keepBottom(() => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; });
+    }
+    function syncCtx() {
+      const m = editing || replyTo;
+      keepBottom(() => {
+        ctx.hidden = !m;
+        if (!m) return;
+        ctxI.innerHTML = editing ? CI.edit : CI.reply;
+        ctxT.textContent = editing ? "ویرایش پیام" : "پاسخ به " + m.name;
+        ctxS.textContent = m.deleted ? "پیام حذف شده" : m.body;
+      });
+      ta.setAttribute("aria-label", editing ? "ویرایش پیام" : "متن پیام");
+      sendBtn.setAttribute("aria-label", editing ? "ذخیره‌ی ویرایش" : "ارسال");
+    }
+    function cancelCtx(clear) {
+      const wasEdit = !!editing;
+      editing = null; replyTo = null;
+      if (wasEdit || clear) { ta.value = ""; o.onDraft(""); }
+      syncCtx(); autosize(); sync();
+    }
+    function setReply(m) {
+      if (editing) { editing = null; ta.value = ""; }
+      replyTo = m;
+      syncCtx(); autosize(); sync();
+      ta.focus({ preventScroll: true });
+    }
+    function startEdit(m) {
+      replyTo = null; editing = m;
+      ta.value = m.body;
+      syncCtx(); autosize(); sync();
+      ta.focus({ preventScroll: true });
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+
+    async function submit() {
+      const text = ta.value.trim();
+      if (!text || !ready || dead) return;
+      if (editing) return saveEdit(text);
+      const rp = replyTo;
+      const p = prep({ id: 0, mine: true, body: text, pending: true, reply: rp ? { id: rp.id, name: rp.name, body: rp.body, deleted: rp.deleted } : null, created_at: new Date().toISOString() });
+      const node = build(p, msgs[msgs.length - 1]);
+      pend.push(node);
+      wrap.appendChild(node);
+      showState("");
+      ta.value = ""; o.onDraft("");
+      replyTo = null;
+      syncCtx(); autosize(); sync();
+      toBottom();
+      sending++;
+      try {
+        const m = await gcall("chat_send", { p_group: gid, p_body: text, p_reply: rp ? rp.id : null });
+        pend.splice(pend.indexOf(node), 1); node.remove();
+        if (dead) return;
+        ingest([m], true);
+        idle = 0;
+        schedule(1500);
+      } catch (e) {
+        pend.splice(pend.indexOf(node), 1); node.remove();
+        if (dead || fatal(e)) return;
+        if (!ta.value && !editing) { ta.value = text; o.onDraft(text); if (rp && byId.has(rp.id)) replyTo = rp; syncCtx(); autosize(); sync(); }
+        showState(ready && !msgs.length && !pend.length ? "empty" : "");
+        o.toast(e.message);
+      } finally { sending--; }
+    }
+
+    async function saveEdit(text) {
+      const m = editing;
+      if (text === m.body) { cancelCtx(false); return; }
+      sendBtn.disabled = true;
+      sending++;
+      try {
+        const r = await gcall("chat_edit", { p_msg: m.id, p_body: text });
+        if (dead) return;
+        if (editing === m) cancelCtx(false);
+        ingest([r], false);
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        o.toast(e.message);
+        sync();
+      } finally { sending--; }
+    }
+
+    async function del(m) {
+      if (!(await askConfirm({ title: "این پیام حذف شود؟", text: "پیام برای همه‌ی اعضای گروه حذف می‌شود و برگشت ندارد.", yes: "بله، حذف کن", danger: true })) || dead) return;
+      sending++;
+      try {
+        const r = await gcall("chat_delete", { p_msg: m.id });
+        if (dead) return;
+        ingest([r], false);
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        o.toast(e.message);
+      } finally { sending--; }
+    }
+
+    /* ---- منوی کلیک راست / نگه داشتن ---- */
+    function closeMenu() {
+      if (!menuEl) return;
+      const b = nodes.get(menuFor);
+      if (b) b.firstChild.classList.remove("sel");
+      menuEl.remove();
+      menuEl = null; menuFor = 0;
+    }
+    function openMenu(m, x, y, fromKey) {
+      if (m.deleted || m.pending || dead) return;
+      if (menuEl && menuFor === m.id) return;
+      closeMenu();
+      const bub = nodes.get(m.id).firstChild;
+      const sel = window.getSelection ? window.getSelection() : null;
+      const selText = sel && !sel.isCollapsed && bub.contains(sel.anchorNode) ? String(sel).trim() : "";
+      const items = [["reply", "پاسخ", CI.reply], ["copy", "کپی", CI.copy]];
+      if (m.mine) items.push(["edit", "ویرایش", CI.edit], ["del", "حذف", CI.trash]);
+      menuEl = el("div", { class: "cmenu", role: "menu", "aria-label": "گزینه‌های پیام" },
+        items.map((it) => el("button", { type: "button", role: "menuitem", class: it[0] === "del" ? "dng" : "", "data-a": it[0], html: it[2] + "<span>" + it[1] + "</span>" })));
+      document.body.appendChild(menuEl);
+      menuFor = m.id;
+      bub.classList.add("sel");
+      const w = menuEl.offsetWidth, h = menuEl.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight;
+      menuEl.style.left = Math.max(8, Math.min(x, vw - w - 8)) + "px";
+      menuEl.style.top = Math.max(8, y + h + 8 > vh ? y - h : y) + "px";
+      menuEl.addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-a]");
+        if (!b) return;
+        const a = b.dataset.a;
+        closeMenu();
+        if (a === "reply") setReply(m);
+        else if (a === "edit") startEdit(m);
+        else if (a === "del") del(m);
+        else copyText(selText || m.body).then((ok) => o.toast(ok ? "کپی شد ✓" : "کپی نشد؛ متن را دستی انتخاب کنید."));
+      });
+      menuEl.addEventListener("keydown", (e) => {
+        const bs = Array.from(menuEl.querySelectorAll("button")), i = bs.indexOf(document.activeElement);
+        if (e.key === "ArrowDown") { e.preventDefault(); bs[(i + 1) % bs.length].focus(); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); bs[(i - 1 + bs.length) % bs.length].focus(); }
+        else if (e.key === "Home") { e.preventDefault(); bs[0].focus(); }
+        else if (e.key === "End") { e.preventDefault(); bs[bs.length - 1].focus(); }
+        else if (e.key === "Escape" || e.key === "Tab") {
+          e.preventDefault();
+          closeMenu();
+          bub.focus({ preventScroll: true });
+        }
+      });
+      menuEl.querySelector("button").focus({ preventScroll: true });
+      if (fromKey) menuEl.classList.add("kb");
+    }
+    const msgOf = (t) => { const r = t.closest && t.closest(".cm[data-id]"); return r && list.contains(r) ? byId.get(+r.dataset.id) : null; };
+    const onDocDown = (e) => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); };
+    document.addEventListener("pointerdown", onDocDown, true);
+    window.addEventListener("resize", closeMenu);
+
+    list.addEventListener("contextmenu", (e) => {
+      const m = msgOf(e.target);
+      if (!m || m.deleted) return;
+      e.preventDefault();
+      cancelLP();
+      openMenu(m, e.clientX, e.clientY, false);
+    });
+    function cancelLP() { if (lp) { clearTimeout(lp.t); lp = null; } }
+    list.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" || e.button) return;
+      const m = msgOf(e.target);
+      cancelLP();
+      if (!m || m.deleted) return;
+      const x = e.clientX, y = e.clientY;
+      lp = { x, y, t: setTimeout(() => { lp = null; lpBlock = Date.now() + 700; openMenu(m, x, y, false); }, 450) };
+    });
+    list.addEventListener("pointermove", (e) => { if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 10) cancelLP(); });
+    ["pointerup", "pointercancel"].forEach((t) => list.addEventListener(t, cancelLP));
+    list.addEventListener("scroll", () => {
+      cancelLP();
+      if (menuEl) closeMenu();
+      if (!newBtn.hidden && nearBottom()) { unseen = 0; newBtn.hidden = true; }
+    }, { passive: true });
+
+    list.addEventListener("keydown", (e) => {
+      const bub = e.target.closest && e.target.closest(".cb");
+      if (bub && list.contains(bub)) {
+        const row = bub.parentNode;
+        if (e.key === "Enter" || e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) {
+          const m = byId.get(+row.dataset.id), r = bub.getBoundingClientRect();
+          if (m && !m.deleted) { e.preventDefault(); openMenu(m, r.left + r.width / 2, r.top + r.height / 2, true); }
+        } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          e.preventDefault();
+          let n = row;
+          do { n = e.key === "ArrowUp" ? n.previousElementSibling : n.nextElementSibling; } while (n && !n.classList.contains("cm"));
+          if (n) n.firstChild.focus();
+        }
+      } else if (e.target === list && e.key === "ArrowUp") {
+        const last = wrap.querySelector(".cm:last-child .cb");
+        if (last) { e.preventDefault(); last.focus(); }
+      }
+    });
+
+    function jumpTo(id) {
+      const n = nodes.get(id);
+      if (!n) { o.toast("پیام اصلی در بخش بالاتر است؛ «پیام‌های قدیمی‌تر» را بزنید."); return; }
+      n.scrollIntoView({ block: "center", behavior: reduceMotion() ? "auto" : "smooth" });
+      n.classList.add("flash");
+      setTimeout(() => n.classList.remove("flash"), 1300);
+    }
+    list.addEventListener("click", (e) => {
+      if (Date.now() < lpBlock) return;
+      const c = e.target.closest(".cq");
+      if (c && list.contains(c)) jumpTo(+c.dataset.q);
+    });
+
+    newBtn.innerHTML = CI.down + "<span></span>";
+    newBtn.addEventListener("click", toBottom);
+    q(".chat-ctx-x").addEventListener("click", () => { cancelCtx(false); ta.focus({ preventScroll: true }); });
+    form.addEventListener("submit", (e) => { e.preventDefault(); submit(); });
+    ta.addEventListener("input", () => { if (!editing) o.onDraft(ta.value); autosize(); sync(); });
+    ta.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing && fine.matches) { e.preventDefault(); submit(); }
+      else if (e.key === "Escape" && (editing || replyTo)) { e.preventDefault(); cancelCtx(false); }
+    });
+
+    sync(); autosize();
+    load();
+
+    return function unmount() {
+      dead = true;
+      clearTimeout(timer);
+      cancelLP();
+      closeMenu();
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("pointerdown", onDocDown, true);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }
+
   /* ---------- صفحه‌ی یک گروه ---------- */
   function viewGroup(gid, token) {
     setTitle("گروه");
@@ -1982,6 +2482,8 @@
     let tab = "quizzes";
     let phoneVal = "";
     let editName = false;
+    let chatOff = null;       /* بستن گپِ باز */
+    let chatDraft = "";       /* پیش‌نویسِ گپ؛ با ساخت دوباره‌ی صفحه نمی‌پرد */
     const ok = () => token === routeToken;
     const toast = (m) => { if (window.__pzToast) window.__pzToast(m); };
 
@@ -2037,6 +2539,7 @@
     };
 
     const draw = (errMsg) => {
+      if (chatOff) { chatOff(); chatOff = null; }
       app.innerHTML =
         '<a class="back" href="#/groups">' + ICONS.back + " گروه‌ها</a>" +
         (editName
@@ -2047,9 +2550,11 @@
         (errMsg ? '<div class="err" role="alert">' + esc(errMsg) + "</div>" : "") +
         '<div class="grp-tabs"><div class="seg" role="group" aria-label="بخش‌های گروه">' +
         '<button type="button" data-tab="quizzes" aria-pressed="' + (tab === "quizzes") + '">آزمون‌ها (' + faNum((g.quizzes || []).length) + ")</button>" +
+        '<button type="button" data-tab="chat" aria-pressed="' + (tab === "chat") + '">گپ</button>' +
         '<button type="button" data-tab="members" aria-pressed="' + (tab === "members") + '">اعضا (' + faNum((g.members || []).length) + ")</button></div></div>" +
-        (tab === "quizzes" ? quizzesTab() : membersTab()) +
-        '<div class="actions"><button class="btn danger" type="button" data-act="' + (owner() ? "del" : "leave") + '">' + (owner() ? "حذف گروه" : "ترک گروه") + "</button></div>";
+        (tab === "quizzes" ? quizzesTab() : tab === "chat" ? '<div id="chatBox"></div>' : membersTab()) +
+        (tab === "chat" ? "" : '<div class="actions"><button class="btn danger" type="button" data-act="' + (owner() ? "del" : "leave") + '">' + (owner() ? "حذف گروه" : "ترک گروه") + "</button></div>");
+      if (tab === "chat") chatOff = mountChat(document.getElementById("chatBox"), { gid, toast, draft: chatDraft, onDraft: (t) => { chatDraft = t; } });
       const inp = document.getElementById("gPhone");
       if (inp) {
         inp.addEventListener("input", () => { phoneVal = inp.value; });
@@ -2152,7 +2657,7 @@
     }
     app.addEventListener("click", onClick);
     load(false);
-    return function cleanup() { app.removeEventListener("click", onClick); };
+    return function cleanup() { app.removeEventListener("click", onClick); if (chatOff) { chatOff(); chatOff = null; } };
   }
 
   /* نام گروه روی نشانک بالای صفحه‌ی ساخت آزمون؛ اگر گروه معتبر نبود هشدار می‌دهد */
