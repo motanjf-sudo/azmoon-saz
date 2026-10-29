@@ -120,6 +120,10 @@
     overflow-x:hidden; -webkit-font-smoothing:antialiased;
     padding-inline:env(safe-area-inset-right) env(safe-area-inset-left);
   }
+  /* انیمیشن دایره‌ای تغییر حالت روشن/تیره (فقط وقتی کلاس vt-circle روشن است) */
+  html.vt-circle::view-transition-old(root),html.vt-circle::view-transition-new(root){animation:none;mix-blend-mode:normal}
+  html.vt-circle::view-transition-old(root){z-index:1}
+  html.vt-circle::view-transition-new(root){z-index:2}
   html.theming *,html.theming *::before,html.theming *::after{
     transition:background-color .45s ease,color .45s ease,border-color .45s ease,box-shadow .45s ease !important;
   }
@@ -963,13 +967,48 @@
       var c = mode === 'dark' ? '#05211A' : '#FAF7F0';
       document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.setAttribute('content', c); });
     }
-    if (themeBtn) themeBtn.addEventListener('click', guard(function () {
-      var next = currentTheme() === 'dark' ? 'light' : 'dark';
-      root.classList.add('theming');
+    /* تغییر حالت روشن/تیره: رنگ از گوشه‌ی دکمه شروع می‌شود و دایره‌وار همه‌جا را می‌گیرد.
+       از View Transitions استفاده می‌شود (روی کارت گرافیک انجام می‌شود، نه روی پردازنده)؛ برای گوشی‌های ضعیف،
+       مرورگرهای قدیمی و کسانی که انیمیشن را خاموش کرده‌اند، تغییر فوری و بدون انیمیشن است. */
+    var themeBusy = false;
+    function applyTheme(next) {
       root.setAttribute('data-theme', next);
       try { localStorage.setItem('theme', next); } catch (e) { /* storage blocked */ }
       syncMeta(next);
-      setTimeout(function () { root.classList.remove('theming'); }, 500);
+    }
+    function weakDevice() {
+      return (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
+    }
+    if (themeBtn) themeBtn.addEventListener('click', guard(function () {
+      if (themeBusy) return;
+      var next = currentTheme() === 'dark' ? 'light' : 'dark';
+      if (typeof document.startViewTransition !== 'function' || reduce.matches || weakDevice() || document.hidden) { applyTheme(next); return; }
+      var r = themeBtn.getBoundingClientRect();
+      var x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+      var rad = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)));
+      var done = false;
+      var finish = function () {
+        if (done) return; done = true; themeBusy = false;
+        root.classList.remove('vt-circle');
+        root.classList.toggle('paused', document.hidden);
+      };
+      themeBusy = true;
+      root.classList.add('vt-circle', 'paused');
+      var applied = false;
+      var apply = function () { if (!applied) { applied = true; applyTheme(next); } };
+      try {
+        var t = document.startViewTransition(apply);
+        t.ready.then(function () {
+          try {
+            root.animate(
+              { clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + rad + 'px at ' + x + 'px ' + y + 'px)'] },
+              { duration: 700, easing: 'cubic-bezier(.4,0,.2,1)', pseudoElement: '::view-transition-new(root)' }
+            );
+          } catch (e) { /* بدون انیمیشن، تغییر فوری */ }
+        }).catch(function () { apply(); });
+        t.finished.then(finish, function () { apply(); finish(); });
+        setTimeout(function () { apply(); finish(); }, 2500);   /* اگر هر اتفاقی افتاد، قفل نماند */
+      } catch (e) { apply(); finish(); }
     }));
 
     /* ---------- hero visibility by route ---------- */
