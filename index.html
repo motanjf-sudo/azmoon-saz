@@ -257,9 +257,16 @@
   .muted{color:var(--muted)}
   .hint{font-size:.88rem;color:var(--muted);font-weight:400}
 
+  html.hero-done .hero,html.hero-done .eyebrow,html.hero-done .hero h1 .ln>span,html.hero-done .lead,html.hero-done .cta,html.hero-done .step{animation:none}
+  html.hero-done .hv-q{animation:float1 7s ease-in-out infinite}
+  html.hero-done .hv-score{animation:float2 8s ease-in-out infinite}
+  html.hero-done .hv-people{animation:float1 10s -3s ease-in-out infinite}
+  html.hero-done .step svg path{animation:none;stroke-dashoffset:0}
+  html.hero-done .hv-ring .fgc{animation:none;stroke-dashoffset:8}
   /* stagger entrance for whatever app.js renders */
-  #app > *,#app > form:not(.card) > *,tbody tr{animation:rise .75s var(--ease) calc(var(--i,0)*70ms) backwards}
-  #app > form:not(.card){animation:none}
+  /* فقط بار اولِ دیدنِ هر بخش (کلاس fx را app.js می‌گذارد)؛ تعویض تب و بازکشیدنِ دوباره بی‌انیمیشن است */
+  #app.fx > *,#app.fx > form:not(.card) > *,#app.fx tbody tr{animation:rise .75s var(--ease) calc(var(--i,0)*70ms) backwards}
+  #app.fx > form:not(.card){animation:none}
   #app > *:nth-child(1),#app > form:not(.card) > *:nth-child(1){--i:0}
   #app > *:nth-child(2),#app > form:not(.card) > *:nth-child(2){--i:1}
   #app > *:nth-child(3),#app > form:not(.card) > *:nth-child(3){--i:2}
@@ -1087,6 +1094,8 @@
     });
     window.addEventListener('hashchange', syncHero);
     syncHero();
+    /* انیمیشن ورودیِ صفحه‌ی اصلی فقط بار اول؛ دفعه‌های بعد بی‌انیمیشن */
+    setTimeout(function () { root.classList.add('hero-done'); }, 3000);
 
     /* ---------- smooth-scroll buttons ---------- */
     document.querySelectorAll('[data-scroll]').forEach(function (b) {
