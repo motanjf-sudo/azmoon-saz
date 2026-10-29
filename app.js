@@ -247,7 +247,7 @@
           try { r = await rpc("account_claim", { p_token: s.token, p_id: m.id, p_secret: m.secret }); } catch (e) { return { items: [], error: true }; }
           if (r && r.ok) store.removeQuiz(m.id);
           else if (r && r.error === "no_session") { auth.clear(); return { items: [], loggedOut: true }; }
-          else if (r && r.error === "not_found") store.removeQuiz(m.id);
+          else if (r && (r.error === "not_found" || r.error === "bad_secret")) store.removeQuiz(m.id);
         }
         let r;
         try { r = await rpc("account_quizzes", { p_token: s.token }); } catch (e) { return { items: [], error: true }; }
@@ -542,7 +542,7 @@
     descEl.addEventListener("input", touch);
 
     const fresh = document.getElementById("freshBtn");
-    if (fresh) fresh.addEventListener("click", () => { finished = true; clearTimeout(draftTimer); store.del("quizDraft"); location.hash = "#/create/" + mode; route(); });
+    if (fresh) fresh.addEventListener("click", () => { finished = true; clearTimeout(draftTimer); store.del("quizDraft"); location.hash = withG("#/create/" + mode); route(); });
 
     /* شماره‌گذاری و وضعیت دکمه‌ها */
     function refreshChrome() {
@@ -1284,7 +1284,7 @@
         : '<p class="muted">هنوز کسی شرکت نکرده است. لینک آزمون را برای دیگران بفرستید.</p><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button>') +
       "</div>" +
       (subs.length && qs.length ? '<div class="card"><h2>آمار هر سؤال <span class="hint">(درصد پاسخ درست)</span></h2>' + qstat + "</div>" : "") +
-      '<div class="actions"><a class="btn ghost" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a></div>";
+      '<div class="actions"><a class="btn ghost" href="' + (d.group_id && GROUP_ID_RE.test(d.group_id) ? "#/g/" + d.group_id : "#/") + '">' + ICONS.back + (d.group_id ? " بازگشت به گروه" : " بازگشت به صفحه‌ی اصلی") + "</a></div>";
 
     /* جزئیات پاسخ هر شرکت‌کننده (فقط در سایت؛ در CSV نیست) */
     const detailHtml = (s) => {
@@ -1478,7 +1478,7 @@
 
   function viewSignup() {
     setTitle("ثبت‌نام");
-    if (auth.get()) { location.hash = signupNext ? "#/" + signupNext : "#/account"; return null; }
+    if (auth.get()) { location.hash = signupNext ? "#/" + signupNext : "#/"; return null; }
     const nextHash = signupNext ? "#/" + signupNext : "#/";
 
     app.innerHTML =
@@ -1836,11 +1836,12 @@
       const list = (r && Array.isArray(r.invites)) ? r.invites : [];
       if (r && Array.isArray(r.groups)) groupsCache = r.groups;
       setInviteBadge(list.length);
-      if (!inv.seen) inv.seen = new Set(store.get("seenInv", []));
+      const seenKey = "seenInv_" + (auth.get() || {}).phone;
+      if (!inv.seen) inv.seen = new Set(store.get(seenKey, []));
       const fresh = list.filter((x) => !inv.seen.has(x.group_id));
       if (fresh.length) {
         fresh.forEach((x) => inv.seen.add(x.group_id));
-        store.set("seenInv", Array.from(inv.seen).slice(-200));
+        store.set(seenKey, Array.from(inv.seen).slice(-200));
         if (!/^#\/groups/.test(location.hash)) {
           inviteToast(fresh.length === 1 ? "دعوت جدید به گروه «" + fresh[0].group_name + "»" : faNum(fresh.length) + " دعوت جدید به گروه دارید");
         }
@@ -1850,6 +1851,7 @@
   function syncInviteWatch() {
     clearInterval(inv.timer);
     inv.timer = 0;
+    inv.seen = null;
     const g = document.getElementById("grpBtn");
     if (g) g.hidden = !auth.get();
     if (!auth.get()) { setInviteBadge(0); groupsCache = null; return; }
@@ -1981,6 +1983,7 @@
     let g = null;
     let tab = "quizzes";
     let phoneVal = "";
+    let editName = false;
     const ok = () => token === routeToken;
     const toast = (m) => { if (window.__pzToast) window.__pzToast(m); };
 
@@ -2021,7 +2024,10 @@
         ms.map((m) =>
           '<div class="grp-row"><span class="av-s" aria-hidden="true">' + esc(gInitial(m.name)) + '</span><div class="grp-t"><strong>' + esc(m.name) + (m.role === "owner" ? ' <span class="badge">مدیر</span>' : "") + "</strong>" +
           (owner() && m.phone ? '<small><bdi class="grp-ph">' + esc(showPhone(m.phone)) + "</bdi></small>" : "") + "</div>" +
-          (owner() && m.role === "member" && m.user_id ? '<button class="btn small danger" type="button" data-act="rm" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">حذف</button>' : "") + "</div>"
+          (owner() && m.role === "member" && m.user_id
+            ? '<div class="grp-a"><button class="btn small ghost" type="button" data-act="mk" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">مدیر شود</button>' +
+              '<button class="btn small danger" type="button" data-act="rm" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">حذف</button></div>'
+            : "") + "</div>"
         ).join("") + "</div>" +
         (owner() && pend.length
           ? '<div class="card"><div class="sec-t"><h2>منتظر پاسخ</h2><span class="badge">' + faNum(pend.length) + "</span></div>" +
@@ -2035,7 +2041,11 @@
     const draw = (errMsg) => {
       app.innerHTML =
         '<a class="back" href="#/groups">' + ICONS.back + " گروه‌ها</a>" +
-        '<div class="page-head"><h1>' + esc(g.name) + '</h1><span class="badge">' + (owner() ? "مدیر" : "عضو") + "</span></div>" +
+        (editName
+          ? '<div class="card"><label for="gNewName">نام گروه</label><input id="gNewName" type="text" maxlength="60" autocomplete="off" value="' + esc(g.name) + '">' +
+            '<div id="gRenMsg"></div><div class="actions"><button class="btn ghost" type="button" id="gRenBack">برگشت</button><button class="btn" type="button" id="gRenSave">ذخیره‌ی نام</button></div></div>'
+          : '<div class="page-head"><h1>' + esc(g.name) + '</h1><span class="badge">' + (owner() ? "مدیر" : "عضو") + "</span>" +
+            (owner() ? '<button class="btn small ghost" type="button" data-act="rename">تغییر نام</button>' : "") + "</div>") +
         (errMsg ? '<div class="err" role="alert">' + esc(errMsg) + "</div>" : "") +
         '<div class="grp-tabs"><div class="seg" role="group" aria-label="بخش‌های گروه">' +
         '<button type="button" data-tab="quizzes" aria-pressed="' + (tab === "quizzes") + '">آزمون‌ها (' + faNum((g.quizzes || []).length) + ")</button>" +
@@ -2049,6 +2059,32 @@
       }
       const ib = document.getElementById("gInv");
       if (ib) ib.addEventListener("click", invite);
+      const rn = document.getElementById("gNewName");
+      if (rn) {
+        rn.focus();
+        rn.setSelectionRange(rn.value.length, rn.value.length);
+        const save = async () => {
+          const nm = cleanName(rn.value), msg = document.getElementById("gRenMsg"), sb = document.getElementById("gRenSave");
+          if (nm === g.name) { editName = false; draw(""); return; }
+          if (nm.length < 2) { msg.innerHTML = '<div class="err" role="alert">نام گروه را بنویسید (حداقل ۲ حرف).</div>'; rn.focus(); return; }
+          sb.disabled = true; sb.classList.add("loading"); msg.innerHTML = "";
+          try {
+            await gcall("group_rename", { p_group: gid, p_name: nm });
+            if (!ok()) return;
+            editName = false;
+            groupsCache = null;
+            await load(true);
+            toast("نام گروه تغییر کرد ✓");
+          } catch (e) {
+            if (!ok()) return;
+            sb.disabled = false; sb.classList.remove("loading");
+            msg.innerHTML = '<div class="err" role="alert">' + esc(e.message) + "</div>";
+          }
+        };
+        document.getElementById("gRenSave").addEventListener("click", save);
+        document.getElementById("gRenBack").addEventListener("click", () => { editName = false; draw(""); });
+        rn.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); save(); } else if (e.key === "Escape") { e.preventDefault(); editName = false; draw(""); } });
+      }
     };
 
     const invite = async () => {
@@ -2085,6 +2121,15 @@
       const b = e.target.closest("button[data-act]");
       if (!b || !app.contains(b) || !g) return;
       const act = b.dataset.act;
+      if (act === "rename") { editName = true; draw(""); return; }
+      if (act === "mk") {
+        const nm = b.dataset.n, uid = b.dataset.u;
+        if (!(await askConfirm({ title: "«" + nm + "» مدیر گروه شود؟", text: "از این به بعد او مدیر گروه «" + g.name + "» است و شما عضو معمولی می‌شوید؛ دیگر نمی‌توانید عضو اضافه یا حذف کنید یا نتایج آزمون‌های گروه را ببینید. لینک‌های مدیریت آزمون‌ها هم به او منتقل می‌شود. فقط خودش می‌تواند دوباره شما را مدیر کند.", yes: "بله، مدیر عوض شود", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        tab = "members";
+        run(() => gcall("group_transfer", { p_group: gid, p_user: uid }), "مدیر گروه عوض شد");
+        return;
+      }
       if (act === "rm") {
         const nm = b.dataset.n, uid = b.dataset.u;
         if (!(await askConfirm({ title: "«" + nm + "» از گروه حذف شود؟", text: "این شخص دیگر آزمون‌های گروه را نمی‌بیند. نتایجی که قبلاً داده می‌ماند.", yes: "بله، حذف کن", danger: true })) || !ok()) return;
@@ -2168,7 +2213,7 @@
       '<div class="gate-ic">' + LOCK_ICON + "</div>" +
       '<h2 id="gateT">' + (grp ? "برای دیدن گروه‌ها وارد شوید" : take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
       '<p id="gateD">' + (grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : grp ? " بعد از ورود، مستقیم به همین صفحه برمی‌گردید." : "") + "</p>" +
-      '<a class="btn wide" id="gateGo" href="#/signup?next=' + target + '">ثبت‌نام / ورود</a>' +
+      '<a class="btn wide" id="gateGo" href="#/signup' + (/^create/.test(target) ? "" : "?next=" + target) + '">ثبت‌نام / ورود</a>' +
       '<a class="gate-back" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
     document.body.appendChild(g);
     document.addEventListener("keydown", onGateKey, true);
@@ -2219,7 +2264,7 @@
       else cleanup = auth.get() ? viewGroup(parts[1], token) : viewGate("g/" + parts[1], token);
     } else if (parts[0] === "signup") {
       const nx = ((/(^|&)next=([^&]*)/.exec(query) || [])[2] || "");
-      signupNext = /^(create(\/(tf|mcq|mixed|ai))?|q\/[A-Za-z0-9_-]{1,64}|groups|g\/[0-9a-f]{8})$/.test(nx) ? nx : "";
+      signupNext = /^(q\/[A-Za-z0-9_-]{1,64}|groups|g\/[0-9a-f]{8})$/.test(nx) ? nx : "";
       cleanup = viewSignup();
     } else if (parts[0] === "account") {
       cleanup = viewAccount();
