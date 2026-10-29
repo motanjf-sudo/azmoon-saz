@@ -2728,6 +2728,12 @@
   let routeToken = 0;
   let cleanup = null;
   let first = true;
+  /* انیمیشنِ ورودِ محتوا فقط بار اولِ دیدنِ هر بخش (خانه، ساخت آزمون، گروه…) */
+  const fxSeen = new Set();
+  let fxTimer = 0;
+  const fxOff = () => { clearTimeout(fxTimer); app.classList.remove("fx"); };
+  app.addEventListener("click", fxOff, true);   /* نه در pointerdown: وسط کلیک نباید چیزی جابه‌جا شود */
+  app.addEventListener("keydown", fxOff, true);
 
   function route() {
     if (gateOn) closeGate();
@@ -2745,6 +2751,14 @@
     const okId = (s) => /^[A-Za-z0-9_-]{1,64}$/.test(s || "");
 
     createGroup = parts[0] === "create" ? ((/(^|&)g=([0-9a-f]{8})(&|$)/.exec(query) || [])[2] || "") : "";
+
+    const kind = parts[0] || "home";
+    fxOff();
+    if (!fxSeen.has(kind) && !reduceMotion()) {
+      fxSeen.add(kind);
+      app.classList.add("fx");
+      fxTimer = setTimeout(fxOff, 1600);
+    }
 
     if (!initial) window.scrollTo(0, 0);
     const hb = document.getElementById("homeBtn");
