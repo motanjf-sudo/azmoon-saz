@@ -1092,8 +1092,11 @@
     /* ---------- hero visibility by route ---------- */
     var hero = document.getElementById('hero');
     function isHome() { return /^#?\/?(\?.*)?$/.test(location.hash) || root.classList.contains('gate-on'); }
+    var foot = document.getElementById('siteFoot');
     var syncHero = guard(function () {
-      if (hero) hero.hidden = !isHome();
+      var h = isHome();
+      if (hero) hero.hidden = !h;
+      if (foot) foot.hidden = !h;      /* فوتر فقط در صفحه‌ی اصلی */
     });
     window.addEventListener('hashchange', syncHero);
     syncHero();
