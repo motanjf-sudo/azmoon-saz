@@ -1,1231 +1,2849 @@
-<!doctype html>
-<html lang="fa" dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>پازمونک | ساخت آزمون آنلاین با هوش مصنوعی</title>
-  <meta name="description" content="پازمونک؛ آزمون‌ساز آنلاین فارسی: با ثبت‌نام ساده با شماره‌ی موبایل، آزمون تستی و درست/نادرست بسازید یا با هوش مصنوعی از فایل و موضوع آزمون تولید کنید، لینک بفرستید و نمره و نتایج را ببینید.">
-  <link rel="canonical" href="https://pazmoonak.com/">
-  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
-  <meta name="theme-color" content="#FAF7F0" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#05211A" media="(prefers-color-scheme: dark)">
-  <meta property="og:type" content="website">
-  <meta property="og:locale" content="fa_IR">
-  <meta property="og:site_name" content="پازمونک">
-  <meta property="og:url" content="https://pazmoonak.com/">
-  <meta property="og:title" content="پازمونک | ساخت آزمون آنلاین با هوش مصنوعی">
-  <meta property="og:description" content="پازمونک؛ آزمون‌ساز آنلاین فارسی: با ثبت‌نام ساده با شماره‌ی موبایل، آزمون تستی و درست/نادرست بسازید یا با هوش مصنوعی از فایل و موضوع آزمون تولید کنید، لینک بفرستید و نمره و نتایج را ببینید.">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="پازمونک | ساخت آزمون آنلاین">
-  <meta name="twitter:description" content="آزمون تستی و درست/نادرست بسازید، لینک بفرستید و نتایج را ببینید.">
-  <script type="application/ld+json">
-  {"@context":"https://schema.org","@graph":[
-    {"@type":"WebSite","@id":"https://pazmoonak.com/#site","url":"https://pazmoonak.com/","name":"پازمونک","alternateName":["پازمونک آزمون‌ساز","Pazmoonak"],"inLanguage":"fa"},
-    {"@type":"WebApplication","name":"پازمونک","url":"https://pazmoonak.com/","applicationCategory":"EducationalApplication","operatingSystem":"Web","inLanguage":"fa","description":"پازمونک؛ آزمون‌ساز آنلاین فارسی: با ثبت‌نام ساده با شماره‌ی موبایل، آزمون تستی و درست/نادرست بسازید یا با هوش مصنوعی از فایل و موضوع آزمون تولید کنید، لینک بفرستید و نمره و نتایج را ببینید.","offers":{"@type":"Offer","price":"0","priceCurrency":"IRR"}},
-    {"@type":"FAQPage","mainEntity":[
-      {"@type":"Question","name":"پازمونک چیست؟","acceptedAnswer":{"@type":"Answer","text":"پازمونک یک آزمون‌ساز آنلاین فارسی است که به شما اجازه می‌دهد آزمون تستی یا درست/نادرست بسازید، لینکش را برای دیگران بفرستید و نمره و نتایج را ببینید."}},
-      {"@type":"Question","name":"برای ساخت آزمون یا شرکت در آن ثبت‌نام لازم است؟","acceptedAnswer":{"@type":"Answer","text":"بله، هم سازنده و هم شرکت‌کننده با شماره‌ی موبایل ثبت‌نام می‌کنند که کمتر از یک دقیقه طول می‌کشد."}},
-      {"@type":"Question","name":"چطور با هوش مصنوعی آزمون بسازم؟","acceptedAnswer":{"@type":"Answer","text":"در بخش ساخت با هوش مصنوعی، یک فایل متنی (مثل جزوه) را بارگذاری کنید یا فقط موضوع را بنویسید، نوع و تعداد سؤال و سختی را انتخاب کنید تا آزمون ساخته شود. بعد می‌توانید سؤال‌ها را ویرایش کنید."}},
-      {"@type":"Question","name":"آیا می‌توانم برای تمرین کنکور از پازمونک استفاده کنم؟","acceptedAnswer":{"@type":"Answer","text":"بله، می‌توانید سؤال‌های تستی خودتان یا آزمون‌های ساخته‌شده از جزوه‌ها را برای تمرین کنکور و امتحان‌های مدرسه بسازید و با دوستان یا دانش‌آموزان به اشتراک بگذارید."}}
-    ]}
-  ]}
-  </script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%231E8A63'/%3E%3Cstop offset='1' stop-color='%230B3D2E'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url%28%23g%29'/%3E%3Cg transform='translate%2814 14%29 scale%28.36%29'%3E%3Cpath fill-rule='evenodd' fill='%23FAF7F0' d='M70.2 4.0C68.5 3.1 66.8 2.4 65.4 1.9C64.0 1.4 63.4 1.3 62.0 1.0C60.6 0.7 58.9 0.3 57.1 0.2C55.3 0.0 57.7 -0.3 51.1 0.0C44.6 0.3 23.8 1.3 17.8 1.8C11.7 2.3 15.7 2.3 14.8 2.8C13.9 3.4 13.1 4.0 12.5 5.1C11.9 6.2 11.5 -1.3 11.3 9.2C11.2 19.7 10.9 59.6 11.5 68.2C12.1 76.8 13.6 63.2 15.0 60.9C16.4 58.7 18.0 56.6 19.7 54.8C21.4 53.0 22.9 51.6 25.0 50.0C27.2 48.4 31.4 49.6 32.7 45.4C34.0 41.1 32.6 28.5 32.7 24.7C32.8 21.0 32.9 23.2 33.3 22.6C33.7 22.0 34.2 21.3 34.9 20.9C35.6 20.5 35.1 20.3 37.4 20.1C39.8 19.9 46.2 19.9 49.0 19.9C51.8 19.9 52.8 19.9 54.3 20.1C55.8 20.3 56.8 20.5 58.0 21.0C59.2 21.4 60.5 22.1 61.5 22.9C62.5 23.7 63.3 24.6 64.0 25.7C64.8 26.7 65.4 28.0 65.8 29.3C66.2 30.5 66.4 31.8 66.5 33.1C66.6 34.3 66.4 35.6 66.3 36.7C66.1 37.8 65.8 38.7 65.3 39.7C64.9 40.7 64.1 42.0 63.3 42.9C62.5 43.8 62.0 44.4 60.7 45.1C59.4 45.8 57.8 46.7 55.5 47.1C53.3 47.5 49.7 47.5 47.3 47.7C45.0 48.0 43.8 48.1 41.5 48.8C39.2 49.4 36.1 50.3 33.4 51.5C30.6 52.8 27.1 55.0 25.1 56.4C23.0 57.8 22.5 58.3 21.1 59.7C19.7 61.1 17.8 63.1 16.6 64.8C15.3 66.4 14.4 68.0 13.6 69.6C12.8 71.3 12.2 73.5 11.8 74.9C11.4 76.3 11.4 75.5 11.3 77.9C11.2 80.2 11.2 86.4 11.3 88.8C11.4 91.2 11.6 91.2 11.8 92.2C12.1 93.2 12.5 94.0 12.9 94.7C13.3 95.5 13.6 95.9 14.2 96.6C14.9 97.3 15.8 98.2 16.9 98.7C17.9 99.2 19.2 99.7 20.6 99.9C22.0 100.0 23.9 100.0 25.4 99.6C26.8 99.2 28.2 98.5 29.3 97.6C30.4 96.8 31.4 95.4 32.0 94.5C32.7 93.5 32.9 92.7 33.2 91.7C33.5 90.7 33.8 92.3 33.9 88.5C34.0 84.7 33.7 72.3 33.8 68.7C33.9 65.2 34.1 67.6 34.5 67.3C34.9 67.1 34.0 66.9 36.2 67.2C38.3 67.4 44.4 68.4 47.5 68.7C50.5 69.0 52.3 68.9 54.5 68.8C56.7 68.7 58.8 68.4 60.6 68.1C62.5 67.7 63.5 67.5 65.3 66.8C67.2 66.1 69.8 65.0 71.6 64.0C73.4 63.1 74.7 62.1 76.2 60.9C77.6 59.7 78.9 58.5 80.2 56.9C81.6 55.4 83.0 53.6 84.1 51.6C85.2 49.6 86.3 47.2 87.0 45.0C87.8 42.8 88.2 40.6 88.4 38.4C88.7 36.2 88.7 33.9 88.5 31.7C88.3 29.4 87.8 27.0 87.1 24.8C86.4 22.6 85.4 20.2 84.3 18.2C83.2 16.1 82.0 14.4 80.5 12.6C79.0 10.8 77.0 8.8 75.3 7.4C73.5 5.9 71.8 4.9 70.2 4.0Z'/%3E%3C/g%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script>
-    /* Apply the saved theme before first paint to avoid a flash */
-    try { var t = localStorage.getItem('theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
-  </script>
-  <style>
-  /* =====================================================================
-     Design tokens: deep green + milk white, light & dark themes
-     ===================================================================== */
-  :root{
-    color-scheme: light;
-    --g-50:#F1F7F3; --g-100:#DCEBE2; --g-200:#B6D6C4; --g-300:#86BAA0; --g-400:#4F9C7A;
-    --g-500:#2A8461; --g-600:#14684A; --g-700:#0F5132; --g-800:#0B3D2E; --g-900:#072A20;
-    --c-50:#FDFBF6; --c-100:#FAF7F0; --c-200:#F3EEDF; --c-300:#E8E0C9;
+/* پازمونک: منطق برنامه
+ * مسیرها:
+ *   #/                          صفحه‌ی اصلی
+ *   #/create                    انتخاب مدل آزمون
+ *   #/create/<tf|mcq|mixed>     ساخت آزمون
+ *   #/q/<id>                    شرکت در آزمون
+ *   #/m/<id>/<secret>           مدیریت و نتایج
+ */
+(function () {
+  "use strict";
 
-    --bg:#FAF7F0; --bg-2:#F1EBDA;
-    --surface:rgba(255,253,247,.74); --surface-solid:#FFFDF7;
-    --field:rgba(250,247,240,.92);
-    --text:#0C2A20; --muted:#4A6659;
-    --line:rgba(15,81,50,.16); --line-2:rgba(15,81,50,.34);
-    --accent:#14684A; --accent-2:#0F5132; --on-accent:#FAF7F0;
-    --btn-grad:linear-gradient(135deg,#1C8059 0%,#0F5132 100%);
-    --h-grad:linear-gradient(120deg,#0B3D2E 10%,#1E8A63 90%);
-    --chip:rgba(20,104,74,.10);
-    --ok:#14684A; --ok-bg:rgba(20,104,74,.12);
-    --bad:#A23B2F; --bad-bg:rgba(162,59,47,.10);
-    --warn-bg:rgba(196,146,28,.16); --warn-text:#6B4C07;
-    --ring:rgba(30,138,99,.22); --glow:rgba(30,138,99,.16);
-    --shadow:0 1px 0 rgba(255,255,255,.85) inset, 0 18px 40px -22px rgba(11,61,46,.35), 0 2px 8px rgba(11,61,46,.06);
-    --blob-1:rgba(30,138,99,.30); --blob-2:rgba(15,81,50,.20); --blob-3:rgba(214,196,140,.55);
-    --grain-op:.07;
-    --ease:cubic-bezier(.22,1,.36,1);
-    --spring:cubic-bezier(.34,1.56,.64,1);
+  const cfg = window.AZMOON_CONFIG || {};
+  const app = document.getElementById("app");
+  const BASE_TITLE = "پازمونک";
+  const LIMITS = { title: 200, desc: 2000, text: 500, opt: 300, questions: 100, minOpts: 2, maxOpts: 8 };
+
+  /* نوع سؤال‌ها (فیلد type هر سؤال که به سرور می‌رود) */
+  const QTYPES = {
+    mcq: { short: "تستی" },
+    tf: { short: "درست/نادرست" },
+  };
+
+  /* مدل‌های آزمون در صفحه‌ی انتخاب. هر مدل فقط نوع سؤال‌های خودش را می‌پذیرد.
+     essay هنوز فعال نیست و فقط با برچسب «به‌زودی» نمایش داده می‌شود. */
+  const MODES = {
+    tf: { label: "درست / نادرست", desc: "یک جمله می‌نویسید و مشخص می‌کنید درست است یا نادرست.", icon: "check", types: ["tf"] },
+    mcq: { label: "تستی", desc: "چندگزینه‌ای؛ هر چند گزینه که بخواهید (۲ تا ۸) و یک پاسخ درست.", icon: "list", types: ["mcq"] },
+    essay: { label: "تشریحی", desc: "پاسخ‌های نوشتاری و باز.", icon: "pen", soon: true },
+    mixed: { label: "مخلوط", desc: "ترکیبی از سؤال‌های تستی و درست/نادرست در یک آزمون.", icon: "mix", types: ["mcq", "tf"] },
+  };
+  const ACTIVE_MODES = ["tf", "mcq", "mixed"];
+
+  /* بزرگ‌شدن خودکار کادرهای چندخطی (متن طولانی و فرمول در موبایل بریده نشود) */
+  function grow(t) {
+    if (!t || !t.isConnected) return;
+    t.style.height = "auto";
+    if (t.scrollHeight > 0) t.style.height = t.scrollHeight + 2 + "px";
   }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      color-scheme: dark;
-      --bg:#05211A; --bg-2:#0A3326;
-      --surface:rgba(14,62,47,.56); --surface-solid:#0B3427;
-      --field:rgba(5,33,26,.6);
-      --text:#F5F0E4; --muted:#A8C3B5;
-      --line:rgba(245,240,228,.14); --line-2:rgba(245,240,228,.32);
-      --accent:#7FDDB4; --accent-2:#B9F0D6; --on-accent:#04241A;
-      --btn-grad:linear-gradient(135deg,#8CE6BF 0%,#3FB584 100%);
-      --h-grad:linear-gradient(120deg,#F5F0E4 10%,#7FDDB4 95%);
-      --chip:rgba(127,221,180,.12);
-      --ok:#7FDDB4; --ok-bg:rgba(127,221,180,.14);
-      --bad:#F1A59B; --bad-bg:rgba(241,165,155,.12);
-      --warn-bg:rgba(232,196,104,.14); --warn-text:#EBD48E;
-      --ring:rgba(127,221,180,.25); --glow:rgba(127,221,180,.14);
-      --shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 20px 44px -22px rgba(0,0,0,.7), 0 2px 8px rgba(0,0,0,.25);
-      --blob-1:rgba(42,157,111,.38); --blob-2:rgba(15,81,50,.7); --blob-3:rgba(127,221,180,.12);
-      --grain-op:.09;
+  function autoGrow(t) {
+    t.addEventListener("input", () => grow(t));
+    requestAnimationFrame(() => requestAnimationFrame(() => grow(t)));
+  }
+  /* متن ساده‌ی یک سؤال برای عنوان‌های کوتاه: فرمول‌ها با «(فرمول)» جایگزین می‌شوند */
+  const plainQ = (t) => String(t == null ? "" : t).replace(/\$\$[\s\S]*?\$\$|\$[^$\n]*\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g, " (فرمول) ").replace(/\s+/g, " ").trim();
+
+  const ICONS = {
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="7" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="5" cy="17" r="1.6"/><path d="M10 7h10M10 12h10M10 17h10"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3.2 3.2L12 5.5"/><path d="M13.5 15l5.5 5.5M19 15l-5.5 5.5"/><path d="M20.5 3.5L3.5 20.5" stroke-opacity=".4" stroke-dasharray="1.2 2.4"/></svg>',
+    mix: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3.5" width="13" height="9" rx="2.2"/><rect x="8" y="11.5" width="13" height="9" rx="2.2"/></svg>',
+    pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14 7l3 3"/></svg>',
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+    tick: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    cross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>',
+    upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
+    doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
+  };
+
+  /* ---------- ابزارها ---------- */
+  const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ESC[c]);
+  const FA = "۰۱۲۳۴۵۶۷۸۹";
+  const faNum = (n) => String(n).replace(/\d/g, (d) => FA[d]);
+  /* هر نوع ناشناخته (مثلاً آزمون‌های قدیمی) چندگزینه‌ای حساب می‌شود */
+  const typeOf = (t) => (t === "tf" ? "tf" : "mcq");
+
+  function randomSecret() {
+    const a = new Uint8Array(24);
+    crypto.getRandomValues(a);
+    return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  function baseUrl() {
+    return location.origin + location.pathname;
+  }
+
+  function safeDecode(s) {
+    try { return decodeURIComponent(s); } catch (e) { return s; }
+  }
+
+  const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ساخت سریع عنصر DOM (بدون innerHTML، پس برای متن کاربر امن است) */
+  function el(tag, props, kids) {
+    const n = document.createElement(tag);
+    if (props) {
+      for (const k in props) {
+        const v = props[k];
+        if (v == null || v === false) continue;
+        if (k === "class") n.className = v;
+        else if (k === "text") n.textContent = v;
+        else if (k === "html") n.innerHTML = v; /* فقط برای آیکون‌های ثابت */
+        else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), v);
+        else if (k === "value" || k === "checked" || k === "disabled") n[k] = v;
+        else n.setAttribute(k, v === true ? "" : v);
+      }
     }
-  }
-  :root[data-theme="dark"]{
-    color-scheme: dark;
-    --bg:#05211A; --bg-2:#0A3326;
-    --surface:rgba(14,62,47,.56); --surface-solid:#0B3427;
-    --field:rgba(5,33,26,.6);
-    --text:#F5F0E4; --muted:#A8C3B5;
-    --line:rgba(245,240,228,.14); --line-2:rgba(245,240,228,.32);
-    --accent:#7FDDB4; --accent-2:#B9F0D6; --on-accent:#04241A;
-    --btn-grad:linear-gradient(135deg,#8CE6BF 0%,#3FB584 100%);
-    --h-grad:linear-gradient(120deg,#F5F0E4 10%,#7FDDB4 95%);
-    --chip:rgba(127,221,180,.12);
-    --ok:#7FDDB4; --ok-bg:rgba(127,221,180,.14);
-    --bad:#F1A59B; --bad-bg:rgba(241,165,155,.12);
-    --warn-bg:rgba(232,196,104,.14); --warn-text:#EBD48E;
-    --ring:rgba(127,221,180,.25); --glow:rgba(127,221,180,.14);
-    --shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 20px 44px -22px rgba(0,0,0,.7), 0 2px 8px rgba(0,0,0,.25);
-    --blob-1:rgba(42,157,111,.38); --blob-2:rgba(15,81,50,.7); --blob-3:rgba(127,221,180,.12);
-    --grain-op:.09;
+    if (kids) (Array.isArray(kids) ? kids : [kids]).forEach((c) => { if (c != null) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
   }
 
-  /* =====================================================================
-     Base
-     ===================================================================== */
-  *,*::before,*::after{box-sizing:border-box}
-  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-  body{
-    margin:0; min-height:100vh; display:flex; flex-direction:column;
-    background:var(--bg); color:var(--text);
-    font-family:"Vazirmatn",Tahoma,"Segoe UI",sans-serif; line-height:1.85;
-    overflow-x:hidden; -webkit-font-smoothing:antialiased;
-    padding-inline:env(safe-area-inset-right) env(safe-area-inset-left);
+
+  /* ---------- نمایش فرمول‌های ریاضی (LaTeX) با KaTeX؛ فقط وقتی متنی علامت $ دارد بارگذاری می‌شود ---------- */
+  const KATEX = "https://cdnjs.cloudflare.com/ajax/libs/katex/0.16.11/";
+  let katexP = null;
+  function loadKatex() {
+    if (window.renderMathInElement) return Promise.resolve(true);
+    if (katexP) return katexP;
+    const addScript = (src) => new Promise((res, rej) => {
+      const n = document.createElement("script");
+      n.src = src;
+      n.onload = () => res();
+      n.onerror = () => { n.remove(); rej(new Error("load")); };
+      document.head.appendChild(n);
+    });
+    const addCss = (href) => new Promise((res, rej) => {
+      const n = document.createElement("link");
+      n.rel = "stylesheet";
+      n.href = href;
+      n.onload = () => res();
+      n.onerror = () => rej(new Error("load"));
+      document.head.appendChild(n);
+    });
+    /* اول فایل داخل خود سایت (katex-bundle.js، همه‌چیز در یک فایل)، اگر نبود از cdnjs */
+    katexP = addScript("katex-bundle.js")
+      .catch(() => addCss(KATEX + "katex.min.css").then(() => addScript(KATEX + "katex.min.js")).then(() => addScript(KATEX + "contrib/auto-render.min.js")))
+      .then(() => !!window.renderMathInElement)
+      .catch(() => false)
+      .then((ok) => { if (!ok) katexP = null; return ok; });
+    return katexP;
   }
-  /* انیمیشن دایره‌ای تغییر حالت روشن/تیره (فقط وقتی کلاس vt-circle روشن است) */
-  html.vt-circle::view-transition-old(root),html.vt-circle::view-transition-new(root){animation:none;mix-blend-mode:normal}
-  html.vt-circle::view-transition-old(root){z-index:1}
-  html.vt-circle::view-transition-new(root){z-index:2}
-  html.theming *,html.theming *::before,html.theming *::after{
-    transition:background-color .45s ease,color .45s ease,border-color .45s ease,box-shadow .45s ease !important;
+  /* $...$ فقط وقتی فرمول حساب می‌شود که داخلش نشانه‌ی ریاضی باشد (تا «۵ دلار و ۱۰ دلار» خراب نشود) */
+  function normalizeMath(t) {
+    /* آزمون‌های قدیمی: \f و \t و \b داخل فرمول به‌اشتباه کاراکتر کنترلی شده‌اند */
+    t = t.replace(/\$[^$\n]*\$/g, (seg) => seg.replace(/\f/g, "\\f").replace(/\t/g, "\\t").replace(/\x08/g, "\\b").replace(/\r/g, "\\r"));
+    const clean = (a) => a.replace(/\\[()[\]]/g, "").trim();
+    /* داخل $...$ وقتی فرمول حساب می‌شود که حرف فارسی/عربی نداشته باشد و نشانه‌ی ریاضی (عملگر، پرانتز، توان…) یا فقط یک متغیر/عدد باشد */
+    const isMath = (a) =>
+      !/[\u0600-\u06FF]/.test(a) && a.trim() !== "" &&
+      (/[\\^_{}=+\-*/<>()×÷]/.test(a) || /^\s*([A-Za-z]|-?\d+([.,]\d+)?)\s*$/.test(a));
+    return t
+      .replace(/\$\$([\s\S]+?)\$\$/g, (m, a) => (isMath(a) ? "\\[" + clean(a) + "\\]" : m))
+      .replace(/\$([^$\n]+?)\$/g, (m, a) => (isMath(a) ? "\\(" + clean(a) + "\\)" : m));
   }
-  ::selection{background:var(--g-300);color:var(--g-900)}
-  *{scrollbar-width:thin;scrollbar-color:var(--g-400) transparent}
-  a{color:var(--accent)}
-  img,svg{max-width:100%}
-  .skip{position:absolute;inset-inline-start:12px;top:-60px;background:var(--accent);color:var(--on-accent);
-    padding:8px 16px;border-radius:10px;z-index:200;text-decoration:none;font-weight:700;transition:top .2s}
-  .skip:focus{top:10px}
-  :focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:8px}
-  #app:focus{outline:none}
-
-
-  /* =====================================================================
-     Living background
-     ===================================================================== */
-  .bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:
-      radial-gradient(1200px 700px at 85% -10%,var(--bg-2),transparent 60%),var(--bg)}
-  .bg-par{position:absolute;inset:-6%;transform:translate3d(calc(var(--px,0)*-22px),calc(var(--py,0)*-16px),0);transition:transform .5s var(--ease)}
-  .blob{position:absolute;border-radius:50%;will-change:transform}
-  .blob.b1{width:62vmax;height:62vmax;top:-22vmax;right:-14vmax;background:radial-gradient(circle,var(--blob-1),transparent 66%);animation:drift1 26s ease-in-out infinite alternate}
-  .blob.b2{width:54vmax;height:54vmax;bottom:-24vmax;left:-16vmax;background:radial-gradient(circle,var(--blob-2),transparent 66%);animation:drift2 32s ease-in-out infinite alternate}
-  .blob.b3{width:42vmax;height:42vmax;top:34%;left:30%;background:radial-gradient(circle,var(--blob-3),transparent 68%);animation:drift3 38s ease-in-out infinite alternate}
-  .dots{position:absolute;inset:0;opacity:.55;background-image:radial-gradient(var(--line-2) 1px,transparent 1.2px);
-    background-size:28px 28px;-webkit-mask-image:radial-gradient(ellipse at 50% 30%,#000 10%,transparent 70%);mask-image:radial-gradient(ellipse at 50% 30%,#000 10%,transparent 70%)}
-  .grain{position:absolute;inset:0;opacity:var(--grain-op);mix-blend-mode:multiply;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-  :root[data-theme="dark"] .grain{mix-blend-mode:screen}
-  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .grain{mix-blend-mode:screen}}
-  html.paused .blob,html.paused .hv-card,html.paused .logo *{animation-play-state:paused !important}
-
-  /* =====================================================================
-     Header / footer
-     ===================================================================== */
-  .top{position:sticky;top:0;z-index:100;background:var(--bg);
-    border-bottom:1px solid var(--line)}
-  .top-in{max-width:1120px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-  .brand{display:inline-flex;align-items:center;gap:10px;font-weight:800;font-size:1.3rem;color:var(--text);text-decoration:none;letter-spacing:-.01em}
-  .brand span{background:var(--h-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .logo{width:40px;height:40px;flex:none;filter:drop-shadow(0 6px 10px rgba(11,61,46,.3))}
-  .logo .lg-bg{fill:url(#lgrad)}
-  html.gen-lock .top{opacity:.5;filter:saturate(.6);transition:opacity .3s}
-  html.gen-lock body{cursor:progress}
-  .brand{cursor:default;user-select:none}
-  .home-btn{display:inline-flex;align-items:center;gap:6px}
-  .home-btn svg{width:17px;height:17px;flex:none}
-  .home-btn[aria-current="page"]{background:var(--chip);border-color:transparent;color:var(--accent-2)}
-  @media (max-width:520px){.home-btn span{display:none}.home-btn{padding-inline:11px}}
-  .tools{display:flex;align-items:center;gap:10px}
-  .icon-btn{width:42px;height:42px;display:inline-grid;place-items:center;border-radius:13px;border:1px solid var(--line);
-    background:var(--surface);color:var(--accent);cursor:pointer;transition:transform .3s var(--spring),background .25s,border-color .25s}
-  .icon-btn:hover{transform:rotate(14deg) scale(1.06);border-color:var(--line-2)}
-  .icon-btn:active{transform:scale(.92)}
-  .icon-btn svg{width:21px;height:21px}
-  .ico-sun{display:none}
-  :root[data-theme="dark"] .ico-sun{display:block}
-  :root[data-theme="dark"] .ico-moon{display:none}
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]) .ico-sun{display:block}
-    :root:not([data-theme="light"]) .ico-moon{display:none}
-  }
-
-  /* =====================================================================
-     Hero (visible only on the home route)
-     ===================================================================== */
-  .hero[hidden]{display:none !important}
-  .hero{max-width:1120px;margin:0 auto;padding:44px 18px 8px;animation:fadeIn .6s var(--ease) backwards}
-  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:36px;align-items:center}
-  .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 12px;border-radius:999px;border:1px solid var(--line);
-    background:var(--surface);color:var(--accent-2);font-weight:600;font-size:.9rem;animation:rise .7s var(--ease) backwards}
-  .eyebrow i{width:8px;height:8px;border-radius:50%;background:var(--g-500);box-shadow:0 0 0 0 var(--ring);animation:pulse 2s infinite}
-  .hero h1{margin:18px 0 14px;font-size:clamp(2.2rem,5.6vw,4rem);line-height:1.22;font-weight:900;letter-spacing:-.02em}
-  .hero h1 .ln{display:block;overflow:hidden;padding:.06em 0}
-  .hero h1 .ln>span{display:block;animation:lineUp .9s var(--ease) backwards}
-  .hero h1 .ln:nth-child(1)>span{animation-delay:.10s}
-  .hero h1 .ln:nth-child(2)>span{animation-delay:.22s}
-  .hero h1 .ln:nth-child(3)>span{animation-delay:.34s}
-  .hero h1 .grad{background:var(--h-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .lead{font-size:clamp(1rem,1.7vw,1.18rem);color:var(--muted);max-width:34em;margin:0 0 26px;animation:rise .8s .45s var(--ease) backwards}
-  .cta{display:flex;flex-wrap:wrap;gap:12px;animation:rise .8s .55s var(--ease) backwards}
-  .cta .btn{padding:.9rem 1.9rem;font-size:1.05rem}
-
-  /* hero visual */
-  .hv{position:relative;height:410px;max-width:480px;width:100%;margin-inline:auto}
-  .hv::before{content:"";position:absolute;inset:8% 6%;border-radius:40%;background:radial-gradient(circle,var(--blob-1),transparent 70%);filter:blur(10px);animation:pulseGlow 7s ease-in-out infinite alternate}
-  .hv-card{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);
-    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);padding:16px}
-  .hv-q{top:34px;right:0;width:min(300px,82%);animation:float1 7s ease-in-out infinite,pop .9s .5s var(--spring) backwards}
-  .hv-score{top:0;left:0;width:152px;text-align:center;animation:float2 8s ease-in-out infinite,pop .9s .75s var(--spring) backwards}
-  .hv-people{bottom:0;right:8%;width:244px;white-space:nowrap;display:flex;align-items:center;gap:12px;padding:12px 14px;animation:float1 10s -3s ease-in-out infinite,pop .9s 1.1s var(--spring) backwards}
-  .hv-tag{display:inline-block;font-size:.76rem;padding:1px 10px;border-radius:99px;background:var(--chip);color:var(--accent-2);font-weight:700}
-  .hv-title{font-weight:700;margin:8px 0 10px;font-size:.98rem;line-height:1.7}
-  .hv-opt{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--line);border-radius:12px;margin:6px 0;font-size:.9rem;background:var(--field)}
-  .hv-opt.sel{border-color:var(--accent);background:var(--chip);font-weight:700;color:var(--accent-2)}
-  .hv-opt svg{width:18px;height:18px}
-  .hv-opt .tick{fill:none;stroke:var(--accent);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;animation:tick 4.5s 1.2s var(--ease) infinite}
-  .hv-ring{position:relative;width:96px;height:96px;margin:2px auto 6px}
-  .hv-ring svg{width:100%;height:100%;transform:scaleX(-1) rotate(-90deg)}
-  .hv-ring .bgc{fill:none;stroke:var(--line);stroke-width:9}
-  .hv-ring .fgc{fill:none;stroke:var(--accent);stroke-width:9;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100;animation:ringIn 1.8s 1.1s var(--ease) forwards}
-  .hv-ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:1.35rem}
-  .hv-mini{font-size:.82rem;color:var(--muted);font-weight:600}
-  .avs{display:flex}
-  .avs i{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface-solid);margin-inline-start:-9px;background:var(--g-400)}
-  .avs i:nth-child(2){background:var(--g-600)} .avs i:nth-child(3){background:var(--g-200)} .avs i:nth-child(4){background:var(--c-300)}
-
-  .steps{max-width:1120px;margin:54px auto 0;padding:0 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;scroll-margin-top:90px}
-  .step{position:relative;padding:22px 20px 20px;border-radius:22px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden;
-    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:transform .4s var(--ease),border-color .3s;animation:rise .8s var(--ease) backwards}
-  .step:nth-child(1){animation-delay:.75s} .step:nth-child(2){animation-delay:.87s} .step:nth-child(3){animation-delay:.99s}
-  .step:hover{transform:translateY(-5px);border-color:var(--line-2)}
-  .step .n{position:absolute;top:6px;left:14px;font-size:3.8rem;font-weight:900;line-height:1;color:var(--chip);-webkit-text-stroke:1px var(--line)}
-  .step svg{width:34px;height:34px;color:var(--accent);margin-bottom:10px}
-  .step svg path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.1s 1.1s var(--ease) forwards}
-  .step h3{margin:0 0 4px;font-size:1.15rem}
-  .step p{margin:0;color:var(--muted);font-size:.95rem}
-
-  /* =====================================================================
-     App area (everything app.js renders into #app)
-     ===================================================================== */
-  .wrap{width:100%;max-width:820px;margin:0 auto;padding:34px 18px 56px;scroll-margin-top:76px}
-  .hero:not([hidden]) ~ .wrap{padding-top:56px}
-  #app h1{margin:0 0 6px;font-size:clamp(1.7rem,4.4vw,2.5rem);font-weight:900;line-height:1.35;letter-spacing:-.01em;
-    background:var(--h-grad);-webkit-background-clip:text;background-clip:text;color:transparent;overflow-wrap:anywhere}
-  #app h2{font-size:1.12rem;margin:0 0 10px;line-height:1.7;overflow-wrap:anywhere}
-  .muted{color:var(--muted)}
-  .hint{font-size:.88rem;color:var(--muted);font-weight:400}
-
-  html.hero-done .hero,html.hero-done .eyebrow,html.hero-done .hero h1 .ln>span,html.hero-done .lead,html.hero-done .cta,html.hero-done .step{animation:none}
-  html.hero-done .hv-q{animation:float1 7s ease-in-out infinite}
-  html.hero-done .hv-score{animation:float2 8s ease-in-out infinite}
-  html.hero-done .hv-people{animation:float1 10s -3s ease-in-out infinite}
-  html.hero-done .step svg path{animation:none;stroke-dashoffset:0}
-  html.hero-done .hv-ring .fgc{animation:none;stroke-dashoffset:8}
-  /* stagger entrance for whatever app.js renders */
-  /* فقط بار اولِ دیدنِ هر بخش (کلاس fx را app.js می‌گذارد)؛ تعویض تب و بازکشیدنِ دوباره بی‌انیمیشن است */
-  #app.fx > *,#app.fx > form:not(.card) > *,#app.fx tbody tr{animation:rise .75s var(--ease) calc(var(--i,0)*70ms) backwards}
-  #app.fx > form:not(.card){animation:none}
-  #app > *:nth-child(1),#app > form:not(.card) > *:nth-child(1){--i:0}
-  #app > *:nth-child(2),#app > form:not(.card) > *:nth-child(2){--i:1}
-  #app > *:nth-child(3),#app > form:not(.card) > *:nth-child(3){--i:2}
-  #app > *:nth-child(4),#app > form:not(.card) > *:nth-child(4){--i:3}
-  #app > *:nth-child(5),#app > form:not(.card) > *:nth-child(5){--i:4}
-  #app > *:nth-child(6),#app > form:not(.card) > *:nth-child(6){--i:5}
-  #app > *:nth-child(n+7),#app > form:not(.card) > *:nth-child(n+7){--i:6}
-  tbody tr:nth-child(1){--i:1} tbody tr:nth-child(2){--i:2} tbody tr:nth-child(3){--i:3} tbody tr:nth-child(4){--i:4}
-  tbody tr:nth-child(5){--i:5} tbody tr:nth-child(n+6){--i:6}
-
-  /* loading state */
-  #app > .muted:only-child{text-align:center;padding:90px 0;animation:fadeIn .4s .15s backwards}
-  #app > .muted:only-child::before{content:"";display:block;width:44px;height:44px;margin:0 auto 14px;border-radius:50%;
-    border:4px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
-
-  /* cards (glass + cursor glow) */
-  .card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;margin:16px 0;box-shadow:var(--shadow);
-    -webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);transition:transform .45s var(--ease),border-color .3s,box-shadow .3s}
-  .card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s;
-    background:radial-gradient(280px circle at var(--mx,50%) var(--my,0%),var(--glow),transparent 70%)}
-  @media (hover:hover){.card:hover{border-color:var(--line-2)} .card:hover::before{opacity:1}}
-  fieldset.card{min-width:0;margin-inline:0}
-  legend.badge{padding:1px 16px;margin-inline:6px}
-  .badge{display:inline-block;background:var(--chip);color:var(--accent-2);border:1px solid var(--line);border-radius:999px;padding:1px 14px;font-size:.86rem;font-weight:700;margin-inline-start:6px}
-  h2 .badge{vertical-align:middle}
-
-  label{display:block;font-weight:700;margin:12px 0 6px;font-size:.96rem}
-  input[type=text],textarea,select{width:100%;min-width:0;padding:.78rem 1rem;border-radius:14px;border:1.5px solid var(--line);background:var(--field);color:var(--text);
-    font:inherit;transition:border-color .25s,box-shadow .25s,background .25s}
-  input[type=text]::placeholder,textarea::placeholder{color:var(--muted);opacity:.7}
-  input[type=text]:hover,textarea:hover,select:hover{border-color:var(--line-2)}
-  input[type=text]:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--ring)}
-  textarea{resize:vertical;min-height:84px}
-
-  /* custom radio */
-  input[type=radio]{-webkit-appearance:none;appearance:none;flex:none;width:24px;height:24px;margin:0;border-radius:50%;border:2px solid var(--line-2);
-    display:inline-grid;place-content:center;cursor:pointer;background:var(--field);transition:border-color .25s,box-shadow .25s,transform .25s var(--spring)}
-  input[type=radio]::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--btn-grad);transform:scale(0);transition:transform .35s var(--spring)}
-  input[type=radio]:checked{border-color:var(--accent);box-shadow:0 0 0 4px var(--ring)}
-  input[type=radio]:checked::before{transform:scale(1)}
-  input[type=radio]:hover{transform:scale(1.1)}
-
-  .row{display:flex;gap:10px;align-items:center;margin:8px 0}
-  .row input[type=text]{flex:1}
-  .row input[type=radio]{width:30px;height:30px}
-  .row textarea.optx{flex:1;min-height:46px;resize:none;overflow:hidden;line-height:1.7;padding:.55rem 1rem}
-  textarea.qtext,#desc{overflow:hidden;resize:none}
-  /* متن طولانی هیچ‌وقت صفحه را عریض نکند */
-  .opt,.opt span,.qtext,.q-text,.card,h1,h2,.hint,.muted,.dq,.dq *{min-width:0;overflow-wrap:anywhere}
-  .opt span{flex:1;min-width:0}
-  fieldset{min-width:0;max-width:100%}
-  .tf-opt span,.tf-opt{min-width:0;overflow-wrap:anywhere}
-  .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
-
-  /* option cards */
-  label.opt,.opt{display:flex;gap:12px;align-items:center;padding:13px 16px;border:1.5px solid var(--line);border-radius:15px;margin:8px 0;
-    background:var(--field);font-weight:500;cursor:pointer;transition:transform .3s var(--ease),border-color .25s,background .25s,box-shadow .25s}
-  label.opt:hover{transform:translateX(-4px);border-color:var(--line-2)}
-  label.opt:active{transform:scale(.985)}
-  label.opt:has(input:checked){border-color:var(--accent);background:var(--chip);box-shadow:0 8px 22px -14px var(--accent);font-weight:700}
-  .opt.right{background:var(--ok-bg);border-color:var(--ok);color:var(--ok);cursor:default}
-  .opt.wrong{background:var(--bad-bg);border-color:var(--bad);color:var(--bad);cursor:default}
-  .opt.right,.opt.wrong{border-inline-start-width:5px}
-  .opt strong{margin-inline-start:auto;font-size:.88rem;white-space:nowrap}
-
-  /* buttons */
-  .btn{position:relative;overflow:hidden;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:.5em;
-    border:0;border-radius:15px;padding:.78rem 1.5rem;font:inherit;font-weight:700;line-height:1.5;color:var(--on-accent);background:var(--btn-grad);cursor:pointer;text-decoration:none;
-    box-shadow:0 12px 24px -12px rgba(15,81,50,.7),inset 0 1px 0 rgba(255,255,255,.28);
-    transition:transform .3s var(--ease),box-shadow .3s,filter .3s,background .25s;translate:var(--bx,0) var(--by,0)}
-  .btn::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.38) 50%,transparent 70%);transform:translateX(120%);transition:transform .8s var(--ease)}
-  .btn:hover{filter:brightness(1.07);box-shadow:0 16px 30px -12px rgba(15,81,50,.8),inset 0 1px 0 rgba(255,255,255,.3)}
-  .btn:hover::after{transform:translateX(-120%)}
-  .btn:active{transform:scale(.96)}
-  .btn:disabled{opacity:.6;cursor:progress;filter:none}
-  .btn.ghost{background:transparent;color:var(--accent);box-shadow:none;border:1.5px solid var(--line-2)}
-  .btn.ghost:hover{background:var(--chip);border-color:var(--accent);filter:none}
-  .btn.danger{background:transparent;color:var(--bad);box-shadow:none;border:1.5px solid var(--bad)}
-  .btn.danger:hover{background:var(--bad-bg);filter:none}
-  .btn.small{padding:.36rem 1rem;font-size:.9rem;border-radius:12px}
-  .row .btn.danger.small{padding:.3rem .8rem}
-
-  /* messages */
-  .err{background:var(--bad-bg);color:var(--bad);padding:12px 16px;border-radius:14px;border-inline-start:5px solid var(--bad);margin:14px 0;font-weight:600;animation:shake .5s}
-  .warn{background:var(--warn-bg);color:var(--warn-text);padding:12px 16px;border-radius:14px;margin:14px 0;border-inline-start:5px solid #C4921C}
-  code{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--chip);padding:1px 7px;border-radius:7px;direction:ltr;unicode-bidi:embed}
-
-  /* link boxes */
-  .linkbox{display:flex;gap:10px;align-items:center;margin:8px 0}
-  .linkbox input{direction:ltr;text-align:left;flex:1;font-size:.9rem;font-family:ui-monospace,Menlo,Consolas,monospace}
-
-  /* score result */
-  .ring-wrap{position:relative;width:196px;height:196px;margin:6px auto 4px}
-  .ring-wrap svg{width:100%;height:100%;transform:scaleX(-1) rotate(-90deg)}
-  .ring-bg{fill:none;stroke:var(--line);stroke-width:9}
-  .ring-fg{fill:none;stroke:url(#rg);stroke-width:9;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset 1.6s var(--ease)}
-  .s1{stop-color:var(--g-500)} .s2{stop-color:var(--g-300)}
-  :root[data-theme="dark"] .s1{stop-color:#3FB584}
-  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .s1{stop-color:#3FB584}}
-  .ring-wrap .score{position:absolute;inset:0;display:grid;place-items:center;font-size:1.9rem !important;margin:0}
-  .score{font-size:2.6rem;font-weight:900;text-align:center;line-height:1.4;background:var(--h-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .tier{text-align:center;font-weight:800;font-size:1.2rem;margin:6px 0 2px;animation:rise .8s .6s var(--ease) backwards}
-  canvas.confetti{position:fixed;inset:0;width:100%;height:100%;z-index:150;pointer-events:none}
-
-  /* tables */
-  .card > div[style*="overflow-x"]{border-radius:14px;border:1px solid var(--line)}
-  table{width:100%;border-collapse:separate;border-spacing:0;font-size:.95rem}
-  th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-  th{background:var(--chip);color:var(--accent-2);font-weight:700;font-size:.88rem;position:sticky;top:0}
-  tbody tr:last-child td{border-bottom:0}
-  tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--chip) 45%,transparent)}
-  tbody tr{transition:background .2s}
-  tbody tr:hover td{background:var(--chip)}
-
-  /* =====================================================================
-     Quiz types, builder, take page, dropdown, results
-     ===================================================================== */
-  .center{text-align:center;margin:0}
-  .back{display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;padding:8px 16px 8px 14px;min-height:40px;border:1px solid var(--line-2);border-radius:999px;background:var(--chip);color:var(--accent);font-weight:700;text-decoration:none;font-size:.92rem;transition:transform .3s var(--ease),border-color .2s,box-shadow .2s}
-  .back:hover{border-color:var(--accent);transform:translateX(3px);box-shadow:0 6px 18px -10px var(--accent)}
-  .back svg{width:18px;height:18px;transition:transform .3s var(--ease)}
-    .empty{text-align:center;padding:38px 20px}
-  .empty > svg{width:54px;height:54px;color:var(--accent);margin-bottom:6px}
-  .mine-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
-  .mine-row:last-child{border-bottom:0}
-  .mine-t{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .mine-n{display:block;font-size:.8rem;color:var(--muted);font-weight:500;margin-top:2px}
-  .draft{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-color:var(--accent)}
-  .draft-actions{display:flex;gap:8px}
-  .det-cell{text-align:left;width:1%}
-  @media (max-width:640px){
-    .card > div[style*="overflow-x"]{border:0;overflow:visible !important}
-    .rtbl,.rtbl tbody{display:block}
-    .rtbl thead{display:none}
-    .rtbl .srow{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:14px;margin-bottom:10px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
-    .rtbl td,.rtbl tbody tr:nth-child(even) td,.rtbl tbody tr:hover td{display:block;padding:0;border:0;white-space:normal;overflow-wrap:anywhere;text-align:right;background:none}
-    .rtbl .c-name{grid-column:1/-1;font-weight:800;font-size:1.02rem}
-    .rtbl .c-score,.rtbl .c-time{font-size:.9rem;color:var(--muted)}
-    .rtbl .c-score::before,.rtbl .c-time::before{content:attr(data-l) ": ";font-weight:700}
-    .rtbl .c-score{color:var(--accent-2);font-weight:700}
-    .rtbl .det-cell{grid-column:1/-1;width:auto;text-align:right;margin-top:4px}
-    .rtbl .det-cell .btn{width:100%}
-  }
-  .modal{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(7,42,32,.55);backdrop-filter:blur(4px);animation:mfade .2s var(--ease)}
-  .modal-box{width:min(680px,100%);max-height:88vh;min-height:0;display:flex;flex-direction:column;background:var(--surface-solid);color:var(--text);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);animation:mpop .3s var(--ease)}
-  .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
-  .modal-head h2{margin:0;font-size:1.05rem}
-  .modal-head .sub{display:block;font-size:.85rem;color:var(--muted);font-weight:500;margin-top:2px}
-  .modal-body{padding:14px 16px 18px;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:10px}
-  .modal-body>*{flex:none}
-  .dq{border:1px solid var(--line);border-radius:14px;padding:12px 14px;border-inline-start:5px solid var(--line)}
-  .dq.r-ok{border-inline-start-color:var(--ok)}
-  .dq.r-bad{border-inline-start-color:var(--bad)}
-  .dq.r-skip{border-inline-start-color:#C4921C}
-  .dq-top{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
-  .dq-n{flex:none;font-weight:700;color:var(--muted)}
-  .dq-t{flex:1;min-width:0;font-weight:600;line-height:1.8;overflow-wrap:anywhere}
-  .dq-s{flex:none;font-size:.8rem;font-weight:700;padding:2px 10px;border-radius:99px}
-  .dq-s.r-ok{background:var(--ok-bg);color:var(--ok)}
-  .dq-s.r-bad{background:var(--bad-bg);color:var(--bad)}
-  .dq-s.r-skip{background:var(--warn-bg);color:var(--warn-text)}
-  .dl{display:flex;gap:8px;flex-wrap:wrap;font-size:.92rem;line-height:1.8;padding:2px 0}
-  .dl-k{color:var(--muted);flex:none}
-  .dl-v{font-weight:600;overflow-wrap:anywhere;min-width:0}
-  .dl.r-ok .dl-v{color:var(--ok)}
-  .dl.r-bad .dl-v{color:var(--bad)}
-  @keyframes mfade{from{opacity:0}to{opacity:1}}
-  @keyframes mpop{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
-  @media (prefers-reduced-motion:reduce){.modal,.modal-box{animation:none}}
-  /* ---- ثبت‌نام با موبایل ---- */
-  .auth-wrap{max-width:460px;margin:0 auto;padding:8px 0 24px;animation:rise .7s var(--ease) backwards}
-  .auth-card{overflow:hidden;padding:30px 24px 26px;text-align:center}
-  .auth-card::before{content:"";position:absolute;inset:-40% -20% auto;height:70%;background:radial-gradient(closest-side,var(--glow),transparent);pointer-events:none;animation:pulseGlow 4s ease-in-out infinite alternate}
-  .auth-logo{position:relative;width:64px;height:64px;margin:0 auto 14px;border-radius:20px;display:grid;place-items:center;color:var(--on-accent);background:var(--btn-grad);box-shadow:0 16px 30px -14px rgba(15,81,50,.8)}
-  .auth-logo svg{width:32px;height:32px}
-  .auth-card h1{position:relative;margin:0 0 6px;font-size:1.6rem}
-  .auth-card .sub{position:relative;margin:0 0 20px;color:var(--muted);line-height:1.9}
-  .auth-step{position:relative;animation:rise .55s var(--ease) backwards}
-  .auth-card label{display:block;text-align:start;font-weight:700;margin:0 0 6px}
-  .auth-input{direction:ltr;text-align:center;font-size:1.35rem !important;font-weight:800;letter-spacing:.12em}
-  .auth-card .btn.wide{width:100%;margin-top:14px}
-  .auth-msg{min-height:1.6em;margin-top:12px;font-weight:600;font-size:.95rem;line-height:1.8}
-  .auth-msg.m-err{color:var(--bad)}
-  .auth-msg.info{color:var(--muted)}
-  .auth-link{background:none;border:0;padding:4px 6px;font:inherit;font-weight:700;color:var(--accent);cursor:pointer;border-radius:8px}
-  .auth-link:hover:not(:disabled){text-decoration:underline}
-  .auth-link:disabled{color:var(--muted);cursor:default;opacity:.8}
-  .auth-phone{direction:ltr;unicode-bidi:isolate;display:inline-block;font-weight:800;letter-spacing:.06em}
-  .auth-dev{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:var(--warn-bg);color:var(--warn-text);font-size:.9rem;line-height:1.8}
-  .auth-dev b{direction:ltr;unicode-bidi:isolate;display:inline-block;letter-spacing:.12em;font-size:1.05rem}
-  /* ساعت دایره‌ای */
-  .ring{position:relative;width:156px;height:156px;margin:4px auto 14px}
-  .ring svg{width:100%;height:100%;display:block}
-  .ring .track{fill:none;stroke:var(--line);stroke-width:7}
-  .ring .prog{fill:none;stroke:url(#ringGrad);stroke-width:7;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:0;transform:rotate(-90deg);transform-origin:60px 60px;transition:stroke .4s}
-  .ring .tk{stroke:var(--line-2);stroke-width:1.6;stroke-linecap:round}
-  .ring .tk.big{stroke-width:2.4}
-  .ring-t{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;pointer-events:none}
-  .ring-t b{font-size:1.9rem;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;direction:ltr}
-  .ring-t span{font-size:.78rem;color:var(--muted)}
-  .ring.low .prog{stroke:#C4921C}
-  .ring.low .ring-t b{color:#8a6410;animation:pulseTxt 1s ease-in-out infinite}
-  .ring.off .prog{stroke:var(--line-2)}
-  @keyframes pulseTxt{50%{transform:scale(1.08)}}
-  .ring.done .prog{stroke:var(--ok);transition:stroke-dashoffset .6s var(--ease),stroke .3s}
-  .ring.done .tk{display:none}
-  .ring .okmark{position:absolute;inset:0;display:grid;place-items:center;color:var(--ok)}
-  .ring .okmark svg{width:58px;height:58px}
-  .ring .okmark path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .6s .25s var(--ease) forwards}
-  /* خانه‌های کد */
-  .otp{display:flex;gap:9px;justify-content:center;direction:ltr;margin:6px 0 2px}
-  .otp input{flex:1 1 0;max-width:50px;min-width:0;height:60px;padding:0 !important;text-align:center;font-size:1.6rem !important;font-weight:900;border-radius:15px !important;caret-color:var(--accent);transition:transform .25s var(--spring),border-color .2s,background .2s,box-shadow .2s}
-  .otp input.filled{border-color:var(--accent);transform:translateY(-2px)}
-  .otp.bad-code input{border-color:var(--bad) !important;background:var(--bad-bg);animation:shake .5s}
-  .otp.ok-code input{border-color:var(--ok) !important;background:var(--ok-bg);animation:pop .5s var(--ease) backwards}
-  .otp.ok-code input:nth-child(2){animation-delay:.05s}.otp.ok-code input:nth-child(3){animation-delay:.1s}
-  .otp.ok-code input:nth-child(4){animation-delay:.15s}.otp.ok-code input:nth-child(5){animation-delay:.2s}.otp.ok-code input:nth-child(6){animation-delay:.25s}
-  .otp input:disabled{opacity:.6}
-  .auth-welcome h1{margin-top:8px}
-  /* آواتار پروفایل در هدر */
-  .prof{position:relative;display:inline-flex}
-  .prof-btn,.prof-av{display:inline-grid;place-items:center;border-radius:50%;background:var(--btn-grad);color:var(--on-accent);font-weight:900;border:0;cursor:pointer;
-    box-shadow:0 8px 18px -8px rgba(11,61,46,.55),inset 0 0 0 2px rgba(255,255,255,.25)}
-  .prof-btn{width:42px;height:42px;font-size:1.1rem;transition:transform .3s var(--spring),box-shadow .25s}
-  .prof-btn:hover{transform:scale(1.08)}.prof-btn:active{transform:scale(.95)}
-  .prof-btn[aria-expanded="true"]{box-shadow:0 0 0 4px var(--ring),0 8px 18px -8px rgba(11,61,46,.55)}
-  .prof-btn svg,.prof-av svg{width:55%;height:55%}
-  .prof-pop{position:fixed;z-index:130;width:min(260px,calc(100vw - 24px));padding:20px 16px 16px;text-align:center;background:var(--surface-solid);color:var(--text);
-    border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);animation:mpop .25s var(--ease)}
-  .tools .prof-pop .btn{display:inline-flex;justify-content:center;width:100%}
-  .prof-av{width:64px;height:64px;font-size:1.7rem;margin:0 auto 10px;cursor:default}
-  .prof-name{font-weight:800;font-size:1.05rem;overflow-wrap:anywhere}
-  .prof-phone{direction:ltr;unicode-bidi:isolate;color:var(--muted);font-weight:700;letter-spacing:.06em;margin:4px 0 14px}
-  .name-acc{display:flex;align-items:center;gap:12px}
-  .name-acc[hidden]{display:none}
-  .name-acc .hint{margin:0 0 2px;font-size:.84rem}
-  .name-acc strong{overflow-wrap:anywhere}
-  .mini-av{flex:none;width:42px;height:42px;display:inline-grid;place-items:center;border-radius:50%;background:var(--btn-grad);color:var(--on-accent);font-weight:900;font-size:1.1rem;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
-  .auth-name{direction:rtl;letter-spacing:0;font-size:1.1rem !important;font-weight:700;margin-bottom:12px}
-  .auth-hello{margin:-4px 0 6px;font-weight:700;color:var(--accent-2);overflow-wrap:anywhere}
-  .acc-phone{direction:ltr;unicode-bidi:isolate;font-size:1.4rem;font-weight:900;letter-spacing:.08em;margin:6px 0 18px}
-  @media (prefers-reduced-motion:reduce){.auth-wrap,.auth-step,.auth-card::before,.ring-t b{animation:none !important}}
-  .warn-card{background:var(--warn-bg);color:var(--warn-text);border-color:#C4921C}
-  .warn-card p{margin:8px 0 12px;line-height:1.9}
-  .chk{display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:600}
-  .chk input{width:20px;height:20px;accent-color:var(--green,#1f7a4d)}
-  .created{border-color:var(--ok);background:var(--ok-bg)}
-
-  /* model chooser */
-  .types{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:18px}
-  .type-card{display:flex;flex-direction:column;gap:8px;margin:0;padding:22px;color:inherit;text-decoration:none;cursor:pointer}
-  a.type-card:hover{transform:translateY(-6px);border-color:var(--accent);box-shadow:0 26px 44px -26px var(--accent)}
-  a.type-card:active{transform:translateY(-2px) scale(.99)}
-  .type-card .ti{width:50px;height:50px;border-radius:16px;display:grid;place-items:center;background:var(--btn-grad);color:var(--on-accent);margin-bottom:4px;
-    box-shadow:0 14px 26px -14px var(--accent);transition:transform .45s var(--spring)}
-  a.type-card:hover .ti{transform:rotate(-8deg) scale(1.1)}
-  .type-card .ti svg{width:26px;height:26px}
-  .type-card h3{margin:0;font-size:1.2rem}
-  .type-card p{margin:0;color:var(--muted);font-size:.95rem;min-height:3.1em}
-  .type-card .demo{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:.85rem}
-  .demo span{padding:3px 12px;border:1px solid var(--line);border-radius:10px;background:var(--field)}
-  .demo span.on{border-color:var(--accent);background:var(--chip);color:var(--accent-2);font-weight:700}
-  .demo.two span{flex:1;text-align:center}
-  .demo em{font-style:normal;color:var(--muted)}
-  .demo .gap{border:2px dashed var(--line-2);background:var(--chip);color:var(--accent-2);font-weight:700}
-  .demo .lines{display:block;width:100%;height:30px;border-radius:10px;border:1px dashed var(--line-2);
-    background:repeating-linear-gradient(transparent 0 9px,var(--line) 9px 10px)}
-  .type-card.soon{opacity:.62;cursor:not-allowed}
-  .soon-badge{display:inline-block;font-size:.74rem;padding:0 10px;border-radius:99px;background:var(--warn-bg);color:var(--warn-text);font-weight:700;vertical-align:middle}
-
-  /* builder */
-  .q.enter{animation:rise .6s var(--ease) backwards}
-  .q.leaving{opacity:0;transform:scale(.97) translateY(-6px);transition:opacity .22s ease,transform .22s ease;pointer-events:none}
-  .q.invalid{border-color:var(--bad);box-shadow:0 0 0 4px var(--bad-bg)}
-  .q-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
-  .q-head .qnum{margin:0;flex:none}
-  .q-tools{display:flex;gap:6px;margin-inline-start:auto}
-  .q-tools .icon-btn{width:38px;height:38px;border-radius:12px}
-  .q-tools .icon-btn svg{width:18px;height:18px}
-  .q-tools .icon-btn:hover:not(:disabled){transform:translateY(-2px);background:var(--chip)}
-  .q-tools .icon-btn:disabled{opacity:.35;cursor:not-allowed}
-  .q-tools .rm-q:hover:not(:disabled){color:var(--bad);border-color:var(--bad)}
-  .seg{display:inline-flex;padding:4px;gap:2px;border:1px solid var(--line);border-radius:14px;background:var(--field);flex-wrap:wrap}
-  .seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:.86rem;font-weight:700;padding:5px 12px;white-space:nowrap;border-radius:10px;cursor:pointer;transition:background .25s,color .25s,transform .2s}
-  .seg button:hover{color:var(--text)}
-  .seg button[aria-pressed="true"]{background:var(--btn-grad);color:var(--on-accent);box-shadow:0 8px 16px -10px var(--accent)}
-  .seg button:active{transform:scale(.95)}
-  .q-helper:empty{display:none}
-  .q-helper{margin-top:8px}
-  .helper-row{margin:8px 0}
-  .q-answers{margin-top:10px}
-  .q-answers .hint{margin-bottom:6px}
-  .q-err{color:var(--bad);font-weight:700;margin-top:10px}
-  .q-err:empty{display:none}
-  .bad{border-color:var(--bad) !important;box-shadow:0 0 0 4px var(--bad-bg) !important}
-  .add-card{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .add-lbl{font-weight:700}
-  .add-btns{display:flex;gap:8px;flex-wrap:wrap}
-  .add-btns .btn svg{width:15px;height:15px}
-  .row .btn.small:not(.danger){white-space:nowrap}
-  .btn.loading::before{content:"";width:16px;height:16px;border-radius:50%;border:2.5px solid currentColor;border-top-color:transparent;animation:spin .7s linear infinite}
-
-  /* true / false cards */
-  .tf{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
-  .tf-opt{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;margin:0;padding:18px 12px;border:1.5px solid var(--line);
-    border-radius:18px;background:var(--field);font-weight:800;font-size:1.05rem;cursor:pointer;transition:transform .3s var(--ease),border-color .25s,background .25s,box-shadow .25s}
-  .tf-opt:hover{transform:translateY(-3px);border-color:var(--line-2)}
-  .tf-opt:active{transform:scale(.97)}
-  .tf-opt input[type=radio]{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;border-radius:18px;cursor:pointer}
-  .tf-opt input[type=radio]:hover{transform:none}
-  .tf-opt .ic{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line-2);color:var(--muted);transition:all .35s var(--spring)}
-  .tf-opt .ic svg{width:20px;height:20px}
-  .tf-opt:has(input:checked) .ic{transform:scale(1.12) rotate(-6deg);color:#fff;border-color:transparent}
-  .tf-true:has(input:checked){border-color:var(--ok);background:var(--ok-bg);color:var(--ok);box-shadow:0 14px 28px -18px var(--ok)}
-  .tf-true:has(input:checked) .ic{background:var(--ok)}
-  .tf-false:has(input:checked){border-color:var(--bad);background:var(--bad-bg);color:var(--bad);box-shadow:0 14px 28px -18px var(--bad)}
-  .tf-false:has(input:checked) .ic{background:var(--bad)}
-  :root[data-theme="dark"] .tf-opt:has(input:checked) .ic{color:#04241A}
-  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tf-opt:has(input:checked) .ic{color:#04241A}}
-  .tf-opt:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:3px}
-
-  @keyframes grow{from{transform:scaleX(0)}}
-
-  .btn svg{width:18px;height:18px;flex:none}
-  .katex{direction:ltr;unicode-bidi:isolate;font-size:1.08em}
-  .katex-display{overflow-x:auto;overflow-y:hidden;padding:4px 0;margin:.6em 0}
-  select{-webkit-appearance:none;appearance:none;cursor:pointer;padding-inline-end:1rem;padding-left:2.6rem;color-scheme:light dark;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f8f69' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:left 14px center;background-size:18px}
-  select option,select optgroup{background:var(--surface-solid);color:var(--text)}
-  /* AI generator */
-  .ai-card{grid-column:1/-1;border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
-  .ai-badge{background:var(--btn-grad);color:var(--on-accent);border-color:transparent}
-  .ai-form label{display:block;margin:18px 0 8px;font-weight:700}
-  .ai-form label:first-child{margin-top:0}
-  .ai-form .seg{max-width:100%;width:100%;flex-wrap:wrap}
-  .ai-form .seg button{flex:1 1 auto;white-space:normal;text-align:center}
-  .drop{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:12px;padding:26px 16px;border:2px dashed var(--line-2);border-radius:18px;background:var(--field);text-align:center;cursor:pointer;color:var(--muted);transition:border-color .25s,background .25s,transform .25s var(--ease)}
-  .drop svg{width:34px;height:34px;color:var(--accent)}
-  .drop strong{color:var(--text);overflow-wrap:anywhere}
-  .drop:hover,.drop.over,.drop:focus-visible{border-color:var(--accent);background:var(--chip);transform:translateY(-2px)}
-  .drop.has{border-style:solid;border-color:var(--accent)}
-  .stepper{display:flex;align-items:center;gap:10px}
-  .stepper button{width:44px;height:44px;border-radius:14px;border:1px solid var(--line-2);background:var(--field);color:var(--accent);font:inherit;font-size:1.3rem;font-weight:800;cursor:pointer;transition:transform .2s,border-color .2s}
-  .stepper button:hover{border-color:var(--accent)}.stepper button:active{transform:scale(.93)}
-  .stepper input{width:76px;text-align:center;font-weight:800}
-  #wait{margin-top:12px}
-  [hidden]{display:none !important}
-
-  /* take page progress + states */
-  .ap{position:sticky;top:76px;z-index:40;margin:14px 0;padding:10px 16px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--surface-solid) 82%,transparent);
-    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:var(--shadow)}
-  .ap-top{font-weight:700;font-size:.92rem;margin-bottom:6px}
-  .ap-bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
-  .ap-bar i{display:block;height:100%;border-radius:99px;background:var(--btn-grad);transform-origin:right center;transform:scaleX(var(--v,0));transition:transform .6s var(--ease)}
-  .card.unanswered{border-color:var(--bad);box-shadow:0 0 0 4px var(--bad-bg)}
-
-  /* results review */
-  .rv-top{margin-bottom:6px}
-  .badge.okb{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
-  .badge.badb{background:var(--bad-bg);color:var(--bad);border-color:var(--bad)}
-  .badge.skip{color:var(--muted)}
-  .rv-ans{margin:2px 0 0;color:var(--ok)}
-
-  /* manage page */
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
-  .stat{padding:16px;border-radius:20px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);text-align:center;
-    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
-  .stat b{display:block;font-size:1.9rem;line-height:1.4;background:var(--h-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .stat span{color:var(--muted);font-size:.9rem;font-weight:600}
-  .qstat{margin:14px 0}
-  .qs-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-  .qs-n{flex:none;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--chip);color:var(--accent-2);font-weight:800;font-size:.85rem}
-  .qs-t{flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;font-weight:600;line-height:1.6}
-  .qs-p{font-weight:800;color:var(--accent-2)}
-  .bar{height:10px;border-radius:99px;background:var(--line);overflow:hidden}
-  .bar i{display:block;height:100%;border-radius:99px;background:var(--btn-grad);transform-origin:right center;transform:scaleX(var(--w,0));animation:grow 1s var(--ease) backwards}
-
-  /* toasts */
-  .toasts{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));right:0;left:0;z-index:160;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
-  .toast{background:var(--btn-grad);color:var(--on-accent);padding:10px 22px;border-radius:999px;font-weight:700;box-shadow:0 14px 30px -10px rgba(0,0,0,.45);animation:toastIn .5s var(--spring)}
-  .toast.out{animation:toastOut .35s ease forwards}
-
-  /* =====================================================================
-     Keyframes
-     ===================================================================== */
-  @keyframes rise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
-  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-  @keyframes pop{from{opacity:0;transform:translateY(30px) scale(.9)}to{opacity:1;transform:none}}
-  @keyframes lineUp{from{transform:translateY(110%)}to{transform:none}}
-  @keyframes draw{to{stroke-dashoffset:0}}
-  @keyframes tick{0%,8%{stroke-dashoffset:1}28%,88%{stroke-dashoffset:0}100%{stroke-dashoffset:1}}
-  @keyframes ringIn{to{stroke-dashoffset:8}}
-  @keyframes slide{to{background-position:-200% 0}}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 var(--ring)}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
-  @keyframes pulseGlow{from{opacity:.55;transform:scale(.94)}to{opacity:1;transform:scale(1.06)}}
-  @keyframes wiggle{0%,100%{transform:rotate(0)}30%{transform:rotate(-12deg) scale(1.08)}60%{transform:rotate(8deg)}}
-  @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
-  @keyframes toastIn{from{opacity:0;transform:translateY(24px) scale(.9)}to{opacity:1;transform:none}}
-  @keyframes toastOut{to{opacity:0;transform:translateY(12px)}}
-  @keyframes drift1{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-8vmax,10vmax,0) scale(1.15)}}
-  @keyframes drift2{from{transform:translate3d(0,0,0) scale(1.05)}to{transform:translate3d(10vmax,-8vmax,0) scale(.92)}}
-  @keyframes drift3{from{transform:translate3d(0,0,0)}to{transform:translate3d(-12vmax,-6vmax,0) scale(1.2)}}
-  @keyframes float1{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-14px) rotate(1deg)}}
-  @keyframes float2{0%,100%{transform:translateY(0) rotate(2deg)}50%{transform:translateY(-18px) rotate(-1deg)}}
-  @keyframes float3{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px) translateX(6px)}}
-
-  /* =====================================================================
-     Responsive
-     ===================================================================== */
-  @media (max-width:900px){
-    .hero-grid{grid-template-columns:1fr;gap:26px}
-    .hero{padding-top:30px}
-    .steps{grid-template-columns:1fr;margin-top:38px}
-    .hv{max-width:440px}
-  }
-  @media (max-width:560px){
-    .top-in{padding:8px 14px}
-    .brand{font-size:1.15rem}
-    .tools .btn{display:none}
-    .tools .auth-btn{display:inline-flex;padding:.55rem .9rem;white-space:nowrap}
-    .tools{gap:8px}
-    .tools .home-btn{display:inline-flex;padding:.55rem .75rem}
-    .home-btn span{display:none}
-    .hv{height:372px}
-    .hv-score{width:124px;padding:12px;left:-2px}
-    .hv-ring{width:76px;height:76px}.hv-ring b{font-size:1.1rem}
-    .hv-people{width:218px;right:2%}
-    .hv-q{top:114px;width:90%}
-    .card{padding:16px;border-radius:20px}
-    .wrap{padding:26px 14px 48px}
-    .types{grid-template-columns:1fr}
-    .type-card p{min-height:0}
-    .stats{gap:8px}
-    .stat{padding:12px 6px}.stat b{font-size:1.4rem}.stat span{font-size:.8rem}
-    .tf{gap:8px}
-    .q-head{gap:8px}
-    .q-head .qnum{order:1}
-    .q-tools{order:2}
-    .seg{order:3;width:100%;flex-wrap:nowrap}
-    .seg button{flex:1 1 auto;padding:6px 4px;font-size:.8rem;white-space:nowrap}
-    .ap{top:66px}
-    .mine-row{flex-wrap:wrap}.mine-t{flex:1 1 100%}
-    .linkbox{flex-direction:column;align-items:stretch}
-    .actions .btn{flex:1 1 100%}
-    .ring-wrap{width:172px;height:172px}
-    .cta .btn{flex:1 1 100%}
-  }
-  @media (prefers-reduced-motion: reduce){
-    html{scroll-behavior:auto}
-    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;animation-delay:0s !important;transition-duration:.01ms !important}
-    .blob,.bg-par{transform:none !important}
-    .hv-ring .fgc{stroke-dashoffset:8}
-    .step svg path,.hv-opt .tick{stroke-dashoffset:0}
-  }
-  /* قفل ساخت آزمون برای کاربران ثبت‌نام‌نکرده: صفحه تار می‌شود و فقط کادر ورود فعال است */
-  html.gate-on{overflow:hidden}
-  html.gate-on header.top,html.gate-on #hero,html.gate-on #app,html.gate-on #siteFoot{filter:blur(7px) saturate(.85);pointer-events:none;user-select:none}
-  .gate{position:fixed;inset:0;z-index:400;display:grid;place-items:center;padding:16px;overflow-y:auto;
-    background:color-mix(in srgb,var(--bg) 62%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:gateIn .35s var(--ease) both}
-  @supports not (background:color-mix(in srgb,red,blue)){.gate{background:rgba(250,247,240,.82)}
-    :root[data-theme="dark"] .gate{background:rgba(5,33,26,.84)}}
-  .gate-box{width:100%;max-width:400px;margin:auto;text-align:center;background:var(--surface-solid,var(--bg));border:1px solid var(--line-2);border-radius:26px;
-    padding:30px 22px 22px;box-shadow:var(--shadow),0 30px 70px -30px rgba(0,0,0,.45);animation:gateUp .5s var(--ease) both}
-  .gate-ic{width:68px;height:68px;margin:0 auto 14px;border-radius:22px;display:grid;place-items:center;color:var(--on-accent);background:var(--btn-grad);
-    box-shadow:0 16px 30px -14px rgba(15,81,50,.8)}
-  .gate-ic svg{width:32px;height:32px}
-  .gate-box h2{margin:0 0 8px;font-size:1.3rem;line-height:1.5}
-  .gate-box p{margin:0 0 18px;color:var(--muted);line-height:1.9;font-size:.95rem}
-  .gate-box .btn{width:100%;padding:.9rem 1.2rem;font-size:1.05rem}
-  .gate-back{display:inline-block;margin-top:14px;padding:8px 12px;color:var(--muted);text-decoration:none;font-size:.9rem;border-radius:10px}
-  .gate-back:hover,.gate-back:focus-visible{color:var(--accent);text-decoration:underline}
-  @keyframes gateIn{from{opacity:0}to{opacity:1}}
-  @keyframes gateUp{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
-  @media (prefers-reduced-motion:reduce){.gate,.gate-box{animation:none}}
-  @media (max-width:480px){.gate{align-items:end;padding:12px 12px max(12px,env(safe-area-inset-bottom))}.gate-box{margin:auto 0 0;padding:26px 18px 16px;border-radius:24px}}
-  /* گروه‌ها */
-  .grp-btn{position:relative;text-decoration:none;color:var(--accent)}
-  .grp-btn .gb{position:absolute;top:-5px;inset-inline-start:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:#C0392B;color:#fff;font-size:.74rem;font-weight:800;line-height:20px;text-align:center;box-shadow:0 0 0 2px var(--bg)}
-  .page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  .page-head h1{margin:0}
-  .grp-head{justify-content:flex-start;gap:10px}
-  .grp-head h1{min-width:0;overflow-wrap:anywhere}
-  .grp-head .badge{margin-inline-start:0}
-  .grp-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);color:inherit;text-decoration:none}
-  .grp-row:last-child{border-bottom:0}
-  a.grp-row{border-radius:12px;transition:background .2s,transform .25s var(--ease)}
-  a.grp-row:hover{background:var(--chip)}
-  a.grp-row:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-  .grp-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-  .grp-t strong{overflow-wrap:anywhere}
-  .grp-t small{font-size:.82rem;color:var(--muted);font-weight:500}
-  .grp-a{display:flex;gap:8px;flex-wrap:wrap}
-  .grp-go{width:18px;height:18px;flex:none;color:var(--muted);transform:scaleX(-1)}
-  .av-s{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:900;color:var(--on-accent);background:var(--btn-grad)}
-  .av-s svg{width:55%;height:55%}
-  .grp-ph{direction:ltr;unicode-bidi:isolate;display:inline-block}
-  .sec-t{display:flex;align-items:center;gap:8px;margin:0 0 4px}
-  .sec-t h2{margin:0}
-  .grp-add{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
-  .grp-add input{flex:1 1 180px;direction:ltr;text-align:left}
-  .grp-tabs{display:flex;margin:14px 0 4px}
-  .grp-tabs .seg{width:100%}
-  .grp-tabs .seg button{flex:1 1 0;text-align:center}
-  .grp-chip{display:inline-flex;align-items:center;gap:8px;margin:0 0 14px;padding:7px 14px;border-radius:999px;border:1px solid var(--accent);background:var(--chip);color:var(--accent-2);font-weight:700;font-size:.9rem}
-  .grp-chip svg{width:18px;height:18px}
-  .aud .seg{margin:10px 0 4px}
-  .aud select{margin-top:10px}
-  .types[inert]{opacity:.4;filter:saturate(.6)}
-  .modal.confirm{z-index:200}
-  .confirm-box{width:min(420px,100%);padding:22px 20px 18px;text-align:center}
-  .confirm-box h2{margin:0 0 8px;font-size:1.15rem}
-  .confirm-box p{margin:0 0 6px;color:var(--muted);line-height:1.9}
-  .confirm-box .actions{justify-content:center;margin-top:14px}
-  .confirm-box .actions .btn{flex:1 1 140px}
-  .inv-toast{pointer-events:auto;display:flex;align-items:center;gap:12px;max-width:min(94vw,440px);border-radius:18px;padding:10px 12px 10px 16px;animation:toastIn .45s var(--ease)}
-  .inv-toast a{color:var(--on-accent);font-weight:900;text-decoration:underline;white-space:nowrap}
-  .inv-toast button{flex:none;width:30px;height:30px;border:0;border-radius:50%;background:rgba(255,255,255,.2);color:inherit;display:grid;place-items:center;cursor:pointer}
-  .inv-toast button svg{width:14px;height:14px}
-  @media (max-width:360px){.tools{gap:4px}.tools .icon-btn,.tools .prof-btn{width:36px;height:36px}.tools .prof-btn{font-size:1rem}.brand{font-size:1.05rem;gap:8px}}
-  @media (max-width:560px){.grp-row{flex-wrap:wrap}.grp-a{width:100%}.grp-a .btn{flex:1 1 0}.grp-add .btn{flex:1 1 100%}}
-  /* ----- گپ گروه ----- */
-  .chat{position:relative;display:flex;flex-direction:column;height:calc(100vh - 340px);height:calc(100dvh - 340px);min-height:360px;max-height:680px;margin-top:12px;background:var(--surface-solid);border:1px solid var(--line);border-radius:22px;overflow:hidden}
-  .chat-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:12px 10px;display:flex;flex-direction:column;-webkit-overflow-scrolling:touch}
-  .chat-list:focus-visible{outline-offset:-3px}
-  .chat-msgs{display:flex;flex-direction:column;gap:8px;margin-top:auto}
-  .chat-state,.chat-more{text-align:center;color:var(--muted);padding:14px 8px;font-size:.92rem;display:flex;flex-direction:column;align-items:center;gap:10px;margin:auto 0}
-  .chat-more{margin:0 0 8px;padding:4px}
-  .chat-state[hidden],.chat-more[hidden]{display:none}
-  .cday{align-self:center;margin:6px 0 0;font-size:.78rem;color:var(--muted);font-weight:700}
-  .cday span{display:inline-block;padding:2px 12px;border-radius:99px;background:var(--chip)}
-  .cm{display:flex;scroll-margin:40px}
-  .cm.ot{justify-content:flex-end}
-  .cm.cont{margin-top:-5px}
-  .cb{position:relative;max-width:min(84%,540px);min-width:0;padding:7px 12px 5px;border-radius:18px;background:var(--chip);border:1px solid var(--line);color:var(--text);touch-action:pan-y}
-  .cm.in .cb{animation:cmIn .18s var(--ease)}
-  .cm.me .cb{background:var(--btn-grad);color:var(--on-accent);border-color:transparent;border-end-start-radius:6px}
-  .cm.ot .cb{border-end-end-radius:6px}
-  .cb:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-  .cb.sel{box-shadow:0 0 0 3px var(--ring)}
-  .cm.flash .cb{animation:cmFlash 1.2s ease}
-  .cm.pending .cb{opacity:.6}
-  .cn{font-size:.8rem;font-weight:800;color:var(--accent-2);display:flex;align-items:center;gap:6px;margin-bottom:1px}
-  .cbadge{font-size:.68rem;padding:0 7px;border-radius:99px;border:1px solid var(--line-2);font-weight:700}
-  .cq{display:block;margin:2px 0 4px;padding:4px 9px;border-radius:10px;background:rgba(127,127,127,.18);border-inline-start:3px solid currentColor;font-size:.82rem;line-height:1.6;cursor:pointer;overflow:hidden}
-  .cq b{display:block;font-weight:800;opacity:.9}
-  .cq span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;opacity:.85;white-space:pre-wrap}
-  .ct{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;font-size:.98rem;unicode-bidi:plaintext}
-  .cb.del .ct{font-style:italic;opacity:.65;font-size:.9rem}
-  .cf{display:flex;justify-content:flex-end;gap:8px;font-size:.7rem;opacity:.72;margin-top:1px}
-  .chat-new{position:absolute;transform:translateX(-50%);bottom:84px;left:50%;z-index:3;display:inline-flex;align-items:center;gap:6px;border:0;border-radius:99px;padding:7px 16px;background:var(--btn-grad);color:var(--on-accent);font:inherit;font-size:.86rem;font-weight:800;box-shadow:0 8px 20px -8px rgba(0,0,0,.45);cursor:pointer}
-  .chat-new[hidden]{display:none}
-  .chat-new svg{width:16px;height:16px}
-  .chat-net{text-align:center;font-size:.8rem;padding:4px 8px;background:var(--bad-bg);color:var(--bad);font-weight:700}
-  .chat-ctx{display:flex;align-items:center;gap:10px;padding:6px 12px;border-top:1px solid var(--line);background:var(--chip)}
-  .chat-ctx[hidden]{display:none}
-  .chat-ctx-i{flex:none;width:20px;height:20px;color:var(--accent)}
-  .chat-ctx-i svg{width:100%;height:100%}
-  .chat-ctx-t{flex:1;min-width:0;display:flex;flex-direction:column;border-inline-start:3px solid var(--accent);padding-inline-start:8px;font-size:.82rem;line-height:1.5}
-  .chat-ctx-t b{color:var(--accent-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .chat-ctx-t span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .chat-ctx-x{flex:none;width:34px;height:34px;border-radius:50%;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer}
-  .chat-ctx-x:hover{background:var(--line)}
-  .chat-ctx-x svg{width:16px;height:16px}
-  .chat-in{display:flex;align-items:flex-end;gap:8px;padding:8px 10px;border-top:1px solid var(--line);background:var(--surface-solid)}
-  .chat-in textarea{flex:1;min-width:0;min-height:44px;max-height:132px;resize:none;border-radius:22px;padding:.55rem 1rem;line-height:1.7;font-size:16px;overflow-y:auto}
-  .chat-send{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:var(--btn-grad);color:var(--on-accent);display:grid;place-items:center;cursor:pointer;transition:transform .2s,opacity .2s}
-  .chat-send svg{width:21px;height:21px;transform:scaleX(-1)}
-  .chat-send:disabled{opacity:.4;cursor:default}
-  .chat-send:not(:disabled):active{transform:scale(.92)}
-  .chat-cnt{position:absolute;inset-inline-end:68px;bottom:56px;font-size:.72rem;color:var(--muted);background:var(--surface-solid);padding:0 6px;border-radius:8px}
-  .chat-cnt[hidden]{display:none}
-  .chat-hint{margin:8px 4px 0;text-align:center}
-  .h-coarse{display:none}
-  .cmenu{position:fixed;z-index:150;min-width:150px;padding:6px;border-radius:16px;background:var(--surface-solid);color:var(--text);border:1px solid var(--line-2);box-shadow:0 18px 40px -12px rgba(0,0,0,.45);animation:mpop .14s var(--ease)}
-  .cmenu button{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:6px 12px;border:0;border-radius:11px;background:transparent;color:inherit;font:inherit;font-size:.95rem;font-weight:600;cursor:pointer;text-align:start}
-  .cmenu button:hover,.cmenu button:focus-visible{background:var(--chip);outline:none}
-  .cmenu.kb button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-  .cmenu button svg{width:19px;height:19px;flex:none;color:var(--accent)}
-  .cmenu button.dng,.cmenu button.dng svg{color:var(--bad)}
-  @keyframes cmIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  @keyframes cmFlash{0%,60%{box-shadow:0 0 0 4px var(--ring)}100%{box-shadow:none}}
-  @media (pointer:coarse){
-    .cb{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-    .h-fine{display:none}.h-coarse{display:inline}
-    .cmenu button{min-height:48px}
-  }
-  @media (max-width:560px){.chat{border-radius:18px;height:calc(100vh - 320px);height:calc(100dvh - 320px)}.cb{max-width:90%}}
-  @media (prefers-reduced-motion:reduce){.cb,.cmenu{animation:none !important}}
-  .site-foot{margin-top:auto;width:100%;position:relative;z-index:1;
-    background:linear-gradient(135deg,#0B3D2E 0%,#0F5132 55%,#14684A 100%);
-    border-top:1px solid rgba(255,255,255,.14);box-shadow:0 -10px 30px rgba(7,42,32,.18);color:#fff}
-  .site-foot-in{max-width:1120px;margin:0 auto;padding:38px 18px 34px;display:grid;
-    grid-template-columns:auto minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:34px 44px;align-items:start}
-  .ft-seal{display:flex;justify-content:center}
-  .trust{display:flex;align-items:center;justify-content:center}
-  .trust a{display:flex;align-items:center;justify-content:center;min-width:104px;min-height:112px;background:#fff;border-radius:16px;padding:8px 10px;line-height:0;box-shadow:0 6px 18px rgba(0,0,0,.22)}
-  .trust img{max-width:92px;height:auto;display:block}
-  .ft-col h3{margin:0 0 12px;font-size:1rem;font-weight:800;color:#DCEBE2;display:flex;align-items:center;gap:8px;line-height:1.5}
-  .ft-col h3::before{content:"";width:18px;height:3px;border-radius:3px;background:#4F9C7A;flex:none}
-  .ft-col p{margin:0;font-size:.92rem;line-height:2;color:rgba(255,255,255,.82)}
-  .ft-col ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
-  .ft-col a{color:rgba(255,255,255,.86);text-decoration:none;font-size:.92rem;line-height:1.9;border-radius:8px;transition:color .2s}
-  .ft-col a:hover{color:#fff;text-decoration:underline;text-underline-offset:5px}
-  .ft-col a:focus-visible{outline:2px solid #B6D6C4;outline-offset:3px}
-  .ft-tel{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:1.02rem !important;color:#fff !important;letter-spacing:.3px}
-  .ft-tel svg{width:18px;height:18px;flex:none;color:#86BAA0}
-  .ft-tel span{direction:ltr;unicode-bidi:embed}
-  .ft-note{margin-top:6px !important;font-size:.82rem !important;color:rgba(255,255,255,.62) !important;line-height:1.8 !important}
-  @media (max-width:900px){
-    .site-foot-in{grid-template-columns:1fr 1fr;gap:28px 24px;padding:32px 16px 28px}
-    .ft-seal{grid-column:1 / -1;order:5}
-    .ft-about{grid-column:1 / -1}
-  }
-  @media (max-width:420px){
-    .site-foot-in{grid-template-columns:1fr}
-  }
-</style>
-</head>
-<body>
-  <a class="skip" href="#app">پرش به محتوا</a>
-
-  <div class="bg" aria-hidden="true">
-    <div class="bg-par">
-      <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
-    </div>
-    <div class="dots"></div>
-    <div class="grain"></div>
-  </div>
-
-  <header class="top">
-    <div class="top-in">
-      <div class="brand" aria-label="پازمونک">
-        <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2FB07C"/><stop offset="1" stop-color="#14684A"/></linearGradient></defs><path class="lg-bg" fill-rule="evenodd" d="M70.2 4.0C68.5 3.1 66.8 2.4 65.4 1.9C64.0 1.4 63.4 1.3 62.0 1.0C60.6 0.7 58.9 0.3 57.1 0.2C55.3 0.0 57.7 -0.3 51.1 0.0C44.6 0.3 23.8 1.3 17.8 1.8C11.7 2.3 15.7 2.3 14.8 2.8C13.9 3.4 13.1 4.0 12.5 5.1C11.9 6.2 11.5 -1.3 11.3 9.2C11.2 19.7 10.9 59.6 11.5 68.2C12.1 76.8 13.6 63.2 15.0 60.9C16.4 58.7 18.0 56.6 19.7 54.8C21.4 53.0 22.9 51.6 25.0 50.0C27.2 48.4 31.4 49.6 32.7 45.4C34.0 41.1 32.6 28.5 32.7 24.7C32.8 21.0 32.9 23.2 33.3 22.6C33.7 22.0 34.2 21.3 34.9 20.9C35.6 20.5 35.1 20.3 37.4 20.1C39.8 19.9 46.2 19.9 49.0 19.9C51.8 19.9 52.8 19.9 54.3 20.1C55.8 20.3 56.8 20.5 58.0 21.0C59.2 21.4 60.5 22.1 61.5 22.9C62.5 23.7 63.3 24.6 64.0 25.7C64.8 26.7 65.4 28.0 65.8 29.3C66.2 30.5 66.4 31.8 66.5 33.1C66.6 34.3 66.4 35.6 66.3 36.7C66.1 37.8 65.8 38.7 65.3 39.7C64.9 40.7 64.1 42.0 63.3 42.9C62.5 43.8 62.0 44.4 60.7 45.1C59.4 45.8 57.8 46.7 55.5 47.1C53.3 47.5 49.7 47.5 47.3 47.7C45.0 48.0 43.8 48.1 41.5 48.8C39.2 49.4 36.1 50.3 33.4 51.5C30.6 52.8 27.1 55.0 25.1 56.4C23.0 57.8 22.5 58.3 21.1 59.7C19.7 61.1 17.8 63.1 16.6 64.8C15.3 66.4 14.4 68.0 13.6 69.6C12.8 71.3 12.2 73.5 11.8 74.9C11.4 76.3 11.4 75.5 11.3 77.9C11.2 80.2 11.2 86.4 11.3 88.8C11.4 91.2 11.6 91.2 11.8 92.2C12.1 93.2 12.5 94.0 12.9 94.7C13.3 95.5 13.6 95.9 14.2 96.6C14.9 97.3 15.8 98.2 16.9 98.7C17.9 99.2 19.2 99.7 20.6 99.9C22.0 100.0 23.9 100.0 25.4 99.6C26.8 99.2 28.2 98.5 29.3 97.6C30.4 96.8 31.4 95.4 32.0 94.5C32.7 93.5 32.9 92.7 33.2 91.7C33.5 90.7 33.8 92.3 33.9 88.5C34.0 84.7 33.7 72.3 33.8 68.7C33.9 65.2 34.1 67.6 34.5 67.3C34.9 67.1 34.0 66.9 36.2 67.2C38.3 67.4 44.4 68.4 47.5 68.7C50.5 69.0 52.3 68.9 54.5 68.8C56.7 68.7 58.8 68.4 60.6 68.1C62.5 67.7 63.5 67.5 65.3 66.8C67.2 66.1 69.8 65.0 71.6 64.0C73.4 63.1 74.7 62.1 76.2 60.9C77.6 59.7 78.9 58.5 80.2 56.9C81.6 55.4 83.0 53.6 84.1 51.6C85.2 49.6 86.3 47.2 87.0 45.0C87.8 42.8 88.2 40.6 88.4 38.4C88.7 36.2 88.7 33.9 88.5 31.7C88.3 29.4 87.8 27.0 87.1 24.8C86.4 22.6 85.4 20.2 84.3 18.2C83.2 16.1 82.0 14.4 80.5 12.6C79.0 10.8 77.0 8.8 75.3 7.4C73.5 5.9 71.8 4.9 70.2 4.0Z"/></svg>
-        <span>پازمونک</span>
-      </div>
-      <nav class="tools" aria-label="ابزارها">
-        <a class="btn small ghost home-btn" id="homeBtn" href="#/" aria-label="خانه"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H10v-5.5h4v5.5h3.5a1 1 0 0 0 1-1V10"/></svg><span>خانه</span></a>
-        <a class="btn small" href="#/create">ساخت آزمون</a>
-        <a class="btn small ghost auth-btn" id="authBtn" href="#/signup">ثبت‌نام</a>
-        <a class="icon-btn grp-btn" id="grpBtn" href="#/groups" hidden aria-label="گروه‌ها" title="گروه‌ها">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.2 19.5c.5-3.1 2.8-5 5.8-5s5.3 1.9 5.8 5"/><path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M17.6 14.8c1.9.5 3.2 2.2 3.5 4.7"/></svg>
-          <span class="gb" id="grpBadge" hidden>0</span>
-        </a>
-        <div class="prof" id="profWrap" hidden></div>
-        <button class="icon-btn" id="themeBtn" type="button" aria-label="تغییر حالت روشن و تیره" title="تغییر حالت روشن و تیره">
-          <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-          <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-        </button>
-      </nav>
-    </div>
-  </header>
-
-  <!-- Hero: shown only on the home route -->
-  <section class="hero" id="hero" aria-labelledby="heroTitle">
-    <div class="hero-grid">
-      <div>
-        <span class="eyebrow"><i></i> پازمونک · آزمون‌ساز آنلاین فارسی</span>
-        <h1 id="heroTitle">
-          <span class="ln"><span>آزمون بساز،</span></span>
-          <span class="ln"><span>لینکش را بفرست،</span></span>
-          <span class="ln"><span class="grad">نتیجه را ببین.</span></span>
-        </h1>
-        <p class="lead">در چند دقیقه یک آزمون چندگزینه‌ای بسازید، لینکش را برای هر کسی بفرستید و نمره و نتایج را به‌صورت زنده ببینید. ثبت‌نام فقط با شماره‌ی موبایل و در چند ثانیه.</p>
-        <div class="cta">
-          <a class="btn" href="#/create">ساخت آزمون</a>
-          <button class="btn ghost" type="button" data-scroll="steps">چطور کار می‌کند؟</button>
-        </div>
-      </div>
-
-      <div class="hv" aria-hidden="true">
-        <div class="hv-card hv-q">
-          <span class="hv-tag">سؤال ۱ از ۵</span>
-          <div class="hv-title">پایتخت ایران کدام شهر است؟</div>
-          <div class="hv-opt"><span>اصفهان</span></div>
-          <div class="hv-opt sel"><span>تهران</span>
-            <svg viewBox="0 0 24 24"><path class="tick" pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-          <div class="hv-opt"><span>شیراز</span></div>
-        </div>
-        <div class="hv-card hv-score">
-          <div class="hv-ring">
-            <svg viewBox="0 0 120 120"><circle class="bgc" cx="60" cy="60" r="52"/><circle class="fgc" cx="60" cy="60" r="52" pathLength="100"/></svg>
-            <b>۹۲٪</b>
-          </div>
-          <div class="hv-mini">نمره‌ی شما</div>
-        </div>
-        <div class="hv-card hv-people">
-          <div class="avs"><i></i><i></i><i></i><i></i></div>
-          <span class="hv-mini">۱۲ نفر شرکت کردند</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="steps" id="steps" style="padding:0;margin-top:56px">
-      <article class="step">
-        <span class="n" aria-hidden="true">۱</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path pathLength="1" d="M14 7l3 3"/></svg>
-        <h3>بساز</h3>
-        <p>سؤال‌ها و گزینه‌ها را بنویسید و گزینه‌ی درست را مشخص کنید.</p>
-      </article>
-      <article class="step">
-        <span class="n" aria-hidden="true">۲</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path pathLength="1" d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
-        <h3>لینک بگیر</h3>
-        <p>یک لینک اختصاصی می‌گیرید که هر کسی با آن می‌تواند شرکت کند.</p>
-      </article>
-      <article class="step">
-        <span class="n" aria-hidden="true">۳</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 20V11M10 20V4M16 20v-6M22 20H2"/></svg>
-        <h3>نتیجه را ببین</h3>
-        <p>نمره‌ها، میانگین و جدول شرکت‌کنندگان را ببینید و خروجی بگیرید.</p>
-      </article>
-    </div>
-
-  </section>
-
-  <main id="app" class="wrap" tabindex="-1"></main>
-  <footer class="site-foot" id="siteFoot"><div class="site-foot-in">
-    <div class="ft-seal"><div class="trust" id="trustSeal"><a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8331341&Code=8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8331341&Code=8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU' alt='' style='cursor:pointer' code='8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU'></a></div></div>
-    <section class="ft-col ft-about" aria-labelledby="ftAbout">
-      <h3 id="ftAbout">درباره‌ی ما</h3>
-      <p>پازمونک جایی است برای ساختن آزمون آنلاین در چند دقیقه. آزمونت را می‌سازی، لینکش را برای دوستان یا دانش‌آموزهایت می‌فرستی و نتیجه‌ی همه را همان لحظه می‌بینی؛ ساده و سریع.</p>
-    </section>
-    <nav class="ft-col" aria-labelledby="ftSrv">
-      <h3 id="ftSrv">خدمات ما</h3>
-      <ul>
-        <li><a href="#/create/mcq">آزمون چندگزینه‌ای</a></li>
-        <li><a href="#/create/tf">آزمون درست یا نادرست</a></li>
-        <li><a href="#/create/mixed">آزمون ترکیبی</a></li>
-        <li><a href="#/create/ai">ساخت آزمون با هوش مصنوعی</a></li>
-      </ul>
-    </nav>
-    <section class="ft-col" aria-labelledby="ftTel">
-      <h3 id="ftTel">تماس با ما</h3>
-      <p><a class="ft-tel" href="tel:+982126378190"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg><span>۰۲۱-۲۶۳۷۸۱۹۰</span></a></p>
-    </section>
-  </div></footer>
-  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
-
-  <script src="config.js"></script>
-  <script src="app.js"></script>
-  <script>
-  /* =====================================================================
-     Visual enhancements only. All quiz logic lives in app.js and is not
-     touched here. Everything below fails safely.
-     ===================================================================== */
-  (function () {
-    'use strict';
-    var root = document.documentElement;
-    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-    var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
-    var app = document.getElementById('app');
-    var FA = '۰۱۲۳۴۵۶۷۸۹';
-    var faNum = function (n) { return String(n).replace(/\d/g, function (d) { return FA[d]; }); };
-    var toNum = function (s) { return parseInt(String(s).replace(/[۰-۹]/g, function (d) { return FA.indexOf(d); }), 10); };
-    var guard = function (fn) { return function () { try { return fn.apply(this, arguments); } catch (e) { /* ignore */ } }; };
-
-    /* ---------- theme toggle ---------- */
-    var themeBtn = document.getElementById('themeBtn');
-    function currentTheme() {
-      return root.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    }
-    function syncMeta(mode) {
-      var c = mode === 'dark' ? '#05211A' : '#FAF7F0';
-      document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.setAttribute('content', c); });
-    }
-    /* تغییر حالت روشن/تیره: رنگ از گوشه‌ی دکمه شروع می‌شود و دایره‌وار همه‌جا را می‌گیرد.
-       از View Transitions استفاده می‌شود (روی کارت گرافیک انجام می‌شود، نه روی پردازنده)؛ برای گوشی‌های ضعیف،
-       مرورگرهای قدیمی و کسانی که انیمیشن را خاموش کرده‌اند، تغییر فوری و بدون انیمیشن است. */
-    var themeBusy = false;
-    function applyTheme(next) {
-      root.setAttribute('data-theme', next);
-      try { localStorage.setItem('theme', next); } catch (e) { /* storage blocked */ }
-      syncMeta(next);
-    }
-    function weakDevice() {
-      return (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
-    }
-    if (themeBtn) themeBtn.addEventListener('click', guard(function () {
-      if (themeBusy) return;
-      var next = currentTheme() === 'dark' ? 'light' : 'dark';
-      if (typeof document.startViewTransition !== 'function' || reduce.matches || weakDevice() || document.hidden) { applyTheme(next); return; }
-      var r = themeBtn.getBoundingClientRect();
-      var x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
-      var rad = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)));
-      var done = false;
-      var finish = function () {
-        if (done) return; done = true; themeBusy = false;
-        root.classList.remove('vt-circle');
-        root.classList.toggle('paused', document.hidden);
-      };
-      themeBusy = true;
-      root.classList.add('vt-circle', 'paused');
-      var applied = false;
-      var apply = function () { if (!applied) { applied = true; applyTheme(next); } };
+  function renderMath(root) {
+    if (!root || !/[$\\]/.test(root.textContent || "")) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (/^(INPUT|TEXTAREA|SCRIPT|STYLE|OPTION)$/.test(n.parentNode.nodeName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
+    const nodes = [];
+    while (w.nextNode()) nodes.push(w.currentNode);
+    let any = false;
+    nodes.forEach((n) => {
+      if (n.data.indexOf("$") < 0) return;
+      const v = normalizeMath(n.data);
+      if (v !== n.data) { n.data = v; any = true; }
+    });
+    if (!any && !/\\[(\[]/.test(root.textContent)) return;
+    loadKatex().then((ok) => {
+      if (!ok || !window.renderMathInElement || !root.isConnected) return;
       try {
-        var t = document.startViewTransition(apply);
-        t.ready.then(function () {
-          try {
-            root.animate(
-              { clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + rad + 'px at ' + x + 'px ' + y + 'px)'] },
-              { duration: 700, easing: 'cubic-bezier(.4,0,.2,1)', pseudoElement: '::view-transition-new(root)' }
-            );
-          } catch (e) { /* بدون انیمیشن، تغییر فوری */ }
-        }).catch(function () { apply(); });
-        t.finished.then(finish, function () { apply(); finish(); });
-        setTimeout(function () { apply(); finish(); }, 2500);   /* اگر هر اتفاقی افتاد، قفل نماند */
-      } catch (e) { apply(); finish(); }
+        window.renderMathInElement(root, {
+          delimiters: [{ left: "\\[", right: "\\]", display: true }, { left: "\\(", right: "\\)", display: false }],
+          throwOnError: false,
+          ignoredTags: ["script", "style", "textarea", "input", "option"],
+        });
+      } catch (e) { /* ignore */ }
+    });
+  }
+
+  const tokenOf = () => { const a = auth.get(); return a ? a.token : null; };
+
+  async function rpc(name, args) {
+    let res;
+    try {
+      res = await fetch(cfg.SUPABASE_URL + "/rest/v1/rpc/" + name, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: cfg.SUPABASE_ANON_KEY,
+          Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify(args),
+      });
+    } catch (e) {
+      throw new Error("ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.");
+    }
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* بدنه‌ی خالی */ }
+    if (!res.ok) {
+      const msg = (data && (data.message || data.hint)) || "خطایی رخ داد (" + res.status + ")";
+      if (/دوباره وارد شوید/.test(msg)) auth.clear();   /* نشست منقضی یا نامعتبر است */
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  const store = {
+    get(k, d) {
+      try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; }
+    },
+    set(k, v) {
+      try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; }
+    },
+    del(k) {
+      try { localStorage.removeItem(k); } catch (e) { /* ignore */ }
+    },
+    addQuiz(item) {
+      const l = this.get("myQuizzes", []).filter((x) => x && x.id !== item.id);
+      l.unshift(item);
+      this.set("myQuizzes", l.slice(0, 50));
+    },
+    removeQuiz(id) {
+      this.set("myQuizzes", this.get("myQuizzes", []).filter((x) => x && x.id !== id));
+    },
+    localQuizzes() {
+      return this.get("myQuizzes", []).filter((m) => m && m.id && m.secret);
+    },
+  };
+
+  /* ذخیره‌ی آزمون: اگر کاربر وارد شده باشد روی حساب (شماره‌اش) ذخیره می‌شود، وگرنه روی همین دستگاه.
+     اگر ذخیره روی حساب نشد (مثلاً قطعی اینترنت)، آزمون روی دستگاه نگه داشته می‌شود تا گم نشود. */
+  async function keepQuiz(item) {
+    const s = auth.get();
+    if (s) {
+      try {
+        const r = await rpc("account_claim", { p_token: s.token, p_id: item.id, p_secret: item.secret });
+        if (r && r.ok) { store.removeQuiz(item.id); return; }
+        if (r && r.error === "no_session") auth.clear();
+      } catch (e) { /* روی دستگاه نگه می‌داریم */ }
+    }
+    store.addQuiz(item);
+  }
+
+  /* انتقال آزمون‌های روی دستگاه به حساب + خواندن فهرست حساب */
+  let accountJob = null;
+  function loadAccountQuizzes(s) {
+    if (accountJob) return accountJob;
+    accountJob = (async () => {
+      try {
+        for (const m of store.localQuizzes()) {
+          let r;
+          try { r = await rpc("account_claim", { p_token: s.token, p_id: m.id, p_secret: m.secret }); } catch (e) { return { items: [], error: true }; }
+          if (r && r.ok) store.removeQuiz(m.id);
+          else if (r && r.error === "no_session") { auth.clear(); return { items: [], loggedOut: true }; }
+          else if (r && (r.error === "not_found" || r.error === "bad_secret")) store.removeQuiz(m.id);
+        }
+        let r;
+        try { r = await rpc("account_quizzes", { p_token: s.token }); } catch (e) { return { items: [], error: true }; }
+        if (r && r.ok && Array.isArray(r.items)) return { items: r.items };
+        if (r && r.error === "no_session") { auth.clear(); return { items: [], loggedOut: true }; }
+        return { items: [], error: true };
+      } finally {
+        accountJob = null;
+      }
+    })();
+    return accountJob;
+  }
+
+  function setTitle(t) {
+    document.title = t ? t + " | " + BASE_TITLE : BASE_TITLE + " | ساخت آزمون آنلاین با هوش مصنوعی";
+  }
+
+  function copyHandlers(root) {
+    root.querySelectorAll("[data-copy]").forEach((b) => {
+      b.addEventListener("click", async () => {
+        const input = root.querySelector(b.dataset.copy);
+        if (!input) return;
+        try { await navigator.clipboard.writeText(input.value); } catch (e) { input.select(); try { document.execCommand("copy"); } catch (e2) { /* ignore */ } }
+        const old = b.textContent;
+        b.textContent = "کپی شد ✓";
+        setTimeout(() => { b.textContent = old; }, 1500);
+      });
+    });
+  }
+
+  /* ---------- نمایش خطا / راه‌اندازی ---------- */
+  function showError(text, retry) {
+    app.innerHTML =
+      '<div class="err" role="alert">' + esc(text) + "</div>" +
+      '<div class="actions">' +
+      (retry ? '<button class="btn" type="button" id="retry">تلاش دوباره</button>' : "") +
+      '<a class="btn ghost" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
+    if (retry) document.getElementById("retry").addEventListener("click", retry);
+  }
+
+  function showSetup() {
+    setTitle();
+    app.innerHTML =
+      "<h1>راه‌اندازی لازم است</h1>" +
+      '<div class="warn">مقدارهای <code>SUPABASE_URL</code> و <code>SUPABASE_ANON_KEY</code> در فایل <code>config.js</code> پر نشده‌اند. مراحل در فایل README.md توضیح داده شده است.</div>';
+  }
+
+  /* ---------- صفحه‌ی اصلی ---------- */
+  let homeTok = null;
+  const isHomeHash = () => !location.hash || location.hash === "#" || location.hash === "#/";
+
+  function viewHome() {
+    setTitle();
+    const sess = auth.get();
+    homeTok = sess ? sess.token : "";
+
+    const draw = (items, note) => {
+      if (!items.length) {
+        app.innerHTML =
+          (note || "") +
+          '<div class="card empty">' + ICONS.doc +
+          "<h2>هنوز آزمونی نساخته‌اید</h2>" +
+          '<p class="muted">با چند کلیک اولین آزمون خود را بسازید و لینکش را برای دیگران بفرستید.</p>' +
+          '<div class="actions" style="justify-content:center"><a class="btn" href="#/create">ساخت اولین آزمون</a>' + (sess ? '<a class="btn ghost" href="#/groups">گروه‌ها</a>' : "") + "</div></div>";
+        return;
+      }
+      app.innerHTML =
+        (note || "") +
+        '<div class="card"><h2>' + (sess ? "آزمون‌های شما" : "آزمون‌هایی که روی این دستگاه ساخته‌اید") + "</h2>" +
+        items.map((m) =>
+          '<div class="mine-row"><span class="mine-t">' + esc(m.title) +
+          (m.participants != null ? '<small class="mine-n">' + faNum(m.participants) + " شرکت‌کننده</small>" : "") + "</span>" +
+          '<a class="btn small ghost" href="#/q/' + encodeURIComponent(m.id) + '">باز کردن</a>' +
+          '<a class="btn small" href="#/m/' + encodeURIComponent(m.id) + "/" + encodeURIComponent(m.secret) + '">نتایج</a></div>'
+        ).join("") +
+        (sess ? "" : '<p class="hint">این آزمون‌ها فقط روی همین دستگاه هستند. برای اینکه روی حسابتان بمانند و از هر دستگاهی ببینیدشان، <a href="#/signup">وارد شوید یا ثبت‌نام کنید</a>.</p>') +
+        "</div>" +
+        '<div class="actions"><a class="btn" href="#/create">ساخت آزمون جدید</a>' + (sess ? '<a class="btn ghost" href="#/groups">گروه‌ها</a>' : "") + "</div>";
+    };
+
+    if (!sess) { draw(store.localQuizzes(), ""); return; }
+
+    const my = routeToken;
+    app.innerHTML = '<div class="card"><p class="muted">در حال بارگذاری آزمون‌های شما…</p></div>';
+    loadAccountQuizzes(sess).then((res) => {
+      if (my !== routeToken) return;
+      const left = store.localQuizzes().filter((m) => !res.items.some((x) => x.id === m.id));
+      let note = "";
+      if (res.error) note = '<div class="card warn-card"><strong>فهرست حساب‌تان الان بارگذاری نشد.</strong><div class="hint">اتصال اینترنت را بررسی کنید و صفحه را دوباره باز کنید. آزمون‌هایتان گم نشده‌اند.</div></div>';
+      else if (left.length) note = '<div class="hint">بعضی آزمون‌ها هنوز فقط روی این دستگاه هستند و بعداً به حساب منتقل می‌شوند.</div>';
+      draw(res.items.concat(left), note);
+    });
+  }
+
+  /* با ورود یا خروج کاربر، فهرست صفحه‌ی اصلی دوباره ساخته می‌شود */
+  window.addEventListener("authchange", () => {
+    const cur = (auth.get() || {}).token || "";
+    if (isHomeHash() && cur !== homeTok && cfg.SUPABASE_URL) viewHome();
+    else if (!cur && /^#\/(create|q\/|groups|g\/)/.test(location.hash) && !gateOn && genLockHash === null && cfg.SUPABASE_URL) route();
+  });
+
+  /* ---------- انتخاب مدل آزمون ---------- */
+  function draftInfo() {
+    const d = store.get("quizDraft", null);
+    if (!d || !Array.isArray(d.questions) || ACTIVE_MODES.indexOf(d.type) < 0) return null;
+    const meaningful = (d.title && String(d.title).trim()) || d.questions.some((q) => q && q.text && String(q.text).trim());
+    return meaningful ? d : null;
+  }
+
+  function viewChoose() {
+    setTitle("ساخت آزمون");
+    const draft = draftInfo();
+    const demo = {
+      tf: '<div class="demo two"><span class="on">درست</span><span>نادرست</span></div>',
+      mcq: '<div class="demo"><span>تهران</span><span class="on">اصفهان</span><span>شیراز</span><span>تبریز</span></div>',
+      essay: '<div class="demo"><span class="lines"></span></div>',
+      mixed: '<div class="demo two"><span class="on">تستی</span><span class="on">درست / نادرست</span></div>',
+    };
+    const card = (m) => {
+      const M = MODES[m];
+      const inner = '<span class="ti">' + ICONS[M.icon] + "</span><h3>" + esc(M.label) + (M.soon ? ' <span class="soon-badge">به‌زودی</span>' : "") + "</h3><p>" + esc(M.desc) + "</p>" + demo[m];
+      return M.soon
+        ? '<div class="card type-card soon" aria-disabled="true">' + inner + "</div>"
+        : '<a class="card type-card" href="' + withG("#/create/" + m) + '" data-base="#/create/' + m + '">' + inner + "</a>";
+    };
+    app.innerHTML =
+      '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
+      "<h1>چه مدل آزمونی می‌خواهید؟</h1>" +
+      '<p class="muted">یکی از مدل‌ها را انتخاب کنید. در مرحله‌ی بعد سؤال‌ها را می‌نویسید.</p>' +
+      (draft
+        ? '<div class="card draft"><div><strong>پیش‌نویس ذخیره‌شده دارید</strong><div class="hint">' + (draft.title ? esc(draft.title) + " — " : "") + faNum(draft.questions.length) + ' سؤال</div></div>' +
+          '<div class="draft-actions"><a class="btn small" href="' + withG("#/create/" + draft.type + "?draft=1") + '" data-base="#/create/' + draft.type + '?draft=1">ادامه‌ی پیش‌نویس</a>' +
+          '<button class="btn small danger" type="button" id="dropDraft">حذف</button></div></div>'
+        : "") +
+      '<div class="card aud"><strong>این آزمون برای چه کسانی است؟</strong>' +
+      '<div class="seg" role="group" aria-label="مخاطب آزمون"><button type="button" data-aud="pub" aria-pressed="' + (!createGroup) + '">همه (عمومی)</button><button type="button" data-aud="grp" aria-pressed="' + (!!createGroup) + '">فقط یک گروه</button></div>' +
+      '<p class="hint" id="audHint" style="margin:6px 0 0"></p><div id="audSel" hidden></div></div>' +
+      '<div class="types" id="typesBox"><a class="card type-card ai-card" href="' + withG("#/create/ai") + '" data-base="#/create/ai"><span class="ti">' + ICONS.spark + '</span><h3>ساخت با هوش مصنوعی <span class="soon-badge ai-badge">جدید</span></h3>' +
+      "<p>یک فایل متنی بدهید یا فقط موضوع را بنویسید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید.</p></a>" +
+      ["tf", "mcq", "essay", "mixed"].map(card).join("") + "</div>";
+    const dropBtn = document.getElementById("dropDraft");
+    if (dropBtn) dropBtn.addEventListener("click", () => { store.del("quizDraft"); viewChoose(); });
+
+    /* انتخاب مخاطب: عمومی یا یکی از گروه‌هایی که مدیرش هستید */
+    const myTok = routeToken;
+    const typesBox = document.getElementById("typesBox"), hint = document.getElementById("audHint"), selBox = document.getElementById("audSel");
+    let owned = null;           /* null = هنوز بارگذاری نشده */
+    let loadFailed = false;
+    let grpMode = !!createGroup;
+    const applyLinks = () => {
+      app.querySelectorAll("a[data-base]").forEach((a) => a.setAttribute("href", withG(a.dataset.base)));
+      const locked = grpMode && !createGroup;
+      if (locked) typesBox.setAttribute("inert", ""); else typesBox.removeAttribute("inert");
+    };
+    const renderAud = () => {
+      app.querySelectorAll("button[data-aud]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.aud === "grp") === grpMode)));
+      if (!grpMode) { hint.textContent = "هر کسی که لینک آزمون را داشته باشد و ثبت‌نام کرده باشد می‌تواند شرکت کند."; selBox.hidden = true; applyLinks(); return; }
+      hint.textContent = "فقط اعضای گروه می‌توانند آزمون را ببینند و بدهند.";
+      selBox.hidden = false;
+      if (loadFailed) {
+        selBox.innerHTML = '<div class="err" role="alert">فهرست گروه‌ها بارگذاری نشد.</div><button class="btn small ghost" type="button" id="audRetry">تلاش دوباره</button>';
+        document.getElementById("audRetry").addEventListener("click", loadOwned);
+      } else if (owned === null) {
+        selBox.innerHTML = '<p class="hint">در حال بارگذاری گروه‌ها…</p>';
+      } else if (!owned.length) {
+        selBox.innerHTML = '<p class="hint">شما هنوز گروهی نساخته‌اید.</p><a class="btn small" href="#/groups">ساخت گروه</a>';
+      } else {
+        selBox.innerHTML = '<label for="audGroup" class="hint">گروه:</label><select id="audGroup">' + owned.map((g) => '<option value="' + esc(g.id) + '"' + (g.id === createGroup ? " selected" : "") + ">" + esc(g.name) + "</option>").join("") + "</select>";
+        const sel = document.getElementById("audGroup");
+        if (!createGroup) createGroup = sel.value;
+        sel.addEventListener("change", () => { createGroup = sel.value; applyLinks(); });
+      }
+      applyLinks();
+    };
+    const loadOwned = async () => {
+      loadFailed = false;
+      try {
+        const gs = await ensureGroups(true);
+        if (myTok !== routeToken) return;
+        owned = gs.filter((g) => g.role === "owner");
+        if (createGroup && !owned.some((g) => g.id === createGroup)) { createGroup = ""; if (grpMode && owned.length) createGroup = owned[0].id; }
+      } catch (e) { if (myTok !== routeToken) return; loadFailed = true; }
+      renderAud();
+    };
+    app.querySelectorAll("button[data-aud]").forEach((b) => b.addEventListener("click", () => {
+      grpMode = b.dataset.aud === "grp";
+      if (!grpMode) createGroup = "";
+      else if (owned && owned.length && !createGroup) createGroup = owned[0].id;
+      renderAud();
     }));
+    renderAud();
+    loadOwned();
+  }
 
-    /* ---------- hero visibility by route ---------- */
-    var hero = document.getElementById('hero');
-    function isHome() { return /^#?\/?(\?.*)?$/.test(location.hash) || root.classList.contains('gate-on'); }
-    var foot = document.getElementById('siteFoot');
-    var syncHero = guard(function () {
-      var h = isHome();
-      if (hero) hero.hidden = !h;
-      if (foot) foot.hidden = !h;      /* فوتر فقط در صفحه‌ی اصلی */
-    });
-    window.addEventListener('hashchange', syncHero);
-    syncHero();
-    /* انیمیشن ورودیِ صفحه‌ی اصلی فقط بار اول؛ دفعه‌های بعد بی‌انیمیشن */
-    setTimeout(function () { root.classList.add('hero-done'); }, 3000);
+  /* ---------- سازنده‌ی آزمون ---------- */
+  function viewBuild(mode, wantDraft, edit) {
+    const M = MODES[mode];
+    const allowed = M.types;
+    const mixed = allowed.length > 1;
+    setTitle(edit ? "ویرایش آزمون" : "ساخت آزمون " + M.label);
+    if (!edit) setTimeout(fillGroupChip, 0);
+    const backHref = edit ? "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret : withG("#/create");
+    const nSubs = edit ? edit.submissions : 0;
 
-    /* ---------- smooth-scroll buttons ---------- */
-    document.querySelectorAll('[data-scroll]').forEach(function (b) {
-      b.addEventListener('click', guard(function () {
-        var t = document.getElementById(b.getAttribute('data-scroll'));
-        if (!t) return;
-        t.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'start' });
-        if (t === app) setTimeout(function () { var i = document.getElementById('title'); if (i) i.focus({ preventScroll: true }); }, 600);
-      }));
-    });
+    let uid = 0;
+    const questions = [];
+    const newQ = (t) => ({ id: ++uid, type: t, text: "", options: ["", "", "", ""], correct: null, tf: null });
+    let titleVal = "";
+    let descVal = "";
+    let restored = false;
 
-    /* ---------- pointer effects (desktop only): parallax, card glow, magnetic buttons ---------- */
-    var raf = 0, lx = 0, ly = 0, lt = null, lastBtn = null;
-    function pointerTick() {
-      raf = 0;
-      if (!reduce.matches) {
-        root.style.setProperty('--px', ((lx / window.innerWidth) * 2 - 1).toFixed(3));
-        root.style.setProperty('--py', ((ly / window.innerHeight) * 2 - 1).toFixed(3));
-      }
-      var el = lt && lt.closest ? lt.closest('.card') : null;
-      if (el) {
-        var r = el.getBoundingClientRect();
-        el.style.setProperty('--mx', (lx - r.left) + 'px');
-        el.style.setProperty('--my', (ly - r.top) + 'px');
-      }
-      var b = lt && lt.closest ? lt.closest('.btn:not(.small)') : null;
-      if (lastBtn && lastBtn !== b) { lastBtn.style.removeProperty('--bx'); lastBtn.style.removeProperty('--by'); }
-      if (b && !reduce.matches) {
-        var br = b.getBoundingClientRect();
-        b.style.setProperty('--bx', ((lx - br.left - br.width / 2) / br.width * 8).toFixed(1) + 'px');
-        b.style.setProperty('--by', ((ly - br.top - br.height / 2) / br.height * 6).toFixed(1) + 'px');
-      }
-      lastBtn = b;
-    }
-    document.addEventListener('pointermove', function (e) {
-      if (!fine.matches || e.pointerType === 'touch') return;
-      lx = e.clientX; ly = e.clientY; lt = e.target;
-      if (!raf) raf = requestAnimationFrame(guard(pointerTick));
-    }, { passive: true });
-    document.addEventListener('pointerleave', function () {
-      if (lastBtn) { lastBtn.style.removeProperty('--bx'); lastBtn.style.removeProperty('--by'); lastBtn = null; }
-    });
-
-    /* ---------- pause continuous animations in background tabs ---------- */
-    document.addEventListener('visibilitychange', function () { root.classList.toggle('paused', document.hidden); });
-
-    /* ---------- toast ---------- */
-    var lastToast = 0;
-    function toast(msg) {
-      var now = Date.now(); if (now - lastToast < 700) return; lastToast = now;
-      var box = document.getElementById('toasts'); if (!box) return;
-      var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; box.appendChild(t);
-      setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 400); }, 2000);
-    }
-    window.__pzToast = toast;
-
-    /* ---------- confetti (brand colors) ---------- */
-    function confetti() {
-      if (reduce.matches || document.hidden) return;
-      var c = document.createElement('canvas'); c.className = 'confetti'; c.setAttribute('aria-hidden', 'true');
-      document.body.appendChild(c);
-      var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      var W = c.width = Math.round(window.innerWidth * dpr), H = c.height = Math.round(window.innerHeight * dpr);
-      var ctx = c.getContext('2d'); if (!ctx) { c.remove(); return; }
-      var colors = ['#0F5132', '#1E8A63', '#7FDDB4', '#FAF7F0', '#E8E0C9', '#D9B64A'];
-      var ps = [];
-      for (var i = 0; i < 150; i++) {
-        ps.push({
-          x: W / 2 + (Math.random() - .5) * W * .25, y: H * .38,
-          vx: (Math.random() - .5) * 16 * dpr, vy: -(Math.random() * 13 + 5) * dpr,
-          s: (Math.random() * 7 + 6) * dpr, r: Math.random() * 6, vr: (Math.random() - .5) * .4,
-          col: colors[i % colors.length]
+    if (edit) {
+      titleVal = String(edit.title || "").slice(0, LIMITS.title);
+      descVal = String(edit.description || "").slice(0, LIMITS.desc);
+      edit.questions.slice(0, LIMITS.questions).forEach((s) => {
+        if (!s) return;
+        const q = newQ(s.type === "tf" ? "tf" : "mcq");
+        q.text = String(s.text || "").slice(0, LIMITS.text);
+        const c = Number.isInteger(s.correct) ? s.correct : null;
+        if (q.type === "tf") q.tf = c === 0 || c === 1 ? c : null;
+        else {
+          if (Array.isArray(s.options) && s.options.length >= LIMITS.minOpts) q.options = s.options.slice(0, LIMITS.maxOpts).map((o) => String(o).slice(0, LIMITS.opt));
+          q.correct = c != null && c >= 0 && c < q.options.length ? c : null;
+        }
+        questions.push(q);
+      });
+    } else if (wantDraft) {
+      const d = draftInfo();
+      if (d && d.type === mode) {
+        restored = true;
+        titleVal = String(d.title || "").slice(0, LIMITS.title);
+        descVal = String(d.description || "").slice(0, LIMITS.desc);
+        d.questions.slice(0, LIMITS.questions).forEach((s) => {
+          if (!s) return;
+          const t = allowed.indexOf(s.type) >= 0 ? s.type : allowed[0];
+          const q = newQ(t);
+          q.text = String(s.text || "").slice(0, LIMITS.text);
+          if (Array.isArray(s.options) && s.options.length >= LIMITS.minOpts) q.options = s.options.slice(0, LIMITS.maxOpts).map((o) => String(o).slice(0, LIMITS.opt));
+          q.correct = Number.isInteger(s.correct) && s.correct >= 0 && s.correct < q.options.length ? s.correct : null;
+          q.tf = s.tf === 0 || s.tf === 1 ? s.tf : null;
+          questions.push(q);
         });
       }
-      var start = performance.now(), g = .34 * dpr, DUR = 3400;
-      (function frame(now) {
-        var t = now - start;
-        if (t > DUR || document.hidden) { c.remove(); return; }
-        ctx.clearRect(0, 0, W, H);
-        ctx.globalAlpha = t > DUR - 700 ? Math.max(0, (DUR - t) / 700) : 1;
-        for (var i = 0; i < ps.length; i++) {
-          var p = ps[i]; p.vy += g; p.vx *= .992; p.x += p.vx; p.y += p.vy; p.r += p.vr;
-          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.col;
-          ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore();
-        }
-        requestAnimationFrame(frame);
-      })(start);
+    }
+    if (!questions.length) questions.push(newQ(allowed[0]));
+
+    app.innerHTML =
+      '<a class="back" href="' + backHref + '">' + ICONS.back + (edit ? " بازگشت به نتایج و لینک‌ها" : " بازگشت به انتخاب مدل") + "</a>" +
+      (edit ? "<h1>ویرایش آزمون</h1>" : "<h1>ساخت آزمون</h1>" + (createGroup ? '<div id="grpChipBox">' + groupChip(groupName(createGroup)) + "</div>" : "")) +
+      (edit
+        ? '<p class="muted">سؤال‌ها، گزینه‌ها و پاسخ درست را تغییر دهید. لینک آزمون همان می‌ماند.</p>'
+        : '<p class="muted">مدل انتخابی: <span class="badge">' + esc(M.label) + "</span> — سؤال‌ها را بنویسید و پاسخ درست را مشخص کنید. پیش‌نویس شما خودکار ذخیره می‌شود.</p>") +
+      (edit && nSubs > 0
+        ? '<div class="card warn-card" role="alert"><strong>⚠️ این آزمون تا الان ' + faNum(nSubs) + " شرکت‌کننده داشته است.</strong>" +
+          "<p>با ذخیره‌ی تغییرات، <b>همه‌ی نتایج قبلی برای همیشه پاک می‌شوند</b>، چون با سؤال‌های جدید قابل مقایسه نیستند. اگر نمی‌خواهید نتایج از بین برود، ویرایش نکنید.</p>" +
+          '<label class="chk"><input type="checkbox" id="confirmClear"><span>متوجه‌ام و می‌خواهم نتایج قبلی پاک شوند</span></label></div>'
+        : "") +
+      (restored ? '<div class="card draft" id="restoredNote"><div><strong>پیش‌نویس قبلی بازیابی شد</strong></div><div class="draft-actions"><button class="btn small danger" type="button" id="freshBtn">شروع تازه</button></div></div>' : "") +
+      '<div class="card" id="meta">' +
+      '<label for="title">عنوان آزمون</label><input id="title" type="text" maxlength="' + LIMITS.title + '" autocomplete="off">' +
+      '<label for="desc">توضیح (اختیاری)</label><textarea id="desc" maxlength="' + LIMITS.desc + '"></textarea></div>' +
+      '<div id="qs"></div>' +
+      '<div class="card add-card"><span class="add-lbl">افزودن سؤال:</span><div class="add-btns" id="addBtns"></div></div>' +
+      '<div id="msg"></div>' +
+      '<div class="actions"><a class="btn ghost" href="' + backHref + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="save" type="button">' + (edit ? "ذخیره‌ی تغییرات" : "ساخت آزمون و دریافت لینک") + "</button></div>";
+
+    const qsBox = document.getElementById("qs");
+    const titleEl = document.getElementById("title");
+    const descEl = document.getElementById("desc");
+    autoGrow(descEl);
+    const msg = document.getElementById("msg");
+    titleEl.value = titleVal;
+    descEl.value = descVal;
+
+    /* پیش‌نویس خودکار */
+    let draftTimer = 0;
+    let finished = false;
+    const draftPayload = () => ({
+      type: mode,
+      title: titleEl.value,
+      description: descEl.value,
+      questions: questions.map((q) => ({ type: q.type, text: q.text, options: q.options, correct: q.correct, tf: q.tf })),
+    });
+    const hasContent = () => titleEl.value.trim() || questions.some((q) => q.text.trim() || q.options.some((o) => o.trim()));
+    const saveDraft = () => {
+      draftTimer = 0;
+      if (finished || edit) return;
+      if (hasContent()) store.set("quizDraft", draftPayload());
+    };
+    const touch = () => { if (finished || edit) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 400); };
+    titleEl.addEventListener("input", () => { titleEl.classList.remove("bad"); msg.innerHTML = ""; touch(); });
+    descEl.addEventListener("input", touch);
+
+    const fresh = document.getElementById("freshBtn");
+    if (fresh) fresh.addEventListener("click", () => { finished = true; clearTimeout(draftTimer); store.del("quizDraft"); location.hash = withG("#/create/" + mode); route(); });
+
+    /* شماره‌گذاری و وضعیت دکمه‌ها */
+    function refreshChrome() {
+      const cards = Array.from(qsBox.querySelectorAll(":scope > .q:not(.leaving)"));
+      cards.forEach((c, i) => {
+        c.querySelector(".qnum").textContent = "سؤال " + faNum(i + 1);
+        c.querySelector(".mv-up").disabled = i === 0;
+        c.querySelector(".mv-down").disabled = i === cards.length - 1;
+        c.querySelector(".rm-q").disabled = cards.length === 1;
+      });
     }
 
-    /* ---------- result screen: score ring, count-up, message ---------- */
-    function scoreFx(el) {
-      el.setAttribute('data-e', '1');
-      var original = el.textContent;
-      var m = original.match(/([۰-۹0-9]+)\s*از\s*([۰-۹0-9]+)/);
-      if (!m) return;
-      var sc = toNum(m[1]), tot = toNum(m[2]);
-      if (!tot || isNaN(sc)) return;
-      var pct = Math.round(sc / tot * 100);
-      var card = el.parentNode;
+    const findQ = (card) => questions.find((q) => q.id === Number(card.dataset.id));
 
-      var wrap = document.createElement('div');
-      wrap.className = 'ring-wrap';
-      wrap.innerHTML = '<svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop class="s1" offset="0"/><stop class="s2" offset="1"/></linearGradient></defs>' +
-        '<circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fg" cx="60" cy="60" r="52" pathLength="100"/></svg>';
-      card.insertBefore(wrap, el);
-      wrap.appendChild(el);
-      var fg = wrap.querySelector('.ring-fg');
-      requestAnimationFrame(function () { requestAnimationFrame(function () { fg.style.strokeDashoffset = String(100 - pct); }); });
+    function clearInvalid(card) {
+      card.classList.remove("invalid");
+      const e = card.querySelector(".q-err");
+      if (e) e.textContent = "";
+    }
 
-      var msg = pct === 100 ? 'بی‌نقص بود! نمره‌ی کامل' : pct >= 80 ? 'عالی بود!' : pct >= 60 ? 'خوب بود، کمی تا اوج مانده' :
-                pct >= 40 ? 'قابل قبول؛ با مرور بهتر می‌شود' : 'بیشتر تمرین کنید، می‌توانید!';
-      var tier = document.createElement('p'); tier.className = 'tier'; tier.textContent = msg; card.appendChild(tier);
-
-      if (!reduce.matches) {
-        var t0 = performance.now(), D = 1200;
-        (function step(now) {
-          var k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
-          el.textContent = k < 1 ? faNum(Math.round(sc * e)) + ' از ' + m[2] : original;
-          if (k < 1) requestAnimationFrame(step);
-        })(t0);
+    function buildAnswers(card, q) {
+      const box = card.querySelector(".q-answers");
+      box.innerHTML = "";
+      if (q.type === "tf") {
+        const grp = el("div", { class: "tf", role: "radiogroup", "aria-label": "پاسخ درست را انتخاب کنید" });
+        [["0", "درست", "tick", "tf-true"], ["1", "نادرست", "cross", "tf-false"]].forEach((o) => {
+          const input = el("input", { type: "radio", name: "c" + q.id, value: o[0] });
+          input.checked = q.tf === Number(o[0]);
+          input.addEventListener("change", () => { q.tf = Number(o[0]); clearInvalid(card); touch(); });
+          grp.appendChild(el("label", { class: "tf-opt " + o[3] }, [input, el("span", { class: "ic", html: ICONS[o[2]] }), el("span", { text: o[1] })]));
+        });
+        box.appendChild(el("div", { class: "hint", text: "پاسخ درست این جمله را انتخاب کنید." }));
+        box.appendChild(grp);
+        return;
       }
-      if (pct >= 70) setTimeout(confetti, 350);
+      box.appendChild(el("div", { class: "hint", text: "دایره‌ی کنار گزینه‌ی درست را انتخاب کنید." }));
+      const opts = el("div", { class: "opts", role: "radiogroup", "aria-label": "گزینه‌ها" });
+      q.options.forEach((val, i) => {
+        const radio = el("input", { type: "radio", name: "c" + q.id, "aria-label": "گزینه‌ی " + faNum(i + 1) + " پاسخ درست است" });
+        radio.checked = q.correct === i;
+        radio.addEventListener("change", () => { q.correct = i; clearInvalid(card); touch(); });
+        const text = el("textarea", { class: "optx", rows: "1", maxlength: String(LIMITS.opt), placeholder: "گزینه‌ی " + faNum(i + 1), "aria-label": "متن گزینه‌ی " + faNum(i + 1) });
+        text.value = val;
+        text.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
+        autoGrow(text);
+        text.addEventListener("input", () => { q.options[i] = text.value; text.classList.remove("bad"); clearInvalid(card); touch(); });
+        const rm = el("button", { class: "btn small danger", type: "button", "aria-label": "حذف گزینه‌ی " + faNum(i + 1), html: "×" });
+        rm.disabled = q.options.length <= LIMITS.minOpts;
+        rm.addEventListener("click", () => {
+          if (q.options.length <= LIMITS.minOpts) return;
+          q.options.splice(i, 1);
+          if (q.correct === i) q.correct = null; else if (q.correct != null && q.correct > i) q.correct -= 1;
+          buildAnswers(card, q);
+          const ins = card.querySelectorAll(".opts .optx");
+          if (ins.length) ins[Math.min(i, ins.length - 1)].focus();
+          touch();
+        });
+        opts.appendChild(el("div", { class: "row" }, [radio, text, rm]));
+      });
+      box.appendChild(opts);
+      const add = el("button", { class: "btn small ghost addopt", type: "button", text: "+ گزینه" });
+      add.disabled = q.options.length >= LIMITS.maxOpts;
+      add.addEventListener("click", () => {
+        if (q.options.length >= LIMITS.maxOpts) return;
+        q.options.push("");
+        buildAnswers(card, q);
+        const ins = card.querySelectorAll(".opts .optx");
+        ins[ins.length - 1].focus();
+        touch();
+      });
+      box.appendChild(add);
     }
 
-    /* ---------- observe what app.js renders ---------- */
-    var pending = false;
-    function enhance() { var s = app.querySelector('.score:not([data-e])'); if (s) scoreFx(s); }
-    if (app && window.MutationObserver) {
-      new MutationObserver(guard(function (muts) {
-        for (var i = 0; i < muts.length; i++) {
-          var t = muts[i].target;
-          var cp = t && t.nodeType === 1 && t.closest ? t.closest('[data-copy]') : null;
-          if (cp && /کپی شد/.test(cp.textContent)) toast('لینک کپی شد');
-        }
-        if (!pending) { pending = true; requestAnimationFrame(guard(function () { pending = false; enhance(); })); }
-      })).observe(app, { childList: true, subtree: true });
+    /* فقط در مدل «مخلوط» نوع هر سؤال قابل تغییر است */
+    function setType(card, q, t) {
+      if (q.type === t || allowed.indexOf(t) < 0) return;
+      q.type = t;
+      card.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === t)));
+      clearInvalid(card);
+      buildAnswers(card, q);
+      touch();
     }
-    enhance();
-  })();
-  </script>
-</body>
-</html>
+
+    function buildCard(q, enter) {
+      const card = el("div", { class: "card q" + (enter ? " enter" : ""), "data-id": String(q.id), role: "group" });
+      const mvUp = el("button", { class: "icon-btn mv-up", type: "button", "aria-label": "انتقال سؤال به بالا", html: ICONS.up });
+      const mvDown = el("button", { class: "icon-btn mv-down", type: "button", "aria-label": "انتقال سؤال به پایین", html: ICONS.down });
+      const rm = el("button", { class: "icon-btn rm-q", type: "button", "aria-label": "حذف سؤال", html: ICONS.trash });
+      mvUp.addEventListener("click", () => {
+        const prev = card.previousElementSibling;
+        if (!prev) return;
+        const i = questions.indexOf(q);
+        questions.splice(i, 1); questions.splice(i - 1, 0, q);
+        qsBox.insertBefore(card, prev);
+        refreshChrome(); touch();
+        (mvUp.disabled ? mvDown : mvUp).focus();
+      });
+      mvDown.addEventListener("click", () => {
+        const next = card.nextElementSibling;
+        if (!next) return;
+        const i = questions.indexOf(q);
+        questions.splice(i, 1); questions.splice(i + 1, 0, q);
+        qsBox.insertBefore(next, card);
+        refreshChrome(); touch();
+        (mvDown.disabled ? mvUp : mvDown).focus();
+      });
+      rm.addEventListener("click", () => {
+        if (questions.length <= 1) return;
+        const i = questions.indexOf(q);
+        questions.splice(i, 1);
+        card.classList.add("leaving");
+        const sib = card.nextElementSibling || card.previousElementSibling;
+        setTimeout(() => { card.remove(); refreshChrome(); }, 230);
+        refreshChrome();
+        const f = sib && sib.querySelector(".qtext");
+        if (f) f.focus({ preventScroll: true });
+        touch();
+      });
+      const head = [el("h2", { class: "qnum" })];
+      if (mixed) {
+        head.push(el("div", { class: "seg", role: "group", "aria-label": "نوع سؤال" },
+          allowed.map((t) => {
+            const b = el("button", { type: "button", "data-t": t, "aria-pressed": String(q.type === t), text: QTYPES[t].short });
+            b.addEventListener("click", () => setType(card, q, t));
+            return b;
+          })));
+      } else {
+        head.push(el("span", { class: "badge", text: QTYPES[q.type].short }));
+      }
+      head.push(el("div", { class: "q-tools" }, [mvUp, mvDown, rm]));
+      card.appendChild(el("div", { class: "q-head" }, head));
+      const ta = el("textarea", { class: "qtext", id: "qt" + q.id, maxlength: String(LIMITS.text), "aria-label": "متن سؤال" });
+      ta.value = q.text;
+      autoGrow(ta);
+      ta.addEventListener("input", () => { q.text = ta.value; ta.classList.remove("bad"); clearInvalid(card); touch(); });
+      card.appendChild(el("label", { for: "qt" + q.id, text: "متن سؤال" }));
+      card.appendChild(ta);
+      card.appendChild(el("div", { class: "q-answers" }));
+      card.appendChild(el("div", { class: "q-err", role: "alert" }));
+      buildAnswers(card, q);
+      return card;
+    }
+
+    function addQuestion(t, focus) {
+      if (questions.length >= LIMITS.questions) {
+        msg.innerHTML = '<div class="err" role="alert">حداکثر ' + faNum(LIMITS.questions) + " سؤال مجاز است.</div>";
+        return;
+      }
+      msg.innerHTML = "";
+      const q = newQ(t);
+      questions.push(q);
+      const card = buildCard(q, true);
+      qsBox.appendChild(card);
+      refreshChrome();
+      if (focus) {
+        card.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "center" });
+        card.querySelector(".qtext").focus({ preventScroll: true });
+      }
+      touch();
+    }
+
+    questions.forEach((q) => qsBox.appendChild(buildCard(q, false)));
+    refreshChrome();
+
+    /* دکمه‌های افزودن: هر مدل فقط نوع سؤال خودش را اضافه می‌کند */
+    const addBtns = document.getElementById("addBtns");
+    allowed.forEach((t, i) => {
+      const label = mixed ? QTYPES[t].short : "سؤال جدید";
+      const b = el("button", { class: "btn small" + (mixed && i > 0 ? " ghost" : ""), type: "button", html: ICONS.plus + " " + esc(label) });
+      b.addEventListener("click", () => addQuestion(t, true));
+      addBtns.appendChild(b);
+    });
+
+    /* اعتبارسنجی؛ اولین خطا را برمی‌گرداند */
+    function validate() {
+      if (!titleEl.value.trim()) return { el: titleEl, msg: "عنوان آزمون را وارد کنید.", global: true };
+      const cards = Array.from(qsBox.querySelectorAll(":scope > .q:not(.leaving)"));
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const q = findQ(card);
+        const n = faNum(i + 1);
+        const fail = (field, m) => ({ card: card, el: field, msg: m });
+        if (!q.text.trim()) return fail(card.querySelector(".qtext"), "متن سؤال " + n + " را بنویسید.");
+        if (q.type === "tf") {
+          if (q.tf == null) return fail(card.querySelector(".tf input"), "پاسخ درست سؤال " + n + " را مشخص کنید.");
+          continue;
+        }
+        const inputs = Array.from(card.querySelectorAll(".opts .optx"));
+        const emptyIdx = q.options.findIndex((o) => !o.trim());
+        if (emptyIdx >= 0) return fail(inputs[emptyIdx], "همه‌ی گزینه‌های سؤال " + n + " را پر کنید.");
+        const seen = {};
+        for (let j = 0; j < q.options.length; j++) {
+          const k = q.options[j].trim().toLowerCase();
+          if (seen[k] != null) return fail(inputs[j], "در سؤال " + n + " دو گزینه یکسان‌اند.");
+          seen[k] = j;
+        }
+        if (q.correct == null) return fail(card.querySelector(".opts input[type=radio]"), "گزینه‌ی درست سؤال " + n + " را مشخص کنید.");
+      }
+      return null;
+    }
+
+    function serialize() {
+      return questions.map((q) => {
+        const text = q.text.trim();
+        if (q.type === "tf") return { type: "tf", text: text, options: ["درست", "نادرست"], correct: q.tf };
+        return { type: "mcq", text: text, options: q.options.map((o) => o.trim()), correct: q.correct };
+      });
+    }
+
+    const saveBtn = document.getElementById("save");
+    saveBtn.addEventListener("click", async () => {
+      msg.innerHTML = "";
+      qsBox.querySelectorAll(".q.invalid").forEach((c) => clearInvalid(c));
+      const v = validate();
+      if (v) {
+        if (v.global) {
+          msg.innerHTML = '<div class="err" role="alert">' + esc(v.msg) + "</div>";
+        } else {
+          v.card.classList.add("invalid");
+          v.card.querySelector(".q-err").textContent = v.msg;
+        }
+        if (v.el) {
+          v.el.classList.add("bad");
+          (v.card || v.el).scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "center" });
+          v.el.focus({ preventScroll: true });
+        }
+        return;
+      }
+      if (edit && nSubs > 0 && !document.getElementById("confirmClear").checked) {
+        const cb = document.getElementById("confirmClear");
+        msg.innerHTML = '<div class="err" role="alert">برای ذخیره، باید تیک تأیید پاک شدن نتایج قبلی را بزنید.</div>';
+        cb.closest(".warn-card").scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "center" });
+        cb.focus({ preventScroll: true });
+        return;
+      }
+      const secret = edit ? edit.secret : randomSecret();
+      saveBtn.disabled = true;
+      saveBtn.classList.add("loading");
+      try {
+        if (edit) {
+          const r = await rpc("update_quiz", {
+            p_id: edit.id,
+            p_secret: edit.secret,
+            p_title: titleEl.value.trim(),
+            p_description: descEl.value.trim(),
+            p_questions: serialize(),
+            p_confirm_clear: nSubs > 0,
+          });
+          finished = true;
+          await keepQuiz({ id: edit.id, secret: edit.secret, title: titleEl.value.trim() });
+          location.hash = "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret + "?updated=1" + (r && r.cleared ? "&cleared=" + r.cleared : "");
+          return;
+        }
+        const id = await rpc("create_quiz", {
+          p_title: titleEl.value.trim(),
+          p_description: descEl.value.trim(),
+          p_questions: serialize(),
+          p_secret: secret,
+          p_token: tokenOf(),
+          p_group: createGroup || null,
+        });
+        finished = true;
+        clearTimeout(draftTimer);
+        store.del("quizDraft");
+        await keepQuiz({ id: id, secret: secret, title: titleEl.value.trim() });
+        location.hash = "#/m/" + encodeURIComponent(id) + "/" + secret + "?new=1";
+      } catch (e) {
+        saveBtn.disabled = false;
+        saveBtn.classList.remove("loading");
+        msg.innerHTML = '<div class="err" role="alert">' + esc(e.message) + "</div>";
+      }
+    });
+
+    return function cleanup() {
+      clearTimeout(draftTimer);
+      if (!finished && !edit && hasContent()) store.set("quizDraft", draftPayload());
+    };
+  }
+
+
+  /* ---------- ویرایش آزمون ---------- */
+  async function viewEdit(id, secret, token) {
+    setTitle("ویرایش آزمون");
+    app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
+    let d;
+    try { d = await rpc("get_results", { p_id: id, p_secret: secret }); } catch (e) { if (token !== routeToken) return; return showError(e.message, () => viewEdit(id, secret, token)); }
+    if (token !== routeToken) return;
+    const c = viewBuild("mixed", false, {
+      id: id,
+      secret: secret,
+      title: d.title,
+      description: d.description,
+      questions: Array.isArray(d.questions) ? d.questions : [],
+      submissions: Array.isArray(d.submissions) ? d.submissions.length : 0,
+    });
+    if (token === routeToken) cleanup = c; else if (c) c();
+  }
+
+  /* ---------- ساخت آزمون با هوش مصنوعی ---------- */
+  /* اسم نشانی تابع روی Supabase (در لیست Edge Functions ستون URL را ببینید) */
+  const AI_FN = "node-api";
+  const AI_MAX_BYTES = 4 * 1024 * 1024;
+  const AI_FILE_TYPES = {
+    pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", doc: "application/msword", rtf: "application/rtf",
+  };
+
+  function readFileAsB64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error("خواندن فایل ممکن نشد."));
+      r.onload = () => resolve(String(r.result).split(",")[1] || "");
+      r.readAsDataURL(file);
+    });
+  }
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error("خواندن فایل ممکن نشد."));
+      r.onload = () => resolve(String(r.result));
+      r.readAsText(file, "utf-8");
+    });
+  }
+
+  /* خروجی سرور را قبل از ساخت آزمون دوباره بررسی می‌کنیم */
+  function normalizeAI(d) {
+    const out = [];
+    (d && Array.isArray(d.questions) ? d.questions : []).forEach((q) => {
+      const text = String((q && q.text) || "").trim().slice(0, LIMITS.text);
+      if (!text || !q) return;
+      if (q.type === "tf") {
+        if (q.correct === 0 || q.correct === 1) out.push({ type: "tf", text: text, options: ["درست", "نادرست"], correct: q.correct });
+        return;
+      }
+      const opts = (Array.isArray(q.options) ? q.options : []).map((o) => String(o == null ? "" : o).trim().slice(0, LIMITS.opt));
+      if (opts.length < LIMITS.minOpts || opts.length > LIMITS.maxOpts || opts.some((o) => !o)) return;
+      if (new Set(opts.map((o) => o.toLowerCase())).size !== opts.length) return;
+      if (!Number.isInteger(q.correct) || q.correct < 0 || q.correct >= opts.length) return;
+      out.push({ type: "mcq", text: text, options: opts, correct: q.correct });
+    });
+    return out.slice(0, LIMITS.questions);
+  }
+
+  /* مدل‌های قابل انتخاب. provider/model همان چیزی است که به تابع سرور می‌رود. */
+  const AI_MODELS = [
+    { id: "ds-v3", group: "DeepSeek", label: "DeepSeek V3", provider: "deepseek", model: "deepseek-chat", textOnly: true },
+    { id: "ds-v41", group: "DeepSeek", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash", textOnly: true },
+  ];
+  const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[0];
+
+  /* قفل کامل برنامه هنگام ساخت آزمون با هوش مصنوعی */
+  let genLockHash = null;
+  const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = ""; return ""; };
+  function setGenLock(on) {
+    const els = document.querySelectorAll("header.top, #app");
+    els.forEach((el) => { if (on) el.setAttribute("inert", ""); else el.removeAttribute("inert"); });
+    document.documentElement.classList.toggle("gen-lock", on);
+    if (on) { genLockHash = location.hash; window.addEventListener("beforeunload", onBeforeUnload); }
+    else { genLockHash = null; window.removeEventListener("beforeunload", onBeforeUnload); }
+  }
+
+  function viewAI() {
+    setTitle("ساخت آزمون با هوش مصنوعی");
+    setTimeout(fillGroupChip, 0);
+    const st = { src: "file", mid: "ds-v3", mode: "mixed", level: "medium", count: 10, file: null };
+    let busy = false;
+    let ctl = null;
+
+    const seg = (name, items) =>
+      '<div class="seg" role="group" data-seg="' + name + '">' +
+      items.map((i) => '<button type="button" data-v="' + i[0] + '" aria-pressed="' + String(st[name] === i[0]) + '">' + i[1] + "</button>").join("") + "</div>";
+
+    app.innerHTML =
+      '<a class="back" href="' + withG("#/create") + '">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
+      "<h1>ساخت آزمون با هوش مصنوعی</h1>" + (createGroup ? '<div id="grpChipBox">' + groupChip(groupName(createGroup)) + "</div>" : "") +
+      '<p class="muted">فایل یا موضوع را بدهید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
+      '<div class="card ai-form">' +
+      '<label for="mid">مدل هوش مصنوعی</label><select id="mid">' +
+      ["DeepSeek"].map((g) => '<optgroup label="' + g + '">' +
+        AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.textOnly ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
+      "</select>" +
+      '<label>منبع سؤال‌ها</label>' + seg("src", [["file", "از روی فایل"], ["topic", "فقط موضوع (بدون فایل)"]]) +
+      '<div id="srcFile"><div class="drop" id="drop" tabindex="0" role="button" aria-label="انتخاب فایل">' + ICONS.upload +
+      '<strong id="dropT">فایل را اینجا بکشید یا انتخاب کنید</strong><span class="hint">فایل متنی (TXT یا MD)، حداکثر ۴ مگابایت</span></div>' +
+      '<input id="file" type="file" accept=".txt,.md,text/plain,text/markdown" hidden></div>' +
+      '<div id="srcTopic" hidden><label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off"></div>' +
+      '<div id="topicExtra"><label for="note">توضیح اضافه (اختیاری)</label><input id="note" type="text" maxlength="300" placeholder="مثلاً: فقط از فصل دوم سؤال بده" autocomplete="off"></div>' +
+      '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
+      '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
+      '<label for="count">تعداد سؤال</label><div class="stepper"><button type="button" id="cm" aria-label="کمتر">−</button><input id="count" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="cp" aria-label="بیشتر">+</button><span class="hint">از ۱ تا ۳۰</span></div>' +
+      "</div>" +
+      '<div id="msg"></div>' +
+      '<div class="actions"><a class="btn ghost" href="' + withG("#/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' ساخت آزمون و دریافت لینک</button></div>' +
+      '<p class="hint" id="wait" hidden>در حال ساخت آزمون… معمولاً ۱۰ تا ۶۰ ثانیه طول می‌کشد. تا پایان کار، همه‌ی دکمه‌ها قفل است. این صفحه را نبندید و از آن خارج نشوید.</p>';
+
+    const $ = (id) => document.getElementById(id);
+    const msg = $("msg");
+    const fail = (t) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + "</div>"; };
+
+    app.querySelectorAll(".seg").forEach((g) => {
+      g.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b || busy) return;
+        const k = g.dataset.seg;
+        st[k] = b.dataset.v;
+        g.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        if (k === "src") {
+          $("srcFile").hidden = st.src !== "file";
+          $("srcTopic").hidden = st.src !== "topic";
+          $("topicExtra").hidden = st.src !== "file";
+          msg.innerHTML = "";
+        }
+      });
+    });
+
+    $("mid").addEventListener("change", () => { st.mid = $("mid").value; msg.innerHTML = ""; });
+    const setCount = (n) => { st.count = Math.min(30, Math.max(1, n)); $("count").value = faNum(st.count); };
+    const parseCount = () => {
+      const t = $("count").value.replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g, "");
+      return t ? parseInt(t, 10) : st.count;
+    };
+    $("cm").addEventListener("click", () => { if (!busy) setCount(parseCount() - 1); });
+    $("cp").addEventListener("click", () => { if (!busy) setCount(parseCount() + 1); });
+    $("count").addEventListener("blur", () => setCount(parseCount()));
+
+    /* انتخاب فایل */
+    const fileInput = $("file");
+    const drop = $("drop");
+    const showFile = () => {
+      $("dropT").textContent = st.file ? st.file.name : "فایل را اینجا بکشید یا انتخاب کنید";
+      drop.classList.toggle("has", !!st.file);
+    };
+    const pickFile = (f) => {
+      msg.innerHTML = "";
+      if (!f) return;
+      const ext = (f.name.split(".").pop() || "").toLowerCase();
+      const isText = ext === "txt" || ext === "md";
+      if (!isText && !AI_FILE_TYPES[ext]) return fail("این نوع فایل پشتیبانی نمی‌شود. فایل متنی (TXT یا MD) انتخاب کنید یا «فقط موضوع» را بزنید.");
+      if (f.size > AI_MAX_BYTES) return fail("حجم فایل بیشتر از ۴ مگابایت است.");
+      if (!f.size) return fail("فایل خالی است.");
+      st.file = f;
+      showFile();
+    };
+    drop.addEventListener("click", () => { if (!busy) fileInput.click(); });
+    drop.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && !busy) { e.preventDefault(); fileInput.click(); } });
+    fileInput.addEventListener("change", () => { pickFile(fileInput.files[0]); fileInput.value = ""; });
+    ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+    drop.addEventListener("drop", (e) => { if (!busy && e.dataTransfer && e.dataTransfer.files) pickFile(e.dataTransfer.files[0]); });
+
+    const go = $("go");
+    go.addEventListener("click", async () => {
+      if (busy) return;
+      msg.innerHTML = "";
+      setCount(parseCount());
+      const M = aiModel(st.mid);
+      const body = { provider: M.provider, model: M.model, mode: st.mode, difficulty: st.level, count: st.count };
+      try {
+        if (st.src === "file") {
+          if (!st.file) return fail("ابتدا یک فایل انتخاب کنید یا گزینه‌ی «فقط موضوع» را بزنید.");
+          const ext = (st.file.name.split(".").pop() || "").toLowerCase();
+          if (M.textOnly && ext !== "txt" && ext !== "md") return fail("«" + M.label + "» فقط فایل متنی (TXT یا MD) می‌خواند. فایل PDF، Word و عکس فعلاً پشتیبانی نمی‌شود؛ متن را در یک فایل TXT بگذارید یا «فقط موضوع» را انتخاب کنید.");
+          if (ext === "txt" || ext === "md") {
+            const t = await readFileAsText(st.file);
+            if (!t.trim()) return fail("فایل متنی خالی است.");
+            body.text = t;
+          } else {
+            body.file = { media_type: AI_FILE_TYPES[ext], data: await readFileAsB64(st.file) };
+          }
+          const note = $("note").value.trim();
+          if (note) body.topic = note;
+        } else {
+          const t = $("topic").value.trim();
+          if (!t) { $("topic").classList.add("bad"); $("topic").focus(); return fail("موضوع آزمون را بنویسید."); }
+          body.topic = t;
+        }
+      } catch (e) { return fail(e.message); }
+
+      busy = true;
+      go.disabled = true;
+      go.classList.add("loading");
+      $("wait").hidden = false;
+      setGenLock(true);
+      ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 130000);
+      try {
+        let res;
+        try {
+          res = await fetch(cfg.SUPABASE_URL + "/functions/v1/" + AI_FN, {
+            method: "POST",
+            signal: ctl.signal,
+            headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+            body: JSON.stringify(Object.assign({}, body, { token: tokenOf() })),
+          });
+        } catch (e) {
+          console.error("generate fetch failed", e);
+          throw new Error(e && e.name === "AbortError" ? "ساخت آزمون بیش از حد طول کشید. دوباره تلاش کنید." : "ارتباط با تابع هوش مصنوعی برقرار نشد (مرحله‌ی ساخت سؤال‌ها). جزئیات: " + (e && e.message ? e.message : "نامشخص"));
+        }
+        let d = null;
+        try { d = await res.json(); } catch (e) { /* ignore */ }
+        if (!res.ok) {
+          if (d && d.detail) console.error("AI detail:", d.detail);
+          const base = (d && d.error) || (res.status === 404 ? "بخش هوش مصنوعی هنوز روی سرور راه‌اندازی نشده است." : "خطایی رخ داد (" + res.status + ").");
+          throw new Error(base + (d && d.detail ? " (جزئیات فنی: " + d.detail + ")" : ""));
+        }
+        const questions = normalizeAI(d);
+        if (!questions.length) throw new Error("آزمون معتبری ساخته نشد. دوباره تلاش کنید.");
+        const secret = randomSecret();
+        const title = String((d && d.title) || "").trim().slice(0, LIMITS.title) || "آزمون";
+        let id;
+        try {
+          id = await rpc("create_quiz", {
+          p_title: title,
+          p_description: String((d && d.description) || "").trim().slice(0, LIMITS.desc),
+          p_questions: questions,
+          p_secret: secret,
+          p_token: tokenOf(),
+          p_group: createGroup || null,
+          });
+        } catch (e2) {
+          throw new Error("سؤال‌ها ساخته شد ولی ذخیره‌ی آزمون در پایگاه‌داده نشد: " + e2.message);
+        }
+        await keepQuiz({ id: id, secret: secret, title: title });
+        setGenLock(false);
+        location.hash = "#/m/" + encodeURIComponent(id) + "/" + secret + "?new=1";
+      } catch (e) {
+        setGenLock(false);
+        if (ctl && ctl.signal.aborted && !busy) return;
+        fail(e.message);
+        busy = false;
+        go.disabled = false;
+        go.classList.remove("loading");
+        $("wait").hidden = true;
+      } finally {
+        clearTimeout(timer);
+      }
+    });
+
+    return function cleanup() {
+      busy = false;
+      setGenLock(false);
+      if (ctl) ctl.abort();
+    };
+  }
+
+  /* ---------- شرکت در آزمون ---------- */
+  async function viewTake(id, token) {
+    setTitle();
+    app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
+    let quiz;
+    try { quiz = await rpc("get_quiz", { p_id: id, p_token: tokenOf() }); } catch (e) { if (token !== routeToken) return; return showError(e.message, () => viewTake(id, token)); }
+    if (token !== routeToken) return;
+    if (!quiz || !Array.isArray(quiz.questions)) return showError("این آزمون پیدا نشد.");
+    setTitle(quiz.title);
+
+    const qs = quiz.questions.map((q) => ({ type: typeOf(q.type), text: String(q.text == null ? "" : q.text), options: Array.isArray(q.options) ? q.options.map(String) : [] }));
+    const n = qs.length;
+    const answers = new Array(n).fill(null);
+    const lastName = store.get("lastName", "");
+
+    const qHtml = (q, i) => {
+      const head = '<legend class="badge">سؤال ' + faNum(i + 1) + " از " + faNum(n) + "</legend>";
+      if (q.type === "tf") {
+        return head + "<h2>" + esc(q.text) + '</h2><div class="tf" role="radiogroup">' +
+          [0, 1].map((j) =>
+            '<label class="tf-opt ' + (j === 0 ? "tf-true" : "tf-false") + '"><input type="radio" name="q' + i + '" value="' + j + '">' +
+            '<span class="ic">' + (j === 0 ? ICONS.tick : ICONS.cross) + "</span><span>" + esc(q.options[j] || (j === 0 ? "درست" : "نادرست")) + "</span></label>").join("") + "</div>";
+      }
+      return head + "<h2>" + esc(q.text) + "</h2>" +
+        q.options.map((o, j) => '<label class="opt"><input type="radio" name="q' + i + '" value="' + j + '"><span>' + esc(o) + "</span></label>").join("");
+    };
+
+    app.innerHTML =
+      "<h1>" + esc(quiz.title) + "</h1>" +
+      (quiz.group_name ? groupChip(quiz.group_name) : "") +
+      (quiz.description ? '<p class="muted">' + esc(quiz.description) + "</p>" : "") +
+      '<div class="ap" role="status" aria-live="polite"><div class="ap-top"><span id="apTxt"></span></div><div class="ap-bar"><i id="apBar"></i></div></div>' +
+      '<form id="f" novalidate>' +
+      '<div class="card" id="nameCard"><div id="nameAcc" class="name-acc" hidden></div>' +
+      '<div id="nameField"><label for="name">نام شما</label><input id="name" type="text" maxlength="100" autocomplete="name"></div></div>' +
+      qs.map((q, i) => '<fieldset class="card qcard" data-i="' + i + '">' + qHtml(q, i) + "</fieldset>").join("") +
+      '<div id="msg"></div><button class="btn" type="submit" id="submitBtn">ثبت پاسخ‌ها</button></form>';
+
+    renderMath(app);
+    const form = document.getElementById("f");
+    const nameEl = document.getElementById("name");
+    const msg = document.getElementById("msg");
+    nameEl.value = lastName;
+    const nameAcc = document.getElementById("nameAcc");
+    const nameField = document.getElementById("nameField");
+    /* اگر کاربر وارد حسابش شده باشد، نتیجه با نام حساب ثبت می‌شود و اسمی پرسیده نمی‌شود */
+    const accName = () => { const a = auth.get(); const n = a ? cleanName(a.name) : ""; return validName(n) ? n : ""; };
+    const syncNameCard = () => {
+      const an = accName();
+      nameAcc.hidden = !an;
+      nameField.hidden = !!an;
+      if (an) nameAcc.innerHTML = '<span class="mini-av">' + esc(initialOf(an)) + '</span><div><div class="hint">نتیجه با نام حساب شما ثبت می‌شود</div><strong>' + esc(an) + "</strong></div>";
+    };
+    syncNameCard();
+    const onAuth = () => {
+      if (token !== routeToken || !nameCard.isConnected) { window.removeEventListener("authchange", onAuth); return; }
+      syncNameCard();
+    };
+    const nameCard = document.getElementById("nameCard");
+    window.addEventListener("authchange", onAuth);
+
+    const updateProgress = () => {
+      const done = answers.filter((a) => a !== null).length;
+      document.getElementById("apTxt").textContent = faNum(done) + " از " + faNum(n) + " سؤال پاسخ داده شده";
+      document.getElementById("apBar").style.setProperty("--v", n ? done / n : 0);
+    };
+    updateProgress();
+
+    form.addEventListener("change", (e) => {
+      const t = e.target;
+      if (t && t.type === "radio") {
+        const m = /^q(\d+)$/.exec(t.name);
+        if (m) {
+          answers[Number(m[1])] = Number(t.value);
+          const c = form.querySelector('.qcard[data-i="' + m[1] + '"]');
+          if (c) c.classList.remove("unanswered");
+          updateProgress();
+        }
+      }
+    });
+
+    let skipOk = false;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fail = (t) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + "</div>"; };
+      msg.innerHTML = "";
+      syncNameCard();
+      const name = accName() || nameEl.value.trim();
+      if (!name) {
+        fail("نام خود را وارد کنید.");
+        nameEl.classList.add("bad");
+        nameEl.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "center" });
+        nameEl.focus({ preventScroll: true });
+        return;
+      }
+      nameEl.classList.remove("bad");
+      const left = [];
+      answers.forEach((a, i) => { if (a === null) left.push(i); });
+      form.querySelectorAll(".unanswered").forEach((c) => c.classList.remove("unanswered"));
+      if (left.length && !skipOk) {
+        skipOk = true;
+        left.forEach((i) => { const c = form.querySelector('.qcard[data-i="' + i + '"]'); if (c) c.classList.add("unanswered"); });
+        msg.innerHTML = '<div class="warn" role="alert">به ' + faNum(left.length) + " سؤال پاسخ نداده‌اید. اگر می‌خواهید همین‌طور ثبت شود دوباره روی «ثبت پاسخ‌ها» بزنید.</div>";
+        const first = form.querySelector('.qcard[data-i="' + left[0] + '"]');
+        if (first) first.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "center" });
+        return;
+      }
+      const btn = document.getElementById("submitBtn");
+      btn.disabled = true;
+      btn.classList.add("loading");
+      try {
+        const r = await rpc("submit_quiz", { p_id: id, p_name: name, p_answers: answers, p_token: tokenOf() });
+        if (token !== routeToken) return;
+        if (!accName()) store.set("lastName", name);
+        showResult(quiz, qs, answers, r, token);
+      } catch (err) {
+        btn.disabled = false;
+        btn.classList.remove("loading");
+        fail(err.message);
+      }
+    });
+  }
+
+  function showResult(quiz, qs, answers, r, token) {
+    const pct = r.total ? Math.round((r.score / r.total) * 100) : 0;
+
+    const review = (q, i) => {
+      const right = r.correct[i];
+      const mine = answers[i];
+      const state = mine == null ? '<span class="badge skip">بدون پاسخ</span>' : mine === right ? '<span class="badge okb">درست</span>' : '<span class="badge badb">نادرست</span>';
+      const opts = q.options.map((o, j) => {
+        const cls = j === right ? "right" : j === mine ? "wrong" : "";
+        const tag = j === right ? " ✓ پاسخ درست" : j === mine ? " ✗ پاسخ شما" : "";
+        return '<div class="opt ' + cls + '"><span>' + esc(o) + "</span><strong>" + tag + "</strong></div>";
+      }).join("");
+      return '<div class="card"><div class="rv-top">' + state + "</div><h2>" + faNum(i + 1) + ". " + esc(q.text) + "</h2>" + opts + "</div>";
+    };
+
+    app.innerHTML =
+      '<div class="card"><p class="muted center">نمره‌ی شما</p><div class="score">' + faNum(r.score) + " از " + faNum(r.total) + '</div><p class="muted center">' + faNum(pct) + "٪</p></div>" +
+      "<h2>مرور پاسخ‌ها</h2>" + qs.map(review).join("") +
+      '<div class="actions"><button class="btn" type="button" id="again">شرکت دوباره</button><a class="btn ghost" href="#/create">ساخت آزمون خودم</a></div>';
+    renderMath(app);
+    document.getElementById("again").addEventListener("click", () => { viewTake(quiz.id, token); window.scrollTo(0, 0); });
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- مدیریت و نتایج ---------- */
+  async function viewManage(id, secret, isNew, token, flags) {
+    flags = flags || {};
+    setTitle();
+    app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
+    let d;
+    try { d = await rpc("get_results", { p_id: id, p_secret: secret }); } catch (e) { if (token !== routeToken) return; return showError(e.message, () => viewManage(id, secret, isNew, token, flags)); }
+    if (token !== routeToken) return;
+    setTitle("نتایج: " + d.title);
+
+    const take = baseUrl() + "#/q/" + id;
+    const subs = Array.isArray(d.submissions) ? d.submissions : [];
+    const qs = Array.isArray(d.questions) ? d.questions : [];
+    const ratio = (s) => (s.total ? s.score / s.total : 0);
+    const avg = subs.length ? subs.reduce((a, s) => a + ratio(s), 0) / subs.length : 0;
+    const best = subs.length ? Math.max.apply(null, subs.map(ratio)) : 0;
+    const when = (v) => { const t = new Date(v); return isNaN(t) ? "" : t.toLocaleDateString("fa-IR") + " — " + t.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }); };
+
+    const qstat = qs.map((q, i) => {
+      const ok = subs.filter((s) => Array.isArray(s.answers) && s.answers[i] === q.correct).length;
+      const p = subs.length ? Math.round((ok / subs.length) * 100) : 0;
+      const txt = String(q.text || "");
+      return '<div class="qstat"><div class="qs-top"><span class="qs-n">' + faNum(i + 1) + '</span><span class="qs-t">' + esc(plainQ(txt).length > 90 ? plainQ(txt).slice(0, 90) + "…" : plainQ(txt)) +
+        '</span><span class="badge">' + esc(QTYPES[typeOf(q.type)].short) + '</span><span class="qs-p">' + faNum(p) + '٪</span></div><div class="bar" role="img" aria-label="' + faNum(p) + ' درصد درست"><i style="--w:' + (p / 100) + '"></i></div></div>';
+    }).join("");
+
+    app.innerHTML =
+      "<h1>" + esc(d.title) + "</h1>" +
+      (d.group_name ? groupChip(d.group_name) + '<p class="hint" style="margin-top:-6px">این آزمون فقط برای اعضای گروه باز می‌شود.</p>' : "") +
+      (isNew ? '<div class="card created"><strong>آزمون ساخته شد 🎉</strong><div class="hint">اگر سؤالی یا پاسخ درستی اشتباه است، با دکمه‌ی «ویرایش آزمون» در همین صفحه اصلاحش کنید.</div></div>' : "") +
+      (flags.updated ? '<div class="card created"><strong>تغییرات ذخیره شد ✅</strong>' + (flags.cleared ? '<div class="hint">' + faNum(flags.cleared) + " نتیجه‌ی قبلی پاک شد.</div>" : "") + "</div>" : "") +
+      '<div class="card"><h2>لینک آزمون</h2>' +
+      '<div class="linkbox"><input id="l1" type="text" readonly value="' + esc(take) + '" aria-label="لینک آزمون"><button class="btn small" type="button" data-copy="#l1">کپی</button></div>' +
+      '<div class="actions"><a class="btn ghost small" href="#/q/' + encodeURIComponent(id) + '">پیش‌نمایش آزمون</a>' +
+      '<a class="btn small" href="#/edit/' + encodeURIComponent(id) + "/" + secret + '">ویرایش آزمون</a>' +
+      (navigator.share ? '<button class="btn small" type="button" id="shareBtn">اشتراک‌گذاری</button>' : "") + "</div></div>" +
+      '<div class="stats"><div class="stat"><b>' + faNum(subs.length) + "</b><span>شرکت‌کننده</span></div>" +
+      '<div class="stat"><b>' + faNum(Math.round(avg * 100)) + "٪</b><span>میانگین</span></div>" +
+      '<div class="stat"><b>' + faNum(Math.round(best * 100)) + "٪</b><span>بهترین نمره</span></div></div>" +
+      '<div class="card"><h2>نتایج</h2>' +
+      (subs.length
+        ? '<div style="overflow-x:auto"><table class="rtbl"><thead><tr><th>نام</th><th>نمره</th><th>زمان</th><th></th></tr></thead><tbody>' +
+          subs.map((s, i) => '<tr class="srow"><td class="c-name">' + esc(s.name) + '</td><td class="c-score" data-l="نمره">' + faNum(s.score) + " از " + faNum(s.total) + '</td><td class="c-time" data-l="زمان">' + esc(when(s.created_at)) + '</td><td class="det-cell"><button class="btn ghost small" type="button" data-det="' + i + '" aria-haspopup="dialog">مشاهده جزئیات</button></td></tr>').join("") +
+          '</tbody></table></div><div class="actions"><button class="btn ghost small" type="button" id="csv">دانلود CSV</button><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button></div>'
+        : '<p class="muted">هنوز کسی شرکت نکرده است. لینک آزمون را برای دیگران بفرستید.</p><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button>') +
+      "</div>" +
+      (subs.length && qs.length ? '<div class="card"><h2>آمار هر سؤال <span class="hint">(درصد پاسخ درست)</span></h2>' + qstat + "</div>" : "") +
+      '<div class="actions"><a class="btn ghost" href="' + (d.group_id && GROUP_ID_RE.test(d.group_id) ? "#/g/" + d.group_id : "#/") + '">' + ICONS.back + (d.group_id ? " بازگشت به گروه" : " بازگشت به صفحه‌ی اصلی") + "</a></div>";
+
+    /* جزئیات پاسخ هر شرکت‌کننده (فقط در سایت؛ در CSV نیست) */
+    const detailHtml = (s) => {
+      const ans = Array.isArray(s.answers) ? s.answers : [];
+      return qs.map((q, i) => {
+        const mine = ans[i];
+        const opts = Array.isArray(q.options) ? q.options : [];
+        const has = Number.isInteger(mine) && mine >= 0 && mine < opts.length;
+        const right = has && mine === q.correct;
+        const state = !has ? ["r-skip", "بدون پاسخ"] : right ? ["r-ok", "درست"] : ["r-bad", "غلط"];
+        const row = (label, text, cls) => '<div class="dl ' + cls + '"><span class="dl-k">' + label + '</span><span class="dl-v">' + esc(text) + "</span></div>";
+        let body = row("پاسخ شرکت‌کننده", has ? opts[mine] : "پاسخی نداده", has ? (right ? "r-ok" : "r-bad") : "r-skip");
+        if (!right && opts[q.correct] != null) body += row("پاسخ درست", opts[q.correct], "r-ok");
+        return '<div class="dq ' + state[0] + '"><div class="dq-top"><span class="dq-n">' + faNum(i + 1) + '</span><span class="dq-t">' + esc(q.text) + '</span><span class="dq-s ' + state[0] + '">' + state[1] + "</span></div>" + body + "</div>";
+      }).join("");
+    };
+    let closeModal = null;
+    const openDetails = (s, opener) => {
+      if (closeModal) closeModal();
+      const ov = document.createElement("div");
+      ov.className = "modal";
+      ov.innerHTML = '<div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="mdT"><div class="modal-head"><h2 id="mdT">جزئیات پاسخ‌ها<span class="sub">' + esc(s.name) + " — " + faNum(s.score) + " از " + faNum(s.total) + '</span></h2><button class="btn ghost small" type="button" id="mdX">بستن</button></div><div class="modal-body">' + (qs.length ? detailHtml(s) : '<p class="muted">جزئیاتی موجود نیست.</p>') + "</div></div>";
+      document.body.appendChild(ov);
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const onKey = (e) => { if (e.key === "Escape") closeModal(); };
+      closeModal = () => {
+        document.removeEventListener("keydown", onKey);
+        document.body.style.overflow = prevOverflow;
+        ov.remove();
+        closeModal = null;
+        if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+      };
+      document.addEventListener("keydown", onKey);
+      ov.addEventListener("click", (e) => { if (e.target === ov) closeModal(); });
+      ov.querySelector("#mdX").addEventListener("click", () => closeModal());
+      ov.querySelector("#mdX").focus({ preventScroll: true });
+      renderMath(ov);
+      const prevCleanup = cleanup;
+      cleanup = () => { if (closeModal) closeModal(); if (prevCleanup) prevCleanup(); };
+    };
+    app.querySelectorAll("[data-det]").forEach((btn) => {
+      btn.addEventListener("click", () => openDetails(subs[Number(btn.getAttribute("data-det"))], btn));
+    });
+
+    copyHandlers(app);
+    renderMath(app);
+    document.getElementById("refresh").addEventListener("click", () => viewManage(id, secret, false, token));
+    const share = document.getElementById("shareBtn");
+    if (share) share.addEventListener("click", () => { navigator.share({ title: d.title, url: take }).catch(() => {}); });
+    const csv = document.getElementById("csv");
+    if (csv) csv.addEventListener("click", () => {
+      const cell = (v) => {
+        let t = String(v);
+        if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; /* جلوگیری از اجرای فرمول در اکسل */
+        return '"' + t.replace(/"/g, '""') + '"';
+      };
+      const lines = [["نام", "نمره", "از", "زمان"].map(cell).join(",")].concat(
+        subs.map((s) => [s.name, s.score, s.total, s.created_at].map(cell).join(","))
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "results-" + id + ".csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+  }
+
+
+  /* ---------- ثبت‌نام و ورود با شماره‌ی موبایل ---------- */
+  const AUTH_FN = "auth-otp";
+  const auth = {
+    get() {
+      const v = store.get("session", null);
+      return v && typeof v.token === "string" && typeof v.phone === "string" ? v : null;
+    },
+    set(v) { store.set("session", v); syncAuthBtn(); window.dispatchEvent(new Event("authchange")); },
+    clear() { store.del("session"); syncAuthBtn(); window.dispatchEvent(new Event("authchange")); },
+  };
+
+  const cleanName = (v) => String(v == null ? "" : v).replace(/\s+/g, " ").trim();
+  const validName = (n) => n.length >= 2 && n.length <= 60;
+  const initialOf = (n) => { const c = Array.from(cleanName(n))[0]; return c ? c.toUpperCase() : ""; };
+  const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.8-5.4 7.2-5.4s6.3 1.8 7.2 5.4"/></svg>';
+
+  async function doLogout(btn) {
+    if (btn) { btn.disabled = true; btn.classList.add("loading"); }
+    const cur = auth.get();
+    /* خروج فوری: نشست روی دستگاه همین حالا پاک می‌شود و ابطال سمت سرور در پس‌زمینه انجام می‌شود */
+    if (cur) { try { authCall({ action: "logout", token: cur.token }).catch(() => {}); } catch (e) { /* بی‌اهمیت */ } }
+    auth.clear();
+    location.hash = "#/";
+  }
+
+  /* دکمه‌ی «ثبت‌نام» بعد از ورود به یک آواتار دایره‌ای (با اسم و شماره) تبدیل می‌شود */
+  function closeProfile() {
+    const pop = document.getElementById("profPop"), btn = document.getElementById("profBtn");
+    if (pop) pop.hidden = true;
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+  function openProfile() {
+    const pop = document.getElementById("profPop"), btn = document.getElementById("profBtn");
+    if (!pop || !btn) return;
+    pop.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    const r = btn.getBoundingClientRect(), w = pop.offsetWidth, vw = document.documentElement.clientWidth;
+    pop.style.top = Math.round(r.bottom + 10) + "px";
+    pop.style.left = Math.round(Math.max(12, Math.min(r.left, vw - w - 12))) + "px";
+  }
+  function syncAuthBtn() {
+    const b = document.getElementById("authBtn");
+    const wrap = document.getElementById("profWrap");
+    if (!b) return;
+    const s = auth.get();
+    b.style.display = s ? "none" : "";
+    if (!wrap) return;
+    wrap.hidden = !s;
+    if (!s) { wrap.innerHTML = ""; return; }
+    const nm = cleanName(s.name);
+    const av = nm ? "<span>" + esc(initialOf(nm)) + "</span>" : USER_ICON;
+    wrap.innerHTML =
+      '<button class="prof-btn" id="profBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="profPop" aria-label="پروفایل' + (nm ? "؛ " + esc(nm) : "") + '">' + av + "</button>" +
+      '<div class="prof-pop" id="profPop" role="dialog" aria-label="اطلاعات حساب" hidden>' +
+      '<div class="prof-av">' + av + "</div>" +
+      '<div class="prof-name">' + (nm ? esc(nm) : "کاربر پازمونک") + "</div>" +
+      '<div class="prof-phone" dir="ltr">' + showPhone(s.phone) + "</div>" +
+      '<button class="btn ghost small wide" id="profOut" type="button">خروج از حساب</button></div>';
+    document.getElementById("profBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const pop = document.getElementById("profPop");
+      if (pop.hidden) openProfile(); else closeProfile();
+    });
+    document.getElementById("profPop").addEventListener("click", (e) => e.stopPropagation());
+    document.getElementById("profOut").addEventListener("click", (e) => { closeProfile(); doLogout(e.currentTarget); });
+  }
+  document.addEventListener("click", closeProfile);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { const pop = document.getElementById("profPop"); if (pop && !pop.hidden) { closeProfile(); const b = document.getElementById("profBtn"); if (b) b.focus(); } } });
+  window.addEventListener("resize", closeProfile);
+  window.addEventListener("hashchange", closeProfile);
+
+  async function authCall(body) {
+    let res;
+    try {
+      res = await fetch(cfg.SUPABASE_URL + "/functions/v1/" + AUTH_FN, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      return { ok: false, error: "network", message: "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید." };
+    }
+    let d = null;
+    try { d = await res.json(); } catch (e) { /* ignore */ }
+    if (d && typeof d.ok === "boolean") return d;
+    return {
+      ok: false,
+      error: "server",
+      message: res.status === 404 ? "بخش ثبت‌نام هنوز روی سرور راه‌اندازی نشده است." : "خطایی رخ داد (" + res.status + "). دوباره تلاش کنید.",
+    };
+  }
+
+  const toLatinDigits = (s) => String(s).replace(/[۰-۹]/g, (d) => FA.indexOf(d)).replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+  function cleanPhone(v) {
+    let d = toLatinDigits(v).replace(/\D/g, "");
+    if (d.indexOf("0098") === 0) d = "0" + d.slice(4);
+    else if (d.indexOf("98") === 0 && d.length >= 12) d = "0" + d.slice(2);
+    else if (d.charAt(0) === "9") d = "0" + d;
+    return d.slice(0, 11);
+  }
+  const validPhone = (p) => /^09\d{9}$/.test(p);
+  const showPhone = (p) => faNum(p.slice(0, 4) + " " + p.slice(4, 7) + " " + p.slice(7));
+  const mmss = (sec) => faNum(Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"));
+
+  const LOGO_CHECK = '<svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M70.2 4.0C68.5 3.1 66.8 2.4 65.4 1.9C64.0 1.4 63.4 1.3 62.0 1.0C60.6 0.7 58.9 0.3 57.1 0.2C55.3 0.0 57.7 -0.3 51.1 0.0C44.6 0.3 23.8 1.3 17.8 1.8C11.7 2.3 15.7 2.3 14.8 2.8C13.9 3.4 13.1 4.0 12.5 5.1C11.9 6.2 11.5 -1.3 11.3 9.2C11.2 19.7 10.9 59.6 11.5 68.2C12.1 76.8 13.6 63.2 15.0 60.9C16.4 58.7 18.0 56.6 19.7 54.8C21.4 53.0 22.9 51.6 25.0 50.0C27.2 48.4 31.4 49.6 32.7 45.4C34.0 41.1 32.6 28.5 32.7 24.7C32.8 21.0 32.9 23.2 33.3 22.6C33.7 22.0 34.2 21.3 34.9 20.9C35.6 20.5 35.1 20.3 37.4 20.1C39.8 19.9 46.2 19.9 49.0 19.9C51.8 19.9 52.8 19.9 54.3 20.1C55.8 20.3 56.8 20.5 58.0 21.0C59.2 21.4 60.5 22.1 61.5 22.9C62.5 23.7 63.3 24.6 64.0 25.7C64.8 26.7 65.4 28.0 65.8 29.3C66.2 30.5 66.4 31.8 66.5 33.1C66.6 34.3 66.4 35.6 66.3 36.7C66.1 37.8 65.8 38.7 65.3 39.7C64.9 40.7 64.1 42.0 63.3 42.9C62.5 43.8 62.0 44.4 60.7 45.1C59.4 45.8 57.8 46.7 55.5 47.1C53.3 47.5 49.7 47.5 47.3 47.7C45.0 48.0 43.8 48.1 41.5 48.8C39.2 49.4 36.1 50.3 33.4 51.5C30.6 52.8 27.1 55.0 25.1 56.4C23.0 57.8 22.5 58.3 21.1 59.7C19.7 61.1 17.8 63.1 16.6 64.8C15.3 66.4 14.4 68.0 13.6 69.6C12.8 71.3 12.2 73.5 11.8 74.9C11.4 76.3 11.4 75.5 11.3 77.9C11.2 80.2 11.2 86.4 11.3 88.8C11.4 91.2 11.6 91.2 11.8 92.2C12.1 93.2 12.5 94.0 12.9 94.7C13.3 95.5 13.6 95.9 14.2 96.6C14.9 97.3 15.8 98.2 16.9 98.7C17.9 99.2 19.2 99.7 20.6 99.9C22.0 100.0 23.9 100.0 25.4 99.6C26.8 99.2 28.2 98.5 29.3 97.6C30.4 96.8 31.4 95.4 32.0 94.5C32.7 93.5 32.9 92.7 33.2 91.7C33.5 90.7 33.8 92.3 33.9 88.5C34.0 84.7 33.7 72.3 33.8 68.7C33.9 65.2 34.1 67.6 34.5 67.3C34.9 67.1 34.0 66.9 36.2 67.2C38.3 67.4 44.4 68.4 47.5 68.7C50.5 69.0 52.3 68.9 54.5 68.8C56.7 68.7 58.8 68.4 60.6 68.1C62.5 67.7 63.5 67.5 65.3 66.8C67.2 66.1 69.8 65.0 71.6 64.0C73.4 63.1 74.7 62.1 76.2 60.9C77.6 59.7 78.9 58.5 80.2 56.9C81.6 55.4 83.0 53.6 84.1 51.6C85.2 49.6 86.3 47.2 87.0 45.0C87.8 42.8 88.2 40.6 88.4 38.4C88.7 36.2 88.7 33.9 88.5 31.7C88.3 29.4 87.8 27.0 87.1 24.8C86.4 22.6 85.4 20.2 84.3 18.2C83.2 16.1 82.0 14.4 80.5 12.6C79.0 10.8 77.0 8.8 75.3 7.4C73.5 5.9 71.8 4.9 70.2 4.0Z"/></svg>';
+
+  function ringSvg() {
+    let ticks = "";
+    for (let i = 0; i < 12; i++) {
+      const big = i % 3 === 0;
+      ticks += '<line class="tk' + (big ? " big" : "") + '" x1="60" y1="' + (big ? 7 : 8.5) + '" x2="60" y2="' + (big ? 14 : 12) + '" transform="rotate(' + i * 30 + ' 60 60)"/>';
+    }
+    return '<svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2A9D6F"/><stop offset="1" stop-color="#0F5132"/></linearGradient></defs>' +
+      '<circle class="track" cx="60" cy="60" r="46"/>' +
+      '<circle class="prog" id="ringProg" cx="60" cy="60" r="46" pathLength="100"/>' +
+      '<g>' + ticks + "</g>" +
+      '</svg>';
+  }
+
+  function viewSignup() {
+    setTitle("ثبت‌نام");
+    if (auth.get()) { location.hash = signupNext ? "#/" + signupNext : "#/"; return null; }
+    const nextHash = signupNext ? "#/" + signupNext : "#/";
+
+    app.innerHTML =
+      '<div class="auth-wrap"><div class="card auth-card">' +
+      '<div class="auth-logo">' + LOGO_CHECK + "</div>" +
+      '<div id="authStep"></div></div>' +
+      '<div class="actions" style="justify-content:center"><a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a></div></div>";
+    const box = document.getElementById("authStep");
+
+    let alive = true;
+    let raf = 0;
+    let navTimer = 0;
+    let phone = "";
+    let fullName = "";
+
+    const stopTimers = () => { cancelAnimationFrame(raf); raf = 0; };
+    const mount = (html) => { stopTimers(); box.innerHTML = '<div class="auth-step">' + html + "</div>"; return box.firstChild; };
+
+    /* ----- مرحله‌ی ۱: شماره ----- */
+    function stepPhone(prefill) {
+      mount(
+        "<h1>ثبت‌نام</h1>" +
+        '<p class="sub">شماره‌ی موبایل‌تان را وارد کنید تا یک کد تأیید برایتان بفرستیم. اگر قبلاً ثبت‌نام کرده‌اید، وارد حساب‌تان می‌شوید.</p>' +
+        '<form id="phoneForm" novalidate><label for="nm">نام و نام خانوادگی</label>' +
+        '<input id="nm" class="auth-input auth-name" type="text" autocomplete="name" maxlength="60" placeholder="مثلاً علی رضایی" aria-describedby="phMsg">' +
+        '<label for="ph">شماره‌ی موبایل</label>' +
+        '<input id="ph" class="auth-input" type="text" inputmode="numeric" autocomplete="tel" maxlength="14" placeholder="۰۹۱۲۳۴۵۶۷۸۹" aria-describedby="phMsg">' +
+        '<div class="auth-msg" id="phMsg" role="alert"></div>' +
+        '<button class="btn wide" id="phGo" type="submit">دریافت کد</button></form>'
+      );
+      const ph = document.getElementById("ph");
+      const nmEl = document.getElementById("nm");
+      const msg = document.getElementById("phMsg");
+      const go = document.getElementById("phGo");
+      ph.value = faNum(prefill || "");
+      nmEl.value = fullName;
+      nmEl.addEventListener("input", () => { nmEl.classList.remove("bad"); msg.textContent = ""; });
+      ph.addEventListener("input", () => {
+        const c = cleanPhone(ph.value);
+        ph.value = faNum(c);
+        ph.classList.remove("bad");
+        msg.textContent = "";
+      });
+      document.getElementById("phoneForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const n = cleanName(nmEl.value);
+        if (!validName(n)) {
+          nmEl.classList.add("bad");
+          msg.className = "auth-msg m-err";
+          msg.textContent = "نام و نام خانوادگی‌تان را وارد کنید (حداقل ۲ حرف).";
+          nmEl.focus();
+          return;
+        }
+        const p = cleanPhone(ph.value);
+        if (!validPhone(p)) {
+          ph.classList.add("bad");
+          msg.className = "auth-msg m-err";
+          msg.textContent = "شماره‌ی موبایل معتبر نیست. مثل ۰۹۱۲۳۴۵۶۷۸۹ وارد کنید.";
+          ph.focus();
+          return;
+        }
+        go.disabled = true; go.classList.add("loading"); msg.textContent = "";
+        const r = await authCall({ action: "send", phone: p });
+        if (!alive) return;
+        go.disabled = false; go.classList.remove("loading");
+        if (r.ok) { phone = p; fullName = n; stepCode(r); return; }
+        msg.className = "auth-msg m-err";
+        msg.textContent = r.message || "ارسال کد ناموفق بود.";
+        if (r.retry_in) msg.textContent += " (" + faNum(r.retry_in) + " ثانیه)";
+      });
+      const first = fullName ? ph : nmEl;
+      if (!reduceMotion()) setTimeout(() => { if (alive) first.focus({ preventScroll: true }); }, 350);
+      else first.focus({ preventScroll: true });
+    }
+
+    /* ----- مرحله‌ی ۲: کد + ساعت دایره‌ای ----- */
+    function stepCode(info) {
+      mount(
+        "<h1>کد تأیید</h1>" +
+        '<p class="sub">کد ۵ رقمی به شماره‌ی <span class="auth-phone">' + showPhone(phone) + "</span> ارسال شد. " +
+        '<button class="auth-link" id="editPh" type="button">ویرایش شماره</button></p>' +
+        '<div class="ring" id="ring" role="timer" aria-label="زمان باقی‌مانده تا انقضای کد">' + ringSvg() +
+        '<div class="ring-t"><b id="ringT">۲:۰۰</b><span>زمان باقی‌مانده</span></div></div>' +
+        '<div class="otp" id="otp" role="group" aria-label="کد ۵ رقمی">' +
+        [0, 1, 2, 3, 4].map((i) => '<input type="text" inputmode="numeric" maxlength="1" autocomplete="' + (i === 0 ? "one-time-code" : "off") + '" aria-label="رقم ' + faNum(i + 1) + '">').join("") +
+        "</div>" +
+        (info.dev_code ? '<div class="auth-dev">حالت آزمایشی (ارسال پیامک هنوز فعال نیست): کد شما <b>' + faNum(info.dev_code) + "</b></div>" : "") +
+        '<div class="auth-msg info" id="cMsg" role="alert"></div>' +
+        '<button class="btn ghost wide" id="resend" type="button" hidden>ارسال دوباره‌ی کد</button>'
+      );
+      const ring = document.getElementById("ring");
+      const prog = document.getElementById("ringProg");
+      const timeEl = document.getElementById("ringT");
+      const otp = document.getElementById("otp");
+      const boxes = Array.prototype.slice.call(otp.querySelectorAll("input"));
+      const msg = document.getElementById("cMsg");
+      const resend = document.getElementById("resend");
+
+      let total = (info.expires_in || 120) * 1000;
+      let deadline = Date.now() + total;
+      let expired = false;
+      let busy = false;
+      let lastSec = -1;
+
+      const setMsg = (t, cls) => { msg.className = "auth-msg " + (cls === "err" ? "m-err" : "info"); msg.textContent = t || ""; };
+      const getCode = () => boxes.map((b) => b.dataset.d || "").join("");
+      const clearBoxes = () => { boxes.forEach((b) => { b.value = ""; b.dataset.d = ""; b.classList.remove("filled"); }); };
+      const lock = (v) => boxes.forEach((b) => { b.disabled = v; });
+
+      function showResend() { resend.hidden = false; resend.disabled = false; }
+
+      function paint() {
+        const now = Date.now();
+        const left = Math.max(0, deadline - now);
+        const used = 1 - left / total;
+        prog.style.strokeDashoffset = String(100 * used);
+        const sec = Math.ceil(left / 1000);
+        if (sec !== lastSec) {
+          lastSec = sec;
+          timeEl.textContent = mmss(sec);
+          ring.classList.toggle("low", sec <= 10 && sec > 0);
+        }
+        if (left <= 0 && !expired) {
+          expired = true;
+          ring.classList.remove("low"); ring.classList.add("off");
+          lock(true);
+          setMsg("زمان کد تمام شد. یک کد جدید بگیرید.", "err");
+          showResend();
+        }
+        if (!expired) raf = requestAnimationFrame(paint);
+      }
+
+      async function submit() {
+        if (busy || expired) return;
+        const code = getCode();
+        if (code.length !== 5) return;
+        busy = true; lock(true); setMsg("در حال بررسی…", "info");
+        const r = await authCall({ action: "verify", phone: phone, code: code, name: fullName });
+        if (!alive) return;
+        busy = false;
+        if (r.ok) { auth.set({ token: r.token, phone: r.phone, name: cleanName(r.name || fullName) }); stepWelcome(!!r.created); return; }
+        if (r.error === "wrong") {
+          otp.classList.remove("bad-code"); void otp.offsetWidth; otp.classList.add("bad-code");
+          const left = Number(r.attempts_left || 0);
+          setMsg("کد اشتباه است." + (left > 0 ? " " + faNum(left) + " بار دیگر می‌توانید تلاش کنید." : " دیگر نمی‌توانید تلاش کنید؛ یک کد جدید بگیرید."), "err");
+          setTimeout(() => {
+            if (!alive) return;
+            otp.classList.remove("bad-code"); clearBoxes();
+            if (left > 0 && !expired) { lock(false); boxes[0].focus(); }
+          }, 650);
+          if (left <= 0) { lock(true); showResend(); }
+          return;
+        }
+        if (r.error === "network" || r.error === "server") { lock(false); setMsg(r.message, "err"); return; }
+        /* منقضی یا قفل */
+        otp.classList.add("bad-code");
+        lock(true);
+        setMsg(r.message || "کد معتبر نیست. یک کد جدید بگیرید.", "err");
+        showResend();
+      }
+
+      function fill(start, digits) {
+        let i = start;
+        for (let k = 0; k < digits.length && i < 5; k++, i++) {
+          boxes[i].dataset.d = digits[k];
+          boxes[i].value = FA[digits[k]];
+          boxes[i].classList.add("filled");
+        }
+        const next = Math.min(i, 4);
+        boxes[next].focus();
+        if (getCode().length === 5) submit();
+      }
+
+      boxes.forEach((b, i) => {
+        b.addEventListener("input", () => {
+          const d = toLatinDigits(b.value).replace(/\D/g, "");
+          setMsg("");
+          otp.classList.remove("bad-code");
+          if (!d) { b.value = ""; b.dataset.d = ""; b.classList.remove("filled"); return; }
+          b.value = ""; b.dataset.d = ""; b.classList.remove("filled");
+          fill(i, d);
+        });
+        b.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !b.value && i > 0) {
+            boxes[i - 1].value = ""; boxes[i - 1].dataset.d = ""; boxes[i - 1].classList.remove("filled");
+            boxes[i - 1].focus(); e.preventDefault();
+          } else if (e.key === "ArrowLeft" && i > 0) { boxes[i - 1].focus(); e.preventDefault(); }
+          else if (e.key === "ArrowRight" && i < 4) { boxes[i + 1].focus(); e.preventDefault(); }
+        });
+        b.addEventListener("focus", () => { try { b.select(); } catch (e) { /* ignore */ } });
+        b.addEventListener("paste", (e) => {
+          const t = (e.clipboardData && e.clipboardData.getData("text")) || "";
+          const d = toLatinDigits(t).replace(/\D/g, "").slice(0, 5);
+          if (!d) return;
+          e.preventDefault();
+          clearBoxes();
+          fill(0, d);
+        });
+      });
+
+      resend.addEventListener("click", async () => {
+        if (resend.disabled) return;
+        resend.disabled = true; resend.classList.add("loading");
+        const r = await authCall({ action: "send", phone: phone });
+        if (!alive) return;
+        resend.classList.remove("loading");
+        if (r.ok) {
+          total = (r.expires_in || 120) * 1000;
+          deadline = Date.now() + total;
+          resend.hidden = true;
+          expired = false; lastSec = -1;
+          ring.classList.remove("off", "low");
+          clearBoxes(); lock(false); otp.classList.remove("bad-code");
+          setMsg("کد جدید ارسال شد.", "info");
+          const dev = box.querySelector(".auth-dev b");
+          if (r.dev_code && dev) dev.textContent = faNum(r.dev_code);
+          boxes[0].focus();
+          cancelAnimationFrame(raf); raf = requestAnimationFrame(paint);
+        } else {
+          setMsg((r.message || "ارسال دوباره ناموفق بود.") + (r.retry_in ? " (" + faNum(r.retry_in) + " ثانیه)" : ""), "err");
+          resend.disabled = false;
+        }
+      });
+      document.getElementById("editPh").addEventListener("click", () => stepPhone(phone));
+
+      paint();
+      if (!reduceMotion()) setTimeout(() => { if (alive && !expired) boxes[0].focus({ preventScroll: true }); }, 350);
+      else boxes[0].focus({ preventScroll: true });
+    }
+
+    /* ----- موفقیت: خودکار وارد می‌شود ----- */
+    function stepWelcome(created) {
+      mount(
+        '<div class="auth-welcome"><div class="ring done" id="ring">' + ringSvg() +
+        '<div class="okmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>' +
+        "<h1>" + (created ? "ثبت‌نام شما انجام شد 🎉" : "خوش آمدید 👋") + "</h1>" +
+        (fullName ? '<p class="auth-hello">' + esc(fullName) + "</p>" : "") +
+        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به " + (/^q\//.test(signupNext) ? "آزمون…" : /^(groups|g\/)/.test(signupNext) ? "گروه‌ها…" : signupNext ? "صفحه‌ی ساخت آزمون…" : "صفحه‌ی اصلی…") + "</p>" +
+        '<a class="btn wide" href="' + nextHash + '">' + (/^q\//.test(signupNext) ? "ادامه و شرکت در آزمون" : /^(groups|g\/)/.test(signupNext) ? "ادامه" : signupNext ? "ادامه و ساخت آزمون" : "ورود به سایت") + "</a></div>"
+      );
+      const prog = document.getElementById("ringProg");
+      prog.style.strokeDashoffset = "100";
+      requestAnimationFrame(() => requestAnimationFrame(() => { prog.style.strokeDashoffset = "0"; }));
+      navTimer = setTimeout(() => { if (alive) location.hash = nextHash; }, 1700);
+    }
+
+    stepPhone("");
+    return function cleanup() { alive = false; stopTimers(); clearTimeout(navTimer); };
+  }
+
+  function viewAccount() {
+    setTitle("حساب من");
+    const s = auth.get();
+    if (!s) { location.hash = "#/signup"; return null; }
+    app.innerHTML =
+      '<div class="auth-wrap"><div class="card auth-card"><div class="auth-logo">' + LOGO_CHECK + "</div>" +
+      '<div class="auth-step"><h1>حساب من</h1><p class="sub">' + (cleanName(s.name) ? "<strong>" + esc(cleanName(s.name)) + "</strong><br>" : "") + "با این شماره وارد شده‌اید:</p>" +
+      '<div class="acc-phone">' + showPhone(s.phone) + "</div>" +
+      '<a class="btn wide" href="#/create">ساخت آزمون</a>' +
+      '<button class="btn ghost wide" id="logout" type="button">خروج از حساب</button></div></div></div>';
+    document.getElementById("logout").addEventListener("click", (e) => doLogout(e.currentTarget));
+    return null;
+  }
+
+  async function validateSession() {
+    const s = auth.get();
+    if (!s || !cfg.SUPABASE_URL) return;
+    const r = await authCall({ action: "me", token: s.token });
+    if (r && r.ok === false && r.error === "no_session") { auth.clear(); if (/^#\/account/.test(location.hash)) location.hash = "#/signup"; }
+    else if (r && r.ok && cleanName(r.name) !== cleanName(s.name)) auth.set({ token: s.token, phone: s.phone, name: cleanName(r.name) });
+  }
+
+
+  /* ---------- گروه‌ها ---------- */
+  const GROUP_ID_RE = /^[0-9a-f]{8}$/;
+  let createGroup = "";        /* گروهِ انتخاب‌شده برای ساخت آزمون ("" یعنی آزمون عمومی) */
+  let groupsCache = null;      /* آخرین فهرست گروه‌ها (برای نام گروه) */
+  const gcall = (name, args) => rpc(name, Object.assign({ p_token: tokenOf() }, args || {}));
+  const withG = (href) => (createGroup ? href + (href.indexOf("?") < 0 ? "?" : "&") + "g=" + createGroup : href);
+  const gInitial = (n) => { const c = Array.from(cleanName(n))[0]; return c ? c.toUpperCase() : "؟"; };
+  const USERS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.2 19.5c.5-3.1 2.8-5 5.8-5s5.3 1.9 5.8 5"/><path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M17.6 14.8c1.9.5 3.2 2.2 3.5 4.7"/></svg>';
+
+  /* پنجره‌ی تأیید با دکمه‌ی «برگشت» (برای جلوگیری از اشتباه) */
+  function askConfirm(o) {
+    return new Promise((resolve) => {
+      const prev = document.activeElement;
+      const ov = document.createElement("div");
+      ov.className = "modal confirm";
+      ov.innerHTML =
+        '<div class="modal-box confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="cfT" aria-describedby="cfD">' +
+        '<h2 id="cfT"></h2><p id="cfD"></p>' +
+        '<div class="actions"><button class="btn ghost" type="button" id="cfNo">برگشت</button><button class="btn' + (o.danger ? " danger" : "") + '" type="button" id="cfYes"></button></div></div>';
+      document.body.appendChild(ov);
+      ov.querySelector("#cfT").textContent = o.title;
+      ov.querySelector("#cfD").textContent = o.text || "";
+      ov.querySelector("#cfYes").textContent = o.yes || "تأیید";
+      const prevOv = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      let done = false;
+      const finish = (v) => {
+        if (done) return;
+        done = true;
+        document.removeEventListener("keydown", onKey, true);
+        window.removeEventListener("hashchange", onHash);
+        document.body.style.overflow = prevOv;
+        ov.remove();
+        if (prev && prev.isConnected && v !== "nav") { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+        resolve(v === true);
+      };
+      const onHash = () => finish("nav");
+      const onKey = (e) => {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false); }
+        else if (e.key === "Tab") {
+          const b = [ov.querySelector("#cfNo"), ov.querySelector("#cfYes")];
+          const i = b.indexOf(document.activeElement);
+          e.preventDefault();
+          b[(i + (e.shiftKey ? -1 : 1) + 2) % 2].focus();
+        }
+      };
+      document.addEventListener("keydown", onKey, true);
+      window.addEventListener("hashchange", onHash);
+      ov.addEventListener("click", (e) => { if (e.target === ov) finish(false); });
+      ov.querySelector("#cfNo").addEventListener("click", () => finish(false));
+      ov.querySelector("#cfYes").addEventListener("click", () => finish(true));
+      ov.querySelector("#cfNo").focus();
+    });
+  }
+
+  /* ----- اعلان دعوت‌ها (نشان روی دکمه‌ی گروه‌ها + پیام داخل برنامه) ----- */
+  const inv = { timer: 0, busy: false, seen: null };
+  function setInviteBadge(n) {
+    const b = document.getElementById("grpBadge");
+    if (!b) return;
+    b.hidden = !(n > 0);
+    b.textContent = n > 99 ? "۹۹+" : faNum(n);
+    const g = document.getElementById("grpBtn");
+    if (g) g.setAttribute("aria-label", n > 0 ? "گروه‌ها؛ " + faNum(n) + " دعوت جدید" : "گروه‌ها");
+  }
+  function inviteToast(text) {
+    const box = document.getElementById("toasts");
+    if (!box) return;
+    const t = el("div", { class: "toast inv-toast", role: "alert" });
+    t.appendChild(el("span", { text: text }));
+    t.appendChild(el("a", { href: "#/groups", text: "مشاهده", onclick: () => t.remove() }));
+    t.appendChild(el("button", { type: "button", "aria-label": "بستن", html: ICONS.cross, onclick: () => t.remove() }));
+    box.appendChild(t);
+    setTimeout(() => t.remove(), 12000);
+  }
+  async function pollInvites() {
+    if (inv.busy || !auth.get() || document.hidden) return;
+    inv.busy = true;
+    try {
+      const r = await gcall("groups_mine");
+      if (!auth.get()) return;
+      const list = (r && Array.isArray(r.invites)) ? r.invites : [];
+      if (r && Array.isArray(r.groups)) groupsCache = r.groups;
+      setInviteBadge(list.length);
+      const seenKey = "seenInv_" + (auth.get() || {}).phone;
+      if (!inv.seen) inv.seen = new Set(store.get(seenKey, []));
+      const fresh = list.filter((x) => !inv.seen.has(x.group_id));
+      if (fresh.length) {
+        fresh.forEach((x) => inv.seen.add(x.group_id));
+        store.set(seenKey, Array.from(inv.seen).slice(-200));
+        if (!/^#\/groups/.test(location.hash)) {
+          inviteToast(fresh.length === 1 ? "دعوت جدید به گروه «" + fresh[0].group_name + "»" : faNum(fresh.length) + " دعوت جدید به گروه دارید");
+        }
+      }
+    } catch (e) { /* اتصال ضعیف؛ دفعه‌ی بعد */ } finally { inv.busy = false; }
+  }
+  function syncInviteWatch() {
+    clearInterval(inv.timer);
+    inv.timer = 0;
+    inv.seen = null;
+    const g = document.getElementById("grpBtn");
+    if (g) g.hidden = !auth.get();
+    if (!auth.get()) { setInviteBadge(0); groupsCache = null; return; }
+    pollInvites();
+    inv.timer = setInterval(pollInvites, 45000);
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) pollInvites(); });
+  window.addEventListener("focus", () => pollInvites());
+
+  async function ensureGroups(force) {
+    if (groupsCache && !force) return groupsCache;
+    const r = await gcall("groups_mine");
+    groupsCache = (r && Array.isArray(r.groups)) ? r.groups : [];
+    setInviteBadge(r && Array.isArray(r.invites) ? r.invites.length : 0);
+    return groupsCache;
+  }
+  const groupName = (id) => { const g = (groupsCache || []).find((x) => x.id === id); return g ? g.name : ""; };
+  const grpMeta = (g) => (g.role === "owner" ? "مدیر" : "عضو") + " · " + faNum(g.members) + " عضو · " + faNum(g.quizzes) + " آزمون";
+
+  /* ---------- صفحه‌ی گروه‌ها ---------- */
+  function viewGroups(token) {
+    setTitle("گروه‌ها");
+    let data = null;
+    let showForm = false;
+    const ok = () => token === routeToken;
+
+    const load = async (soft) => {
+      if (!soft) app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
+      try {
+        data = await gcall("groups_mine");
+      } catch (e) {
+        if (!ok()) return;
+        if (!soft) return showError(e.message, () => load(false));
+        return;
+      }
+      if (!ok()) return;
+      groupsCache = data.groups || [];
+      setInviteBadge((data.invites || []).length);
+      draw("");
+    };
+
+    const draw = (errMsg) => {
+      const invs = data.invites || [];
+      const gs = data.groups || [];
+      app.innerHTML =
+        '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
+        '<div class="page-head"><h1>گروه‌ها</h1><button class="btn small" id="newGrp" type="button" aria-expanded="' + showForm + '">' + ICONS.plus + " گروه جدید</button></div>" +
+        '<p class="muted">در گروه می‌توانید آزمونی بسازید که فقط اعضای همان گروه آن را ببینند و بدهند.</p>' +
+        (errMsg ? '<div class="err" role="alert">' + esc(errMsg) + "</div>" : "") +
+        '<div id="newBox"></div>' +
+        (invs.length
+          ? '<div class="card"><div class="sec-t"><h2>دعوت‌ها</h2><span class="badge">' + faNum(invs.length) + "</span></div>" +
+            invs.map((x) =>
+              '<div class="grp-row"><span class="av-s" aria-hidden="true">' + esc(gInitial(x.group_name)) + '</span><div class="grp-t"><strong>' + esc(x.group_name) + "</strong><small>دعوت از طرف " + esc(x.from_name) + "</small></div>" +
+              '<div class="grp-a"><button class="btn small" type="button" data-act="acc" data-g="' + esc(x.group_id) + '">پذیرفتن</button>' +
+              '<button class="btn small ghost" type="button" data-act="rej" data-g="' + esc(x.group_id) + '">رد کردن</button></div></div>'
+            ).join("") + "</div>"
+          : "") +
+        (gs.length
+          ? '<div class="card"><div class="sec-t"><h2>گروه‌های من</h2></div>' +
+            gs.map((g) =>
+              '<a class="grp-row" href="#/g/' + esc(g.id) + '"><span class="av-s" aria-hidden="true">' + esc(gInitial(g.name)) + '</span><div class="grp-t"><strong>' + esc(g.name) + "</strong><small>" + esc(grpMeta(g)) + "</small></div>" + '<span class="grp-go">' + ICONS.back + "</span></a>"
+            ).join("") + "</div>"
+          : '<div class="card empty">' + USERS_ICON.replace("<svg", '<svg width="54" height="54"') + "<h2>هنوز در هیچ گروهی نیستید</h2>" +
+            '<p class="muted">یک گروه بسازید و شماره‌ی دوستان یا دانش‌آموزهایتان را دعوت کنید. یا منتظر دعوت بمانید.</p></div>');
+      if (showForm) drawForm();
+      app.querySelector("#newGrp").addEventListener("click", () => { showForm = !showForm; draw(""); if (showForm) { const i = document.getElementById("gName"); if (i) i.focus(); } });
+    };
+
+    const drawForm = () => {
+      const box = document.getElementById("newBox");
+      box.innerHTML =
+        '<div class="card"><h2>گروه جدید</h2><label for="gName">نام گروه</label>' +
+        '<input id="gName" type="text" maxlength="60" autocomplete="off" placeholder="مثلاً: کلاس نهم ۲">' +
+        '<div id="gMsg"></div><div class="actions"><button class="btn ghost" type="button" id="gBack">برگشت</button><button class="btn" type="button" id="gMake">ساخت گروه</button></div></div>';
+      const inp = document.getElementById("gName"), mk = document.getElementById("gMake"), msg = document.getElementById("gMsg");
+      document.getElementById("gBack").addEventListener("click", () => { showForm = false; draw(""); });
+      const go = async () => {
+        const nm = cleanName(inp.value);
+        if (nm.length < 2) { msg.innerHTML = '<div class="err" role="alert">نام گروه را بنویسید (حداقل ۲ حرف).</div>'; inp.focus(); return; }
+        mk.disabled = true; mk.classList.add("loading"); msg.innerHTML = "";
+        try {
+          const r = await gcall("group_create", { p_name: nm });
+          groupsCache = null;
+          if (r && r.id) location.hash = "#/g/" + r.id; else { showForm = false; load(true); }
+        } catch (e) {
+          if (!ok()) return;
+          mk.disabled = false; mk.classList.remove("loading");
+          msg.innerHTML = '<div class="err" role="alert">' + esc(e.message) + "</div>";
+        }
+      };
+      mk.addEventListener("click", go);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+    };
+
+    app.addEventListener("click", onClick);
+    async function onClick(e) {
+      const b = e.target.closest("button[data-act]");
+      if (!b || !app.contains(b)) return;
+      const gid = b.dataset.g;
+      const item = (data.invites || []).find((x) => x.group_id === gid);
+      if (!item) return;
+      const accept = b.dataset.act === "acc";
+      const yes = await askConfirm(accept
+        ? { title: "عضو گروه «" + item.group_name + "» شوید؟", text: "با پذیرفتن، آزمون‌های این گروه را می‌بینید و می‌توانید در آن‌ها شرکت کنید. مدیر گروه نام و شماره‌ی شما را می‌بیند.", yes: "بله، عضو می‌شوم" }
+        : { title: "دعوت رد شود؟", text: "دعوت به گروه «" + item.group_name + "» رد می‌شود و پاک می‌شود. برای عضویت دوباره، مدیر باید دوباره دعوتتان کند.", yes: "بله، رد کن", danger: true });
+      if (!yes || !ok()) return;
+      b.disabled = true; b.classList.add("loading");
+      try {
+        await gcall("group_invite_respond", { p_group: gid, p_accept: accept });
+        if (!ok()) return;
+        groupsCache = null;
+        await load(true);
+        if (ok() && window.__pzToast) window.__pzToast(accept ? "به گروه پیوستید ✓" : "دعوت رد شد");
+      } catch (err) {
+        if (!ok()) return;
+        await load(true);
+        if (ok()) draw(err.message);
+      }
+    }
+
+    load(false);
+    return function cleanup() { app.removeEventListener("click", onClick); };
+  }
+
+  /* ---------- گپ گروه ---------- */
+  const CHAT_MAX = 2000;      /* حداکثر حرف هر پیام (هم‌خوان با سرور) */
+  const CHAT_KEEP = 400;      /* تعداد پیام نگه‌داشته‌شده در صفحه بعد از پاک‌سازی */
+  const CHAT_TRIM = 600;      /* از این تعداد بیشتر شد، پیام‌های قدیمیِ صفحه حذف می‌شوند */
+  const svgI = (d, w) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (w || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + "</svg>";
+  const CI = {
+    send: svgI('<path d="M21 3 10.5 13.5"/><path d="m21 3-6.5 18-4-7.5L3 9.5z"/>'),
+    reply: svgI('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v3"/>'),
+    copy: svgI('<rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/>'),
+    edit: svgI('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+    trash: svgI('<path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>'),
+    close: svgI('<path d="M6 6l12 12M18 6 6 18"/>', 2.4),
+    down: svgI('<path d="M12 5v14M5 12l7 7 7-7"/>', 2.4),
+  };
+  let chatFmt = null;
+  function chatFmts() {
+    if (chatFmt) return chatFmt;
+    const mk = (o) => { try { return new Intl.DateTimeFormat("fa-IR", o); } catch (e) { return new Intl.DateTimeFormat(undefined, o); } };
+    chatFmt = { time: mk({ hour: "2-digit", minute: "2-digit" }), day: mk({ weekday: "long", day: "numeric", month: "long" }), dayY: mk({ weekday: "long", day: "numeric", month: "long", year: "numeric" }) };
+    return chatFmt;
+  }
+  const dayNum = (d) => d.getFullYear() * 10000 + d.getMonth() * 100 + d.getDate();
+
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; } catch (e) { /* روش جایگزین */ }
+    try {
+      const a = el("textarea", { readonly: true, style: "position:fixed;top:0;opacity:0;pointer-events:none", value: t });
+      document.body.appendChild(a);
+      a.select();
+      a.setSelectionRange(0, t.length);
+      const done = document.execCommand("copy");
+      a.remove();
+      return !!done;
+    } catch (e) { return false; }
+  }
+
+  /* گپ گروه؛ o = { gid, toast, draft, onDraft }؛ تابع پاک‌سازی برمی‌گرداند */
+  function mountChat(box, o) {
+    const gid = o.gid, F = chatFmts();
+    const msgs = [], byId = new Map(), nodes = new Map(), pend = [];
+    let rev = 0, more = false, ready = false, dead = false, fails = 0, idle = 0, sending = 0, busyOlder = false, inflight = false;
+    let timer = 0, replyTo = null, editing = null, menuEl = null, menuFor = 0, unseen = 0, lp = null, lpBlock = 0;
+    const fine = window.matchMedia("(pointer: fine)");
+
+    box.innerHTML =
+      '<div class="chat">' +
+      '<div class="chat-list" role="log" aria-label="پیام‌های گروه" tabindex="0"><div class="chat-more" hidden></div><div class="chat-state"></div><div class="chat-msgs"></div></div>' +
+      '<button type="button" class="chat-new" hidden></button>' +
+      '<div class="chat-net" role="status" hidden>ارتباط قطع است؛ دوباره تلاش می‌کنیم…</div>' +
+      '<div class="chat-ctx" hidden><span class="chat-ctx-i" aria-hidden="true"></span><div class="chat-ctx-t"><b></b><span></span></div><button type="button" class="chat-ctx-x" aria-label="لغو">' + CI.close + "</button></div>" +
+      '<form class="chat-in" autocomplete="off"><textarea rows="1" maxlength="' + CHAT_MAX + '" dir="auto" enterkeyhint="send" placeholder="پیام بنویسید…" aria-label="متن پیام"></textarea>' +
+      '<button class="chat-send" type="submit" aria-label="ارسال" disabled>' + CI.send + "</button></form>" +
+      '<div class="chat-cnt" hidden></div></div>';
+    const q = (s) => box.querySelector(s);
+    const list = q(".chat-list"), wrap = q(".chat-msgs"), moreBox = q(".chat-more"), stateEl = q(".chat-state"), newBtn = q(".chat-new"), net = q(".chat-net");
+    const ctx = q(".chat-ctx"), ctxI = q(".chat-ctx-i"), ctxT = q(".chat-ctx-t b"), ctxS = q(".chat-ctx-t span"), form = q(".chat-in"), ta = q("textarea"), sendBtn = q(".chat-send"), cnt = q(".chat-cnt");
+    ta.value = o.draft || "";
+
+    const nearBottom = () => list.scrollHeight - list.scrollTop - list.clientHeight < 90;
+    const toBottom = () => { list.scrollTop = list.scrollHeight; unseen = 0; newBtn.hidden = true; };
+    const keepBottom = (fn) => { const nb = nearBottom(); fn(); if (nb) toBottom(); };
+    const prep = (m) => { m._d = new Date(m.created_at); m._k = dayNum(m._d); return m; };
+    const quote = (r) => { const f = byId.get(r.id); return f ? f : r; };
+
+    function dayLabel(d) {
+      const t = new Date(), k = dayNum(d);
+      if (k === dayNum(t)) return "امروز";
+      if (k === dayNum(new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1))) return "دیروز";
+      return (d.getFullYear() === t.getFullYear() ? F.day : F.dayY).format(d);
+    }
+    const daySep = (m) => el("div", { class: "cday" }, [el("span", { text: dayLabel(m._d) })]);
+
+    function build(m, prev) {
+      const cont = !!prev && prev._k === m._k && prev.u === m.u && m._d - prev._d < 600000;
+      const kids = [];
+      if (!m.mine && !cont) kids.push(el("div", { class: "cn" }, [el("span", { text: m.name }), m.owner ? el("span", { class: "cbadge", text: "مدیر" }) : null]));
+      if (m.reply && !m.deleted) {
+        const r = quote(m.reply);
+        kids.push(el("div", { class: "cq", "data-q": m.reply.id }, [el("b", { text: r.name }), el("span", { text: r.deleted ? "پیام حذف شده" : r.body })]));
+      }
+      kids.push(el("div", { class: "ct", dir: "auto", text: m.deleted ? "این پیام حذف شد" : m.body }));
+      kids.push(el("div", { class: "cf" }, [
+        m.edited && !m.deleted ? el("span", { text: "ویرایش‌شده" }) : null,
+        m.pending ? el("span", { text: "در حال ارسال…" }) : el("time", { datetime: m.created_at, text: F.time.format(m._d) }),
+      ]));
+      return el("div", { class: "cm " + (m.mine ? "me" : "ot") + (cont ? " cont" : "") + (m.pending ? " pending" : ""), "data-id": m.pending ? null : m.id }, [el("div", { class: "cb" + (m.deleted ? " del" : ""), tabindex: "-1" }, kids)]);
+    }
+
+    function appendNode(m, prev) {
+      const frag = document.createDocumentFragment();
+      if (!prev || prev._k !== m._k) frag.appendChild(daySep(m));
+      const n = build(m, prev);
+      n.classList.add("in");
+      nodes.set(m.id, n);
+      frag.appendChild(n);
+      wrap.insertBefore(frag, pend[0] || null);
+    }
+
+    function renderAll() {
+      const frag = document.createDocumentFragment();
+      nodes.clear();
+      msgs.forEach((m, i) => {
+        const prev = msgs[i - 1];
+        if (!prev || prev._k !== m._k) frag.appendChild(daySep(m));
+        const n = build(m, prev);
+        nodes.set(m.id, n);
+        frag.appendChild(n);
+      });
+      pend.forEach((n) => frag.appendChild(n));
+      wrap.textContent = "";
+      wrap.appendChild(frag);
+      closeMenu();
+      renderMore();
+      showState(ready && !msgs.length && !pend.length ? "empty" : "");
+    }
+
+    function refreshNode(m) {
+      const old = nodes.get(m.id);
+      if (!old) return;
+      const nw = build(m, msgs[msgs.indexOf(m) - 1]);
+      const had = old.contains(document.activeElement);
+      old.replaceWith(nw);
+      nodes.set(m.id, nw);
+      if (had) nw.firstChild.focus({ preventScroll: true });
+      if (menuFor === m.id) closeMenu();
+    }
+
+    function showState(kind, msg) {
+      stateEl.textContent = "";
+      stateEl.hidden = !kind;
+      if (!kind) return;
+      if (kind === "loading") stateEl.textContent = "در حال بارگذاری گپ…";
+      else if (kind === "empty") stateEl.textContent = "هنوز پیامی نیست. اولین پیام را شما بنویسید.";
+      else stateEl.append(el("span", { text: msg }), el("button", { class: "btn small ghost", type: "button", text: "تلاش دوباره", onclick: load }));
+    }
+
+    function renderMore() {
+      moreBox.textContent = "";
+      moreBox.hidden = !more;
+      if (more) moreBox.appendChild(el("button", { class: "btn small ghost", type: "button", text: "پیام‌های قدیمی‌تر", onclick: older }));
+    }
+
+    /* ---- ورود پیام‌های تازه یا تغییریافته ---- */
+    function ingest(arr, force) {
+      const wasNear = nearBottom();
+      let added = 0, others = 0, full = false;
+      for (const raw of arr) {
+        const old = byId.get(raw.id);
+        if (old) {
+          if (raw.rev > old.rev) {
+            Object.assign(old, prep(raw));
+            refreshNode(old);
+            msgs.forEach((x) => { if (x.reply && x.reply.id === old.id) refreshNode(x); });
+            if (editing && editing.id === old.id && old.deleted) cancelCtx(true);
+          }
+          continue;
+        }
+        if (msgs.length && raw.id < msgs[0].id) continue;   /* مربوط به تاریخچه‌ی بارگذاری‌نشده است */
+        const m = prep(raw);
+        const last = msgs[msgs.length - 1];
+        if (last && m.id < last.id) full = true;
+        msgs.push(m);
+        byId.set(m.id, m);
+        added++;
+        if (!m.mine) others++;
+        if (!full) appendNode(m, msgs[msgs.length - 2]);
+      }
+      if (!ready) return;
+      if (full) { msgs.sort((a, b) => a.id - b.id); renderAll(); }
+      if (added) showState("");
+      if (force || wasNear) toBottom();
+      else if (others) { unseen += others; newBtn.hidden = false; newBtn.querySelector("span").textContent = unseen > 1 ? faNum(unseen) + " پیام جدید" : "پیام جدید"; }
+      if (msgs.length > CHAT_TRIM && (force || wasNear)) {
+        msgs.splice(0, msgs.length - CHAT_KEEP).forEach((d) => byId.delete(d.id));
+        more = true;
+        renderAll();
+        toBottom();
+      }
+    }
+
+    /* ---- پیام‌های پاک‌شده: از صفحه برداشته می‌شوند و هیچ ردی نمی‌ماند ---- */
+    function removeMsgs(ids) {
+      let touched = false;
+      for (const id of ids) {
+        const i = msgs.findIndex((x) => x.id === id);
+        if (i < 0) continue;
+        touched = true;
+        const n = nodes.get(id), prev = msgs[i - 1], next = msgs[i + 1];
+        if (n) {
+          const sep = n.previousElementSibling;
+          if (sep && sep.classList.contains("cday")) sep.remove();
+          n.remove();
+        }
+        nodes.delete(id); byId.delete(id);
+        msgs.splice(i, 1);
+        if (menuFor === id) closeMenu();
+        if (editing && editing.id === id) cancelCtx(true);
+        if (replyTo && replyTo.id === id) { replyTo = null; syncCtx(); }
+        if (next) {
+          const nn = nodes.get(next.id);
+          if (nn && (!prev || prev._k !== next._k) && !(nn.previousElementSibling && nn.previousElementSibling.classList.contains("cday"))) wrap.insertBefore(daySep(next), nn);
+          refreshNode(next);
+        }
+      }
+      if (!touched) return;
+      msgs.forEach((x) => { if (x.reply && ids.indexOf(x.reply.id) >= 0) { x.reply = null; refreshNode(x); } });
+      if (ready && !msgs.length && !pend.length) showState("empty");
+    }
+
+    /* ---- خطاهایی که یعنی دیگر به گروه دسترسی ندارید ---- */
+    function fatal(e) {
+      if (!/این گروه پیدا نشد|دوباره وارد شوید/.test(e.message)) return false;
+      dead = true;
+      clearTimeout(timer);
+      o.toast(/گروه/.test(e.message) ? "دیگر عضو این گروه نیستید." : e.message);
+      location.hash = "#/groups";
+      return true;
+    }
+
+    /* ---- بارگذاری اولیه و قدیمی‌ترها ---- */
+    async function load() {
+      showState("loading");
+      try {
+        const r = await gcall("chat_list", { p_group: gid, p_limit: 40 });
+        if (dead) return;
+        msgs.length = 0; byId.clear();
+        r.messages.forEach((m) => { prep(m); msgs.push(m); byId.set(m.id, m); });
+        rev = r.rev; more = !!r.more; ready = true;
+        renderAll();
+        toBottom();
+        sync();
+        schedule(delay());
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        showState("error", e.message);
+      }
+    }
+
+    async function older() {
+      if (busyOlder || !more || !msgs.length || dead) return;
+      busyOlder = true;
+      const b = moreBox.querySelector("button");
+      if (b) { b.disabled = true; b.classList.add("loading"); }
+      try {
+        const r = await gcall("chat_list", { p_group: gid, p_before: msgs[0].id, p_limit: 40 });
+        if (dead) return;
+        const fresh = r.messages.filter((m) => !byId.has(m.id)).map(prep);
+        fresh.forEach((m) => byId.set(m.id, m));
+        msgs.unshift(...fresh);
+        more = !!r.more;
+        const h = list.scrollHeight, t = list.scrollTop;
+        renderAll();
+        list.scrollTop = t + (list.scrollHeight - h);
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        o.toast(e.message);
+        renderMore();
+      } finally { busyOlder = false; }
+    }
+
+    /* ---- نظرسنجیِ پیام‌های تازه (کُندتر می‌شود وقتی خبری نیست) ---- */
+    const delay = () => (idle < 20 ? 3000 : idle < 60 ? 6000 : 10000);
+    function schedule(ms) { clearTimeout(timer); if (!dead) timer = setTimeout(tick, ms); }
+    async function tick() {
+      timer = 0;
+      if (dead || !ready || document.hidden) return;
+      if (sending || inflight) return schedule(500);
+      inflight = true;
+      let next = delay();
+      try {
+        const r = await gcall("chat_list", { p_group: gid, p_since: rev });
+        if (dead) return;
+        fails = 0; net.hidden = true;
+        if (r.rev > rev) rev = r.rev;
+        const gone = r.gone || [];
+        if (r.messages.length || gone.length) {
+          idle = 0;
+          const wasNear = nearBottom();
+          if (r.messages.length) ingest(r.messages, false);
+          if (gone.length) { removeMsgs(gone); if (wasNear) toBottom(); }
+          if (r.messages.length >= 200) next = 200;
+        } else idle++;
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        fails++;
+        if (fails >= 2) net.hidden = false;
+        next = Math.min(3000 * Math.pow(2, fails), 20000);
+      } finally { inflight = false; }
+      schedule(next);
+    }
+    const onVis = () => { if (!document.hidden && ready) { idle = 0; schedule(0); } };
+    const onOnline = () => { if (ready) schedule(0); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("online", onOnline);
+
+    /* ---- نوشتن، ارسال، ویرایش ---- */
+    function sync() {
+      sendBtn.disabled = !ready || !ta.value.trim();
+      const n = ta.value.length;
+      cnt.hidden = n < 1700;
+      if (!cnt.hidden) cnt.textContent = faNum(n) + " / " + faNum(CHAT_MAX);
+    }
+    function autosize() {
+      keepBottom(() => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; });
+    }
+    function syncCtx() {
+      const m = editing || replyTo;
+      keepBottom(() => {
+        ctx.hidden = !m;
+        if (!m) return;
+        ctxI.innerHTML = editing ? CI.edit : CI.reply;
+        ctxT.textContent = editing ? "ویرایش پیام" : "پاسخ به " + m.name;
+        ctxS.textContent = m.deleted ? "پیام حذف شده" : m.body;
+      });
+      ta.setAttribute("aria-label", editing ? "ویرایش پیام" : "متن پیام");
+      sendBtn.setAttribute("aria-label", editing ? "ذخیره‌ی ویرایش" : "ارسال");
+    }
+    function cancelCtx(clear) {
+      const wasEdit = !!editing;
+      editing = null; replyTo = null;
+      if (wasEdit || clear) { ta.value = ""; o.onDraft(""); }
+      syncCtx(); autosize(); sync();
+    }
+    function setReply(m) {
+      if (editing) { editing = null; ta.value = ""; }
+      replyTo = m;
+      syncCtx(); autosize(); sync();
+      ta.focus({ preventScroll: true });
+    }
+    function startEdit(m) {
+      replyTo = null; editing = m;
+      ta.value = m.body;
+      syncCtx(); autosize(); sync();
+      ta.focus({ preventScroll: true });
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+
+    async function submit() {
+      const text = ta.value.trim();
+      if (!text || !ready || dead) return;
+      if (editing) return saveEdit(text);
+      const rp = replyTo;
+      const p = prep({ id: 0, mine: true, body: text, pending: true, reply: rp ? { id: rp.id, name: rp.name, body: rp.body, deleted: rp.deleted } : null, created_at: new Date().toISOString() });
+      const node = build(p, msgs[msgs.length - 1]);
+      pend.push(node);
+      wrap.appendChild(node);
+      showState("");
+      ta.value = ""; o.onDraft("");
+      replyTo = null;
+      syncCtx(); autosize(); sync();
+      toBottom();
+      sending++;
+      try {
+        const m = await gcall("chat_send", { p_group: gid, p_body: text, p_reply: rp ? rp.id : null });
+        pend.splice(pend.indexOf(node), 1); node.remove();
+        if (dead) return;
+        ingest([m], true);
+        idle = 0;
+        schedule(1500);
+      } catch (e) {
+        pend.splice(pend.indexOf(node), 1); node.remove();
+        if (dead || fatal(e)) return;
+        if (!ta.value && !editing) { ta.value = text; o.onDraft(text); if (rp && byId.has(rp.id)) replyTo = rp; syncCtx(); autosize(); sync(); }
+        showState(ready && !msgs.length && !pend.length ? "empty" : "");
+        o.toast(e.message);
+      } finally { sending--; }
+    }
+
+    async function saveEdit(text) {
+      const m = editing;
+      if (text === m.body) { cancelCtx(false); return; }
+      sendBtn.disabled = true;
+      sending++;
+      try {
+        const r = await gcall("chat_edit", { p_msg: m.id, p_body: text });
+        if (dead) return;
+        if (editing === m) cancelCtx(false);
+        ingest([r], false);
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        o.toast(e.message);
+        sync();
+      } finally { sending--; }
+    }
+
+    async function del(m) {
+      if (!(await askConfirm({ title: "این پیام حذف شود؟", text: "پیام برای همه‌ی اعضای گروه حذف می‌شود و برگشت ندارد.", yes: "بله، حذف کن", danger: true })) || dead) return;
+      sending++;
+      try {
+        const r = await gcall("chat_delete", { p_msg: m.id });
+        if (dead) return;
+        keepBottom(() => removeMsgs([r.id]));
+      } catch (e) {
+        if (dead || fatal(e)) return;
+        o.toast(e.message);
+      } finally { sending--; }
+    }
+
+    /* ---- منوی کلیک راست / نگه داشتن ---- */
+    function closeMenu() {
+      if (!menuEl) return;
+      const b = nodes.get(menuFor);
+      if (b) b.firstChild.classList.remove("sel");
+      menuEl.remove();
+      menuEl = null; menuFor = 0;
+    }
+    function openMenu(m, x, y, fromKey) {
+      if (m.deleted || m.pending || dead) return;
+      if (menuEl && menuFor === m.id) return;
+      closeMenu();
+      const bub = nodes.get(m.id).firstChild;
+      const sel = window.getSelection ? window.getSelection() : null;
+      const selText = sel && !sel.isCollapsed && bub.contains(sel.anchorNode) ? String(sel).trim() : "";
+      const items = [["reply", "پاسخ", CI.reply], ["copy", "کپی", CI.copy]];
+      if (m.mine) items.push(["edit", "ویرایش", CI.edit], ["del", "حذف", CI.trash]);
+      menuEl = el("div", { class: "cmenu", role: "menu", "aria-label": "گزینه‌های پیام" },
+        items.map((it) => el("button", { type: "button", role: "menuitem", class: it[0] === "del" ? "dng" : "", "data-a": it[0], html: it[2] + "<span>" + it[1] + "</span>" })));
+      document.body.appendChild(menuEl);
+      menuFor = m.id;
+      bub.classList.add("sel");
+      const w = menuEl.offsetWidth, h = menuEl.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight;
+      menuEl.style.left = Math.max(8, Math.min(x, vw - w - 8)) + "px";
+      menuEl.style.top = Math.max(8, y + h + 8 > vh ? y - h : y) + "px";
+      menuEl.addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-a]");
+        if (!b) return;
+        const a = b.dataset.a;
+        closeMenu();
+        if (a === "reply") setReply(m);
+        else if (a === "edit") startEdit(m);
+        else if (a === "del") del(m);
+        else copyText(selText || m.body).then((ok) => o.toast(ok ? "کپی شد ✓" : "کپی نشد؛ متن را دستی انتخاب کنید."));
+      });
+      menuEl.addEventListener("keydown", (e) => {
+        const bs = Array.from(menuEl.querySelectorAll("button")), i = bs.indexOf(document.activeElement);
+        if (e.key === "ArrowDown") { e.preventDefault(); bs[(i + 1) % bs.length].focus(); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); bs[(i - 1 + bs.length) % bs.length].focus(); }
+        else if (e.key === "Home") { e.preventDefault(); bs[0].focus(); }
+        else if (e.key === "End") { e.preventDefault(); bs[bs.length - 1].focus(); }
+        else if (e.key === "Escape" || e.key === "Tab") {
+          e.preventDefault();
+          closeMenu();
+          bub.focus({ preventScroll: true });
+        }
+      });
+      menuEl.querySelector("button").focus({ preventScroll: true });
+      if (fromKey) menuEl.classList.add("kb");
+    }
+    const msgOf = (t) => { const r = t.closest && t.closest(".cm[data-id]"); return r && list.contains(r) ? byId.get(+r.dataset.id) : null; };
+    const onDocDown = (e) => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); };
+    document.addEventListener("pointerdown", onDocDown, true);
+    window.addEventListener("resize", closeMenu);
+
+    list.addEventListener("contextmenu", (e) => {
+      const m = msgOf(e.target);
+      if (!m || m.deleted) return;
+      e.preventDefault();
+      cancelLP();
+      openMenu(m, e.clientX, e.clientY, false);
+    });
+    function cancelLP() { if (lp) { clearTimeout(lp.t); lp = null; } }
+    list.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" || e.button) return;
+      const m = msgOf(e.target);
+      cancelLP();
+      if (!m || m.deleted) return;
+      const x = e.clientX, y = e.clientY;
+      lp = { x, y, t: setTimeout(() => { lp = null; lpBlock = Date.now() + 700; openMenu(m, x, y, false); }, 450) };
+    });
+    list.addEventListener("pointermove", (e) => { if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 10) cancelLP(); });
+    ["pointerup", "pointercancel"].forEach((t) => list.addEventListener(t, cancelLP));
+    list.addEventListener("scroll", () => {
+      cancelLP();
+      if (menuEl) closeMenu();
+      if (!newBtn.hidden && nearBottom()) { unseen = 0; newBtn.hidden = true; }
+    }, { passive: true });
+
+    list.addEventListener("keydown", (e) => {
+      const bub = e.target.closest && e.target.closest(".cb");
+      if (bub && list.contains(bub)) {
+        const row = bub.parentNode;
+        if (e.key === "Enter" || e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) {
+          const m = byId.get(+row.dataset.id), r = bub.getBoundingClientRect();
+          if (m && !m.deleted) { e.preventDefault(); openMenu(m, r.left + r.width / 2, r.top + r.height / 2, true); }
+        } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          e.preventDefault();
+          let n = row;
+          do { n = e.key === "ArrowUp" ? n.previousElementSibling : n.nextElementSibling; } while (n && !n.classList.contains("cm"));
+          if (n) n.firstChild.focus();
+        }
+      } else if (e.target === list && e.key === "ArrowUp") {
+        const last = wrap.querySelector(".cm:last-child .cb");
+        if (last) { e.preventDefault(); last.focus(); }
+      }
+    });
+
+    function jumpTo(id) {
+      const n = nodes.get(id);
+      if (!n) { o.toast("پیام اصلی در بخش بالاتر است؛ «پیام‌های قدیمی‌تر» را بزنید."); return; }
+      n.scrollIntoView({ block: "center", behavior: reduceMotion() ? "auto" : "smooth" });
+      n.classList.add("flash");
+      setTimeout(() => n.classList.remove("flash"), 1300);
+    }
+    list.addEventListener("click", (e) => {
+      if (Date.now() < lpBlock) return;
+      const c = e.target.closest(".cq");
+      if (c && list.contains(c)) jumpTo(+c.dataset.q);
+    });
+
+    newBtn.innerHTML = CI.down + "<span></span>";
+    newBtn.addEventListener("click", toBottom);
+    q(".chat-ctx-x").addEventListener("click", () => { cancelCtx(false); ta.focus({ preventScroll: true }); });
+    form.addEventListener("submit", (e) => { e.preventDefault(); submit(); });
+    ta.addEventListener("input", () => { if (!editing) o.onDraft(ta.value); autosize(); sync(); });
+    ta.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing && fine.matches) { e.preventDefault(); submit(); }
+      else if (e.key === "Escape" && (editing || replyTo)) { e.preventDefault(); cancelCtx(false); }
+    });
+
+    sync(); autosize();
+    load();
+
+    return function unmount() {
+      dead = true;
+      clearTimeout(timer);
+      cancelLP();
+      closeMenu();
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("pointerdown", onDocDown, true);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }
+
+  /* ---------- صفحه‌ی یک گروه ---------- */
+  function viewGroup(gid, token) {
+    setTitle("گروه");
+    let g = null;
+    let tab = "quizzes";
+    let phoneVal = "";
+    let editName = false;
+    let chatOff = null;       /* بستن گپِ باز */
+    let chatDraft = "";       /* پیش‌نویسِ گپ؛ با ساخت دوباره‌ی صفحه نمی‌پرد */
+    const ok = () => token === routeToken;
+    const toast = (m) => { if (window.__pzToast) window.__pzToast(m); };
+
+    const load = async (soft) => {
+      if (!soft) app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
+      try { g = await gcall("group_get", { p_group: gid }); }
+      catch (e) { if (!ok()) return; if (!soft) return showError(e.message, () => load(false)); return; }
+      if (!ok()) return;
+      setTitle(g.name);
+      draw("");
+    };
+
+    const owner = () => g && g.role === "owner";
+
+    const quizzesTab = () => {
+      const qs = g.quizzes || [];
+      return (owner() ? '<div class="actions" style="margin-top:6px"><a class="btn" href="#/create?g=' + esc(g.id) + '">' + ICONS.plus + " آزمون جدید برای این گروه</a></div>" : "") +
+        '<div class="card">' +
+        (qs.length
+          ? qs.map((q) =>
+              '<div class="mine-row"><span class="mine-t">' + esc(q.title) + (owner() && q.participants != null ? '<small class="mine-n">' + faNum(q.participants) + " شرکت‌کننده</small>" : "") + "</span>" +
+              (owner()
+                ? '<a class="btn small ghost" href="#/q/' + encodeURIComponent(q.id) + '">باز کردن</a>' + (q.secret ? '<a class="btn small" href="#/m/' + encodeURIComponent(q.id) + "/" + encodeURIComponent(q.secret) + '">نتایج</a>' : "")
+                : '<a class="btn small" href="#/q/' + encodeURIComponent(q.id) + '">شروع آزمون</a>') + "</div>"
+            ).join("")
+          : '<p class="muted" style="margin:0">' + (owner() ? "هنوز آزمونی برای این گروه نساخته‌اید. با دکمه‌ی بالا اولین آزمون را بسازید." : "هنوز آزمونی در این گروه نیست. وقتی مدیر آزمون بسازد، اینجا می‌بینید.") + "</p>") +
+        "</div>";
+    };
+
+    const membersTab = () => {
+      const ms = g.members || [];
+      const pend = g.invites || [];
+      return (owner()
+          ? '<div class="card"><h2>دعوت با شماره‌ی موبایل</h2><p class="hint" style="margin-top:0">شخص فوراً عضو نمی‌شود؛ دعوت را داخل پازمونک می‌بیند و خودش می‌پذیرد یا رد می‌کند.</p>' +
+            '<div class="grp-add"><input id="gPhone" type="text" inputmode="tel" dir="ltr" maxlength="16" autocomplete="off" placeholder="09123456789" aria-label="شماره‌ی موبایل" value="' + esc(phoneVal) + '"><button class="btn" type="button" id="gInv">دعوت</button></div><div id="gMsg"></div></div>'
+          : "") +
+        '<div class="card"><div class="sec-t"><h2>اعضا</h2><span class="badge">' + faNum(ms.length) + "</span></div>" +
+        ms.map((m) =>
+          '<div class="grp-row"><span class="av-s" aria-hidden="true">' + esc(gInitial(m.name)) + '</span><div class="grp-t"><strong>' + esc(m.name) + (m.role === "owner" ? ' <span class="badge">مدیر</span>' : "") + "</strong>" +
+          (owner() && m.phone ? '<small><bdi class="grp-ph">' + esc(showPhone(m.phone)) + "</bdi></small>" : "") + "</div>" +
+          (owner() && m.role === "member" && m.user_id
+            ? '<div class="grp-a"><button class="btn small ghost" type="button" data-act="mk" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">مدیر شود</button>' +
+              '<button class="btn small danger" type="button" data-act="rm" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">حذف</button></div>'
+            : "") + "</div>"
+        ).join("") + "</div>" +
+        (owner() && pend.length
+          ? '<div class="card"><div class="sec-t"><h2>منتظر پاسخ</h2><span class="badge">' + faNum(pend.length) + "</span></div>" +
+            pend.map((p) =>
+              '<div class="grp-row"><span class="av-s" aria-hidden="true">' + USERS_ICON + '</span><div class="grp-t"><strong><bdi class="grp-ph">' + esc(showPhone(p.phone)) + "</bdi></strong><small>دعوت فرستاده شده</small></div>" +
+              '<button class="btn small ghost" type="button" data-act="cancel" data-p="' + esc(p.phone) + '">لغو دعوت</button></div>'
+            ).join("") + "</div>"
+          : "");
+    };
+
+    const draw = (errMsg) => {
+      if (chatOff) { chatOff(); chatOff = null; }
+      app.innerHTML =
+        '<a class="back" href="#/groups">' + ICONS.back + " گروه‌ها</a>" +
+        (editName
+          ? '<div class="card"><label for="gNewName">نام گروه</label><input id="gNewName" type="text" maxlength="60" autocomplete="off" value="' + esc(g.name) + '">' +
+            '<div id="gRenMsg"></div><div class="actions"><button class="btn ghost" type="button" id="gRenBack">برگشت</button><button class="btn" type="button" id="gRenSave">ذخیره‌ی نام</button></div></div>'
+          : '<div class="page-head grp-head"><h1>' + esc(g.name) + "</h1>" +
+            (owner() ? '<button class="btn small ghost" type="button" data-act="rename">تغییر نام گروه</button>' : "") +
+            '<span class="badge">' + (owner() ? "مدیر" : "عضو") + "</span></div>") +
+        (errMsg ? '<div class="err" role="alert">' + esc(errMsg) + "</div>" : "") +
+        '<div class="grp-tabs"><div class="seg" role="group" aria-label="بخش‌های گروه">' +
+        '<button type="button" data-tab="quizzes" aria-pressed="' + (tab === "quizzes") + '">آزمون‌ها (' + faNum((g.quizzes || []).length) + ")</button>" +
+        '<button type="button" data-tab="chat" aria-pressed="' + (tab === "chat") + '">گپ</button>' +
+        '<button type="button" data-tab="members" aria-pressed="' + (tab === "members") + '">اعضا (' + faNum((g.members || []).length) + ")</button></div></div>" +
+        (tab === "quizzes" ? quizzesTab() : tab === "chat" ? '<div id="chatBox"></div>' : membersTab()) +
+        (tab === "chat" ? "" : '<div class="actions"><button class="btn danger" type="button" data-act="' + (owner() ? "del" : "leave") + '">' + (owner() ? "حذف گروه" : "ترک گروه") + "</button></div>");
+      if (tab === "chat") chatOff = mountChat(document.getElementById("chatBox"), { gid, toast, draft: chatDraft, onDraft: (t) => { chatDraft = t; } });
+      const inp = document.getElementById("gPhone");
+      if (inp) {
+        inp.addEventListener("input", () => { phoneVal = inp.value; });
+        inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); invite(); } });
+      }
+      const ib = document.getElementById("gInv");
+      if (ib) ib.addEventListener("click", invite);
+      const rn = document.getElementById("gNewName");
+      if (rn) {
+        rn.focus();
+        rn.setSelectionRange(rn.value.length, rn.value.length);
+        const save = async () => {
+          const nm = cleanName(rn.value), msg = document.getElementById("gRenMsg"), sb = document.getElementById("gRenSave");
+          if (nm === g.name) { editName = false; draw(""); return; }
+          if (nm.length < 2) { msg.innerHTML = '<div class="err" role="alert">نام گروه را بنویسید (حداقل ۲ حرف).</div>'; rn.focus(); return; }
+          sb.disabled = true; sb.classList.add("loading"); msg.innerHTML = "";
+          try {
+            await gcall("group_rename", { p_group: gid, p_name: nm });
+            if (!ok()) return;
+            editName = false;
+            groupsCache = null;
+            await load(true);
+            toast("نام گروه تغییر کرد ✓");
+          } catch (e) {
+            if (!ok()) return;
+            sb.disabled = false; sb.classList.remove("loading");
+            msg.innerHTML = '<div class="err" role="alert">' + esc(e.message) + "</div>";
+          }
+        };
+        document.getElementById("gRenSave").addEventListener("click", save);
+        document.getElementById("gRenBack").addEventListener("click", () => { editName = false; draw(""); });
+        rn.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); save(); } else if (e.key === "Escape") { e.preventDefault(); editName = false; draw(""); } });
+      }
+    };
+
+    const invite = async () => {
+      const inp = document.getElementById("gPhone"), msg = document.getElementById("gMsg"), btn = document.getElementById("gInv");
+      if (!inp) return;
+      const p = cleanPhone(inp.value);
+      if (!validPhone(p)) { msg.innerHTML = '<div class="err" role="alert">شماره‌ی موبایل معتبر نیست. مثل ۰۹۱۲۳۴۵۶۷۸۹ وارد کنید.</div>'; inp.focus(); return; }
+      msg.innerHTML = "";
+      const yes = await askConfirm({ title: "دعوت فرستاده شود؟", text: "برای شماره‌ی " + showPhone(p) + " دعوت‌نامه‌ی گروه «" + g.name + "» فرستاده می‌شود. اگر شماره را اشتباه زده‌اید، «برگشت» را بزنید.", yes: "بله، دعوت را بفرست" });
+      if (!yes || !ok()) return;
+      btn.disabled = true; btn.classList.add("loading");
+      try {
+        await gcall("group_invite", { p_group: gid, p_phone: p });
+        if (!ok()) return;
+        phoneVal = "";
+        groupsCache = null;
+        await load(true);
+        toast("دعوت فرستاده شد ✓");
+      } catch (e) {
+        if (!ok()) return;
+        btn.disabled = false; btn.classList.remove("loading");
+        msg.innerHTML = '<div class="err" role="alert">' + esc(e.message) + "</div>";
+      }
+    };
+
+    const run = async (fn, doneMsg) => {
+      try { await fn(); if (!ok()) return; groupsCache = null; await load(true); if (ok() && doneMsg) toast(doneMsg); }
+      catch (e) { if (!ok()) return; await load(true); if (ok()) draw(e.message); }
+    };
+
+    async function onClick(e) {
+      const t = e.target.closest("button[data-tab]");
+      if (t && app.contains(t)) { tab = t.dataset.tab; draw(""); return; }
+      const b = e.target.closest("button[data-act]");
+      if (!b || !app.contains(b) || !g) return;
+      const act = b.dataset.act;
+      if (act === "rename") { editName = true; draw(""); return; }
+      if (act === "mk") {
+        const nm = b.dataset.n, uid = b.dataset.u;
+        if (!(await askConfirm({ title: "«" + nm + "» مدیر گروه شود؟", text: "از این به بعد او مدیر گروه «" + g.name + "» است و شما عضو معمولی می‌شوید؛ دیگر نمی‌توانید عضو اضافه یا حذف کنید یا نتایج آزمون‌های گروه را ببینید. لینک‌های مدیریت آزمون‌ها هم به او منتقل می‌شود. فقط خودش می‌تواند دوباره شما را مدیر کند.", yes: "بله، مدیر عوض شود", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        tab = "members";
+        run(() => gcall("group_transfer", { p_group: gid, p_user: uid }), "مدیر گروه عوض شد");
+        return;
+      }
+      if (act === "rm") {
+        const nm = b.dataset.n, uid = b.dataset.u;
+        if (!(await askConfirm({ title: "«" + nm + "» از گروه حذف شود؟", text: "این شخص دیگر آزمون‌های گروه را نمی‌بیند. نتایجی که قبلاً داده می‌ماند.", yes: "بله، حذف کن", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        run(() => gcall("group_member_remove", { p_group: gid, p_user: uid }), "عضو حذف شد");
+      } else if (act === "cancel") {
+        const ph = b.dataset.p;
+        if (!(await askConfirm({ title: "دعوت لغو شود؟", text: "دعوت برای شماره‌ی " + showPhone(ph) + " لغو می‌شود و او دیگر آن را نمی‌بیند.", yes: "بله، لغو کن", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        run(() => gcall("group_invite_cancel", { p_group: gid, p_phone: ph }), "دعوت لغو شد");
+      } else if (act === "leave") {
+        if (!(await askConfirm({ title: "گروه را ترک می‌کنید؟", text: "دیگر آزمون‌های گروه «" + g.name + "» را نمی‌بینید. برای برگشتن، مدیر باید دوباره دعوتتان کند.", yes: "بله، ترک می‌کنم", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        try { await gcall("group_leave", { p_group: gid }); groupsCache = null; if (ok()) location.hash = "#/groups"; }
+        catch (err) { if (ok()) { b.disabled = false; b.classList.remove("loading"); draw(err.message); } }
+      } else if (act === "del") {
+        if (!(await askConfirm({ title: "گروه «" + g.name + "» حذف شود؟", text: "گروه، همه‌ی آزمون‌های گروه و نتایجشان برای همیشه پاک می‌شود و برگشت ندارد.", yes: "بله، همه را حذف کن", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        try { await gcall("group_delete", { p_group: gid }); groupsCache = null; if (ok()) location.hash = "#/groups"; }
+        catch (err) { if (ok()) { b.disabled = false; b.classList.remove("loading"); draw(err.message); } }
+      }
+    }
+    app.addEventListener("click", onClick);
+    load(false);
+    return function cleanup() { app.removeEventListener("click", onClick); if (chatOff) { chatOff(); chatOff = null; } };
+  }
+
+  /* نام گروه روی نشانک بالای صفحه‌ی ساخت آزمون؛ اگر گروه معتبر نبود هشدار می‌دهد */
+  function fillGroupChip() {
+    const gid = createGroup;
+    if (!gid) return;
+    ensureGroups().then((gs) => {
+      const bx = document.getElementById("grpChipBox");
+      if (!bx || gid !== createGroup) return;
+      const g = gs.find((x) => x.id === gid && x.role === "owner");
+      bx.innerHTML = g ? groupChip(g.name) : '<div class="err" role="alert">این گروه پیدا نشد یا شما مدیر آن نیستید؛ آزمون ساخته نمی‌شود. با «بازگشت» یک گروه دیگر یا حالت عمومی را انتخاب کنید.</div>';
+    }).catch(() => {});
+  }
+
+  /* جمله‌ی کوتاه «آزمون گروهی» روی صفحه‌ها */
+  const groupChip = (name) => '<div class="grp-chip">' + USERS_ICON + " آزمون گروهی" + (name ? " · " + esc(name) : "") + "</div>";
+
+  /* ---------- قفل «ساخت آزمون»: فقط برای کاربران واردشده ---------- */
+  let signupNext = "";
+  let gateOn = false;
+  const GATE_SEL = "header.top, #hero, #app, #siteFoot";
+  const LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.6"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></svg>';
+
+  function syncHeroNow() {
+    const h = document.getElementById("hero");
+    if (h) h.hidden = !(isHomeHash() || gateOn);
+  }
+
+  function closeGate() {
+    gateOn = false;
+    document.documentElement.classList.remove("gate-on");
+    document.querySelectorAll(GATE_SEL).forEach((el) => el.removeAttribute("inert"));
+    const g = document.getElementById("gate");
+    if (g) g.remove();
+    document.removeEventListener("keydown", onGateKey, true);
+    syncHeroNow();
+  }
+  function onGateKey(e) {
+    if (e.key === "Escape") { e.preventDefault(); location.hash = "#/"; }
+  }
+
+  function viewGate(target, token) {
+    const take = /^q\//.test(target);
+    const grp = /^(groups|g\/)/.test(target);
+    setTitle(grp ? "ورود برای گروه‌ها" : take ? "ورود برای شرکت در آزمون" : "ورود برای ساخت آزمون");
+    viewHome();                               /* پس‌زمینه‌ی تار: صفحه‌ی اصلی */
+    gateOn = true;
+    document.documentElement.classList.add("gate-on");
+    syncHeroNow();
+    document.querySelectorAll(GATE_SEL).forEach((el) => el.setAttribute("inert", ""));
+    const g = document.createElement("div");
+    g.className = "gate";
+    g.id = "gate";
+    g.innerHTML =
+      '<div class="gate-box" role="dialog" aria-modal="true" aria-labelledby="gateT" aria-describedby="gateD">' +
+      '<div class="gate-ic">' + LOCK_ICON + "</div>" +
+      '<h2 id="gateT">' + (grp ? "برای دیدن گروه‌ها وارد شوید" : take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
+      '<p id="gateD">' + (grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : grp ? " بعد از ورود، مستقیم به همین صفحه برمی‌گردید." : "") + "</p>" +
+      '<a class="btn wide" id="gateGo" href="#/signup' + (/^create/.test(target) ? "" : "?next=" + target) + '">ثبت‌نام / ورود</a>' +
+      '<a class="gate-back" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
+    document.body.appendChild(g);
+    document.addEventListener("keydown", onGateKey, true);
+    setTimeout(() => { if (token === routeToken) { const b = document.getElementById("gateGo"); if (b) b.focus({ preventScroll: true }); } }, 30);
+    return function () { closeGate(); };
+  }
+
+  /* ---------- مسیریابی ---------- */
+  let routeToken = 0;
+  let cleanup = null;
+  let first = true;
+  /* انیمیشنِ ورودِ محتوا فقط بار اولِ دیدنِ هر بخش (خانه، ساخت آزمون، گروه…) */
+  const fxSeen = new Set();
+  let fxTimer = 0;
+  const fxOff = () => { clearTimeout(fxTimer); app.classList.remove("fx"); };
+  app.addEventListener("click", fxOff, true);   /* نه در pointerdown: وسط کلیک نباید چیزی جابه‌جا شود */
+  app.addEventListener("keydown", fxOff, true);
+
+  function route() {
+    if (gateOn) closeGate();
+    if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; }
+    const token = ++routeToken;
+    const initial = first;
+    first = false;
+
+    if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { showSetup(); return; }
+
+    const parts0 = location.hash.replace(/^#/, "").split("?");
+    const path = parts0[0];
+    const query = parts0[1] || "";
+    const parts = path.split("/").filter(Boolean).map(safeDecode);
+    const okId = (s) => /^[A-Za-z0-9_-]{1,64}$/.test(s || "");
+
+    createGroup = parts[0] === "create" ? ((/(^|&)g=([0-9a-f]{8})(&|$)/.exec(query) || [])[2] || "") : "";
+
+    const kind = parts[0] || "home";
+    fxOff();
+    if (!fxSeen.has(kind) && !reduceMotion()) {
+      fxSeen.add(kind);
+      app.classList.add("fx");
+      fxTimer = setTimeout(fxOff, 1600);
+    }
+
+    if (!initial) window.scrollTo(0, 0);
+    const hb = document.getElementById("homeBtn");
+    if (hb) { if (parts.length === 0) hb.setAttribute("aria-current", "page"); else hb.removeAttribute("aria-current"); }
+
+    if (parts[0] === "q") {
+      if (!okId(parts[1])) showError("لینک آزمون نامعتبر است.");
+      else if (!auth.get()) cleanup = viewGate("q/" + parts[1], token);
+      else viewTake(parts[1], token);
+    } else if (parts[0] === "m") {
+      if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
+      else viewManage(parts[1], parts[2], /(^|&)new=1(&|$)/.test(query), token, { updated: /(^|&)updated=1(&|$)/.test(query), cleared: +((/(^|&)cleared=(\d+)/.exec(query) || [])[2] || 0) });
+    } else if (parts[0] === "edit") {
+      if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
+      else viewEdit(parts[1], parts[2], token);
+    } else if (parts[0] === "groups") {
+      cleanup = auth.get() ? viewGroups(token) : viewGate("groups", token);
+    } else if (parts[0] === "g") {
+      if (!GROUP_ID_RE.test(parts[1] || "")) showError("لینک گروه نامعتبر است.");
+      else cleanup = auth.get() ? viewGroup(parts[1], token) : viewGate("g/" + parts[1], token);
+    } else if (parts[0] === "signup") {
+      const nx = ((/(^|&)next=([^&]*)/.exec(query) || [])[2] || "");
+      signupNext = /^(q\/[A-Za-z0-9_-]{1,64}|groups|g\/[0-9a-f]{8})$/.test(nx) ? nx : "";
+      cleanup = viewSignup();
+    } else if (parts[0] === "account") {
+      cleanup = viewAccount();
+    } else if (parts[0] === "create" && !auth.get()) {
+      cleanup = viewGate(parts.slice(0, 2).join("/"), token);
+    } else if (parts[0] === "create") {
+      if (parts[1] === "ai") cleanup = viewAI();
+      else if (ACTIVE_MODES.indexOf(parts[1]) >= 0) cleanup = viewBuild(parts[1], /(^|&)draft=1(&|$)/.test(query));
+      else viewChoose();
+    } else {
+      viewHome();
+    }
+    if (!initial) app.focus({ preventScroll: true });
+  }
+
+  window.addEventListener("hashchange", () => {
+    if (genLockHash !== null) {
+      if (location.hash !== genLockHash) location.replace(genLockHash);
+      return;
+    }
+    route();
+  });
+  const homeBtn = document.getElementById("homeBtn");
+  if (homeBtn) homeBtn.addEventListener("click", () => { if (!location.hash || location.hash === "#/" || location.hash === "#") window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" }); });
+  window.addEventListener("authchange", syncInviteWatch);
+  syncAuthBtn();
+  route();
+  syncInviteWatch();
+  validateSession();
+})();
