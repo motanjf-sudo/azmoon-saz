@@ -2027,8 +2027,7 @@
       '<div class="chat-ctx" hidden><span class="chat-ctx-i" aria-hidden="true"></span><div class="chat-ctx-t"><b></b><span></span></div><button type="button" class="chat-ctx-x" aria-label="لغو">' + CI.close + "</button></div>" +
       '<form class="chat-in" autocomplete="off"><textarea rows="1" maxlength="' + CHAT_MAX + '" dir="auto" enterkeyhint="send" placeholder="پیام بنویسید…" aria-label="متن پیام"></textarea>' +
       '<button class="chat-send" type="submit" aria-label="ارسال" disabled>' + CI.send + "</button></form>" +
-      '<div class="chat-cnt" hidden></div></div>' +
-      '<p class="hint chat-hint"><span class="h-fine">برای پاسخ، کپی، ویرایش یا حذف، روی پیام کلیک راست کنید.</span><span class="h-coarse">برای پاسخ، کپی، ویرایش یا حذف، انگشت را روی پیام نگه دارید.</span></p>';
+      '<div class="chat-cnt" hidden></div></div>';
     const q = (s) => box.querySelector(s);
     const list = q(".chat-list"), wrap = q(".chat-msgs"), moreBox = q(".chat-more"), stateEl = q(".chat-state"), newBtn = q(".chat-new"), net = q(".chat-net");
     const ctx = q(".chat-ctx"), ctxI = q(".chat-ctx-i"), ctxT = q(".chat-ctx-t b"), ctxS = q(".chat-ctx-t span"), form = q(".chat-in"), ta = q("textarea"), sendBtn = q(".chat-send"), cnt = q(".chat-cnt");
