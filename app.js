@@ -887,10 +887,28 @@
   }
 
   /* مدل‌های قابل انتخاب. provider/model همان چیزی است که به تابع سرور می‌رود. */
+  /* files: نوع فایلی که مدل می‌خواند. txt = فقط متن؛ pdfimg = متن، PDF و عکس؛ all = متن، PDF، Word و عکس */
   const AI_MODELS = [
-    { id: "ds-v3", group: "DeepSeek", label: "DeepSeek V3", provider: "deepseek", model: "deepseek-chat", textOnly: true },
-    { id: "ds-v41", group: "DeepSeek", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash", textOnly: true },
+    { id: "ds-v3", group: "DeepSeek", label: "DeepSeek V3", provider: "deepseek", model: "deepseek-chat", files: "txt" },
+    { id: "ds-v41", group: "DeepSeek", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash", files: "txt" },
+    { id: "gem-argon", group: "Gemini", label: "Gemini 4 Argon", provider: "gemini", model: "gemini-4-argon", files: "pdfimg" },
+    { id: "gem-flash", group: "Gemini", label: "Gemini 3.8 Flash", provider: "gemini", model: "gemini-3.8-flash", files: "pdfimg" },
+    { id: "cl-sonnet", group: "Claude", label: "Claude Sonnet 5.5", provider: "perplexity", model: "anthropic/claude-sonnet-5-5", files: "all" },
+    { id: "cl-haiku", group: "Claude", label: "Claude Haiku 5.5", provider: "perplexity", model: "anthropic/claude-haiku-5-5", files: "all" },
+    { id: "cl-opus", group: "Claude", label: "Claude Opus 5.5", provider: "perplexity", model: "anthropic/claude-opus-5-5", files: "all" },
+    { id: "gpt-luna", group: "GPT", label: "GPT-6 Luna", provider: "perplexity", model: "openai/gpt-6-luna", files: "all" },
+    { id: "gpt-sol", group: "GPT", label: "GPT-6.1 Sol", provider: "perplexity", model: "openai/gpt-6.1-sol", files: "all" },
+    { id: "glm", group: "GLM", label: "GLM 5.3", provider: "perplexity", model: "perplexity/glm-5.3", files: "all" },
   ];
+  const AI_GROUPS = AI_MODELS.map((m) => m.group).filter((g, i, a) => a.indexOf(g) === i);
+  const AI_EXT = {
+    txt: ["txt", "md"],
+    pdfimg: ["txt", "md", "pdf", "png", "jpg", "jpeg", "webp"],
+    all: ["txt", "md", "pdf", "png", "jpg", "jpeg", "webp", "docx", "doc", "rtf"],
+  };
+  const aiOk = (M, ext) => AI_EXT[M.files].indexOf(ext) >= 0;
+  const aiHint = (M) => (M.files === "txt" ? "فایل متنی (TXT یا MD)" : M.files === "pdfimg" ? "PDF، عکس یا فایل متنی (TXT یا MD)" : "PDF، Word، عکس یا فایل متنی (TXT یا MD)") + "، حداکثر ۴ مگابایت";
+  const aiAccept = (M) => AI_EXT[M.files].map((e) => "." + e).join(",") + (M.files === "txt" ? ",text/plain,text/markdown" : "");
   const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[0];
 
   /* قفل کامل برنامه هنگام ساخت آزمون با هوش مصنوعی */
@@ -921,13 +939,13 @@
       '<p class="muted">فایل یا موضوع را بدهید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
       '<div class="card ai-form">' +
       '<label for="mid">مدل هوش مصنوعی</label><select id="mid">' +
-      ["DeepSeek"].map((g) => '<optgroup label="' + g + '">' +
-        AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.textOnly ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
+      AI_GROUPS.map((g) => '<optgroup label="' + g + '">' +
+        AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.files === "txt" ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
       "</select>" +
       '<label>منبع سؤال‌ها</label>' + seg("src", [["file", "از روی فایل"], ["topic", "فقط موضوع (بدون فایل)"]]) +
       '<div id="srcFile"><div class="drop" id="drop" tabindex="0" role="button" aria-label="انتخاب فایل">' + ICONS.upload +
-      '<strong id="dropT">فایل را اینجا بکشید یا انتخاب کنید</strong><span class="hint">فایل متنی (TXT یا MD)، حداکثر ۴ مگابایت</span></div>' +
-      '<input id="file" type="file" accept=".txt,.md,text/plain,text/markdown" hidden></div>' +
+      '<strong id="dropT">فایل را اینجا بکشید یا انتخاب کنید</strong><span class="hint" id="dropHint"></span></div>' +
+      '<input id="file" type="file" hidden></div>' +
       '<div id="srcTopic" hidden><label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off"></div>' +
       '<div id="topicExtra"><label for="note">توضیح اضافه (اختیاری)</label><input id="note" type="text" maxlength="300" placeholder="مثلاً: فقط از فصل دوم سؤال بده" autocomplete="off"></div>' +
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
@@ -958,7 +976,19 @@
       });
     });
 
-    $("mid").addEventListener("change", () => { st.mid = $("mid").value; msg.innerHTML = ""; });
+    /* هر مدل فایل‌های خودش را می‌خواند؛ با عوض‌کردن مدل، راهنما و نوع مجاز فایل هم عوض می‌شود */
+    const syncModel = () => {
+      const M = aiModel(st.mid);
+      $("dropHint").textContent = aiHint(M);
+      $("file").setAttribute("accept", aiAccept(M));
+      if (st.file) {
+        const ext = (st.file.name.split(".").pop() || "").toLowerCase();
+        if (!aiOk(M, ext)) { st.file = null; $("dropT").textContent = "فایل را اینجا بکشید یا انتخاب کنید"; $("drop").classList.remove("has"); fail("فایل قبلی با «" + M.label + "» سازگار نبود و برداشته شد. " + aiHint(M).replace("، حداکثر ۴ مگابایت", "") + " انتخاب کنید یا «فقط موضوع» را بزنید."); return; }
+      }
+      msg.innerHTML = "";
+    };
+    $("mid").addEventListener("change", () => { st.mid = $("mid").value; syncModel(); });
+    syncModel();
     const setCount = (n) => { st.count = Math.min(30, Math.max(1, n)); $("count").value = faNum(st.count); };
     const parseCount = () => {
       const t = $("count").value.replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g, "");
@@ -979,8 +1009,8 @@
       msg.innerHTML = "";
       if (!f) return;
       const ext = (f.name.split(".").pop() || "").toLowerCase();
-      const isText = ext === "txt" || ext === "md";
-      if (!isText && !AI_FILE_TYPES[ext]) return fail("این نوع فایل پشتیبانی نمی‌شود. فایل متنی (TXT یا MD) انتخاب کنید یا «فقط موضوع» را بزنید.");
+      const M = aiModel(st.mid);
+      if (!aiOk(M, ext)) return fail("«" + M.label + "» این نوع فایل را نمی‌خواند. " + aiHint(M).replace("، حداکثر ۴ مگابایت", "") + " انتخاب کنید یا «فقط موضوع» را بزنید.");
       if (f.size > AI_MAX_BYTES) return fail("حجم فایل بیشتر از ۴ مگابایت است.");
       if (!f.size) return fail("فایل خالی است.");
       st.file = f;
@@ -1004,7 +1034,7 @@
         if (st.src === "file") {
           if (!st.file) return fail("ابتدا یک فایل انتخاب کنید یا گزینه‌ی «فقط موضوع» را بزنید.");
           const ext = (st.file.name.split(".").pop() || "").toLowerCase();
-          if (M.textOnly && ext !== "txt" && ext !== "md") return fail("«" + M.label + "» فقط فایل متنی (TXT یا MD) می‌خواند. فایل PDF، Word و عکس فعلاً پشتیبانی نمی‌شود؛ متن را در یک فایل TXT بگذارید یا «فقط موضوع» را انتخاب کنید.");
+          if (!aiOk(M, ext)) return fail("«" + M.label + "» این نوع فایل را نمی‌خواند. " + aiHint(M).replace("، حداکثر ۴ مگابایت", "") + " انتخاب کنید یا «فقط موضوع» را بزنید.");
           if (ext === "txt" || ext === "md") {
             const t = await readFileAsText(st.file);
             if (!t.trim()) return fail("فایل متنی خالی است.");
@@ -1360,7 +1390,7 @@
   const auth = {
     get() {
       const v = store.get("session", null);
-      return v && typeof v.token === "string" && typeof v.phone === "string" ? v : null;
+      return v && typeof v.token === "string" && (typeof v.phone === "string" || typeof v.email === "string") ? v : null;
     },
     set(v) { store.set("session", v); syncAuthBtn(); window.dispatchEvent(new Event("authchange")); },
     clear() { store.del("session"); syncAuthBtn(); window.dispatchEvent(new Event("authchange")); },
@@ -1411,7 +1441,7 @@
       '<div class="prof-pop" id="profPop" role="dialog" aria-label="اطلاعات حساب" hidden>' +
       '<div class="prof-av">' + av + "</div>" +
       '<div class="prof-name">' + (nm ? esc(nm) : "کاربر پازمونک") + "</div>" +
-      '<div class="prof-phone" dir="ltr">' + showPhone(s.phone) + "</div>" +
+      '<div class="prof-phone" dir="ltr">' + esc(showPhone(s.phone || s.email)) + "</div>" +
       '<button class="btn ghost small wide" id="profOut" type="button">خروج از حساب</button></div>';
     document.getElementById("profBtn").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1456,7 +1486,15 @@
     return d.slice(0, 11);
   }
   const validPhone = (p) => /^09\d{9}$/.test(p);
-  const showPhone = (p) => faNum(p.slice(0, 4) + " " + p.slice(4, 7) + " " + p.slice(7));
+  const showPhone = (p) => (p.indexOf("@") >= 0 ? p : faNum(p.slice(0, 4) + " " + p.slice(4, 7) + " " + p.slice(7)));   /* ایمیل همان‌طور که هست */
+  const validEmail = (e) => e.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
+  /* ورودیِ «شماره یا ایمیل» (برای دعوت به گروه) → { v: مقدار پاک‌شده, ok } */
+  function cleanIdent(raw) {
+    const t = String(raw == null ? "" : raw).trim();
+    if (t.indexOf("@") >= 0) { const e = t.toLowerCase().replace(/\s+/g, ""); return { v: e, ok: validEmail(e) }; }
+    const p = cleanPhone(t);
+    return { v: p, ok: validPhone(p) };
+  }
   const mmss = (sec) => faNum(Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"));
 
   const LOGO_CHECK = '<svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M70.2 4.0C68.5 3.1 66.8 2.4 65.4 1.9C64.0 1.4 63.4 1.3 62.0 1.0C60.6 0.7 58.9 0.3 57.1 0.2C55.3 0.0 57.7 -0.3 51.1 0.0C44.6 0.3 23.8 1.3 17.8 1.8C11.7 2.3 15.7 2.3 14.8 2.8C13.9 3.4 13.1 4.0 12.5 5.1C11.9 6.2 11.5 -1.3 11.3 9.2C11.2 19.7 10.9 59.6 11.5 68.2C12.1 76.8 13.6 63.2 15.0 60.9C16.4 58.7 18.0 56.6 19.7 54.8C21.4 53.0 22.9 51.6 25.0 50.0C27.2 48.4 31.4 49.6 32.7 45.4C34.0 41.1 32.6 28.5 32.7 24.7C32.8 21.0 32.9 23.2 33.3 22.6C33.7 22.0 34.2 21.3 34.9 20.9C35.6 20.5 35.1 20.3 37.4 20.1C39.8 19.9 46.2 19.9 49.0 19.9C51.8 19.9 52.8 19.9 54.3 20.1C55.8 20.3 56.8 20.5 58.0 21.0C59.2 21.4 60.5 22.1 61.5 22.9C62.5 23.7 63.3 24.6 64.0 25.7C64.8 26.7 65.4 28.0 65.8 29.3C66.2 30.5 66.4 31.8 66.5 33.1C66.6 34.3 66.4 35.6 66.3 36.7C66.1 37.8 65.8 38.7 65.3 39.7C64.9 40.7 64.1 42.0 63.3 42.9C62.5 43.8 62.0 44.4 60.7 45.1C59.4 45.8 57.8 46.7 55.5 47.1C53.3 47.5 49.7 47.5 47.3 47.7C45.0 48.0 43.8 48.1 41.5 48.8C39.2 49.4 36.1 50.3 33.4 51.5C30.6 52.8 27.1 55.0 25.1 56.4C23.0 57.8 22.5 58.3 21.1 59.7C19.7 61.1 17.8 63.1 16.6 64.8C15.3 66.4 14.4 68.0 13.6 69.6C12.8 71.3 12.2 73.5 11.8 74.9C11.4 76.3 11.4 75.5 11.3 77.9C11.2 80.2 11.2 86.4 11.3 88.8C11.4 91.2 11.6 91.2 11.8 92.2C12.1 93.2 12.5 94.0 12.9 94.7C13.3 95.5 13.6 95.9 14.2 96.6C14.9 97.3 15.8 98.2 16.9 98.7C17.9 99.2 19.2 99.7 20.6 99.9C22.0 100.0 23.9 100.0 25.4 99.6C26.8 99.2 28.2 98.5 29.3 97.6C30.4 96.8 31.4 95.4 32.0 94.5C32.7 93.5 32.9 92.7 33.2 91.7C33.5 90.7 33.8 92.3 33.9 88.5C34.0 84.7 33.7 72.3 33.8 68.7C33.9 65.2 34.1 67.6 34.5 67.3C34.9 67.1 34.0 66.9 36.2 67.2C38.3 67.4 44.4 68.4 47.5 68.7C50.5 69.0 52.3 68.9 54.5 68.8C56.7 68.7 58.8 68.4 60.6 68.1C62.5 67.7 63.5 67.5 65.3 66.8C67.2 66.1 69.8 65.0 71.6 64.0C73.4 63.1 74.7 62.1 76.2 60.9C77.6 59.7 78.9 58.5 80.2 56.9C81.6 55.4 83.0 53.6 84.1 51.6C85.2 49.6 86.3 47.2 87.0 45.0C87.8 42.8 88.2 40.6 88.4 38.4C88.7 36.2 88.7 33.9 88.5 31.7C88.3 29.4 87.8 27.0 87.1 24.8C86.4 22.6 85.4 20.2 84.3 18.2C83.2 16.1 82.0 14.4 80.5 12.6C79.0 10.8 77.0 8.8 75.3 7.4C73.5 5.9 71.8 4.9 70.2 4.0Z"/></svg>';
@@ -1491,14 +1529,28 @@
     let navTimer = 0;
     let phone = "";
     let fullName = "";
+    let method = "phone";       /* روش ورود: phone | email */
+    let emailMode = "signup";   /* signup | login | forgot */
+    let email = "";
+    let kind = "phone";         /* کدِ تأیید به کجا رفته: phone | email */
+    let purpose = "signup";     /* هدفِ کد ایمیلی: signup | reset */
 
     const stopTimers = () => { cancelAnimationFrame(raf); raf = 0; };
     const mount = (html) => { stopTimers(); box.innerHTML = '<div class="auth-step">' + html + "</div>"; return box.firstChild; };
 
+    const methodSeg = () => '<div class="seg auth-seg" role="group" aria-label="روش ثبت‌نام و ورود"><button type="button" data-m="phone" aria-pressed="' + (method === "phone") + '">با موبایل</button><button type="button" data-m="email" aria-pressed="' + (method === "email") + '">با ایمیل</button></div>';
+    const bindSeg = () => box.querySelectorAll("button[data-m]").forEach((b) => b.addEventListener("click", () => {
+      if (b.dataset.m === method) return;
+      method = b.dataset.m;
+      stepStart();
+    }));
+    const stepStart = () => { if (method === "email") stepEmail(emailMode, email); else stepPhone(phone); };
+    const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+
     /* ----- مرحله‌ی ۱: شماره ----- */
     function stepPhone(prefill) {
       mount(
-        "<h1>ثبت‌نام</h1>" +
+        "<h1>ثبت‌نام</h1>" + methodSeg() +
         '<p class="sub">شماره‌ی موبایل‌تان را وارد کنید تا یک کد تأیید برایتان بفرستیم. اگر قبلاً ثبت‌نام کرده‌اید، وارد حساب‌تان می‌شوید.</p>' +
         '<form id="phoneForm" novalidate><label for="nm">نام و نام خانوادگی</label>' +
         '<input id="nm" class="auth-input auth-name" type="text" autocomplete="name" maxlength="60" placeholder="مثلاً علی رضایی" aria-describedby="phMsg">' +
@@ -1507,6 +1559,7 @@
         '<div class="auth-msg" id="phMsg" role="alert"></div>' +
         '<button class="btn wide" id="phGo" type="submit">دریافت کد</button></form>'
       );
+      bindSeg();
       const ph = document.getElementById("ph");
       const nmEl = document.getElementById("nm");
       const msg = document.getElementById("phMsg");
@@ -1542,7 +1595,7 @@
         const r = await authCall({ action: "send", phone: p });
         if (!alive) return;
         go.disabled = false; go.classList.remove("loading");
-        if (r.ok) { phone = p; fullName = n; stepCode(r); return; }
+        if (r.ok) { phone = p; fullName = n; kind = "phone"; stepCode(r); return; }
         msg.className = "auth-msg m-err";
         msg.textContent = r.message || "ارسال کد ناموفق بود.";
         if (r.retry_in) msg.textContent += " (" + faNum(r.retry_in) + " ثانیه)";
@@ -1552,18 +1605,83 @@
       else first.focus({ preventScroll: true });
     }
 
+
+    /* ----- مرحله‌ی ۱ (ایمیل): ثبت‌نام / ورود / فراموشی رمز ----- */
+    function stepEmail(mode, prefill) {
+      emailMode = mode;
+      const isSignup = mode === "signup", isLogin = mode === "login";
+      mount(
+        "<h1>" + (isSignup ? "ثبت‌نام" : isLogin ? "ورود" : "فراموشی رمز") + "</h1>" + methodSeg() +
+        '<p class="sub">' + (isSignup ? "با ایمیل و رمز عبور ثبت‌نام کنید؛ یک کد تأیید به ایمیل‌تان می‌فرستیم تا مطمئن شویم ایمیل مال خودتان است."
+          : isLogin ? "ایمیل و رمز عبورتان را وارد کنید."
+          : "ایمیل‌تان را بنویسید و یک رمز جدید انتخاب کنید؛ برای تأیید، کدی به ایمیل‌تان می‌فرستیم.") + "</p>" +
+        '<form id="emForm" novalidate>' +
+        (isSignup ? '<label for="nm">نام و نام خانوادگی</label><input id="nm" class="auth-input auth-name" type="text" autocomplete="name" maxlength="60" placeholder="مثلاً علی رضایی">' : "") +
+        '<label for="em">ایمیل</label><input id="em" class="auth-input auth-plain" type="email" inputmode="email" autocomplete="email" maxlength="254" autocapitalize="off" spellcheck="false" placeholder="name@example.com">' +
+        '<label for="pw" style="margin-top:12px">' + (mode === "forgot" ? "رمز عبور جدید" : "رمز عبور") + "</label>" +
+        '<div class="pw-wrap"><input id="pw" class="auth-input auth-plain" type="password" maxlength="100" autocomplete="' + (isLogin ? "current-password" : "new-password") + '" placeholder="' + (isLogin ? "" : "حداقل ۸ حرف") + '">' +
+        '<button class="pw-eye" id="pwEye" type="button" aria-label="نمایش رمز عبور" aria-pressed="false">' + EYE + "</button></div>" +
+        '<div class="auth-msg" id="emMsg" role="alert"></div>' +
+        '<button class="btn wide" id="emGo" type="submit">' + (isLogin ? "ورود" : "دریافت کد تأیید") + "</button></form>" +
+        '<div class="auth-alt">' +
+        (isSignup ? '<button class="auth-link" type="button" data-to="login">قبلاً ثبت‌نام کرده‌اید؟ ورود</button>'
+          : isLogin ? '<button class="auth-link" type="button" data-to="signup">حساب ندارید؟ ثبت‌نام</button><button class="auth-link" type="button" data-to="forgot">رمز را فراموش کرده‌ام</button>'
+          : '<button class="auth-link" type="button" data-to="login">بازگشت به ورود</button>') + "</div>"
+      );
+      bindSeg();
+      const emEl = document.getElementById("em"), pwEl = document.getElementById("pw"), nmEl = document.getElementById("nm");
+      const msg = document.getElementById("emMsg"), go = document.getElementById("emGo"), eye = document.getElementById("pwEye");
+      emEl.value = prefill || "";
+      if (nmEl) nmEl.value = fullName;
+      const clearBad = (el) => () => { el.classList.remove("bad"); msg.textContent = ""; };
+      [emEl, pwEl, nmEl].forEach((el) => { if (el) el.addEventListener("input", clearBad(el)); });
+      eye.addEventListener("click", () => {
+        const show = pwEl.type === "password";
+        pwEl.type = show ? "text" : "password";
+        eye.setAttribute("aria-pressed", String(show));
+        eye.setAttribute("aria-label", show ? "پنهان کردن رمز عبور" : "نمایش رمز عبور");
+      });
+      box.querySelectorAll("button[data-to]").forEach((b) => b.addEventListener("click", () => { email = emEl.value.trim().toLowerCase(); if (nmEl) fullName = cleanName(nmEl.value); stepEmail(b.dataset.to, email); }));
+      const bad = (el, text) => { el.classList.add("bad"); msg.className = "auth-msg m-err"; msg.textContent = text; el.focus(); };
+      document.getElementById("emForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const n = nmEl ? cleanName(nmEl.value) : "";
+        const em = emEl.value.trim().toLowerCase();
+        const pw = pwEl.value;
+        if (nmEl && !validName(n)) return bad(nmEl, "نام و نام خانوادگی‌تان را وارد کنید (حداقل ۲ حرف).");
+        if (!validEmail(em)) return bad(emEl, "ایمیل معتبر نیست. مثل name@example.com وارد کنید.");
+        if (!pw) return bad(pwEl, "رمز عبور را وارد کنید.");
+        if (!isLogin && pw.length < 8) return bad(pwEl, "رمز عبور باید حداقل ۸ حرف باشد.");
+        go.disabled = true; go.classList.add("loading"); msg.textContent = "";
+        const r = isLogin
+          ? await authCall({ action: "email_login", email: em, password: pw })
+          : await authCall({ action: "email_send", email: em, purpose: isSignup ? "signup" : "reset", name: n, password: pw });
+        if (!alive) return;
+        go.disabled = false; go.classList.remove("loading");
+        if (r.ok && isLogin) { fullName = cleanName(r.name); auth.set({ token: r.token, email: r.email, name: fullName }); stepWelcome(false); return; }
+        if (r.ok) { email = em; if (isSignup) fullName = n; kind = "email"; purpose = isSignup ? "signup" : "reset"; stepCode(r); return; }
+        msg.className = "auth-msg m-err";
+        msg.textContent = r.message || "درخواست ناموفق بود.";
+        if (r.retry_in && r.error !== "locked") msg.textContent += " (" + faNum(r.retry_in) + " ثانیه)";
+      });
+      const first = nmEl && !fullName ? nmEl : emEl;
+      if (!reduceMotion()) setTimeout(() => { if (alive) first.focus({ preventScroll: true }); }, 350);
+      else first.focus({ preventScroll: true });
+    }
+
     /* ----- مرحله‌ی ۲: کد + ساعت دایره‌ای ----- */
     function stepCode(info) {
       mount(
         "<h1>کد تأیید</h1>" +
-        '<p class="sub">کد ۵ رقمی به شماره‌ی <span class="auth-phone">' + showPhone(phone) + "</span> ارسال شد. " +
-        '<button class="auth-link" id="editPh" type="button">ویرایش شماره</button></p>' +
+        '<p class="sub">کد ۵ رقمی به ' + (kind === "email" ? "ایمیل" : "شماره‌ی") + ' <span class="auth-phone">' + esc(kind === "email" ? email : showPhone(phone)) + "</span> ارسال شد. " +
+        (kind === "email" ? "اگر پیدایش نکردید، پوشه‌ی هرزنامه (Spam) را هم ببینید. " : "") +
+        '<button class="auth-link" id="editPh" type="button">' + (kind === "email" ? "ویرایش ایمیل" : "ویرایش شماره") + "</button></p>" +
         '<div class="ring" id="ring" role="timer" aria-label="زمان باقی‌مانده تا انقضای کد">' + ringSvg() +
         '<div class="ring-t"><b id="ringT">۲:۰۰</b><span>زمان باقی‌مانده</span></div></div>' +
         '<div class="otp" id="otp" role="group" aria-label="کد ۵ رقمی">' +
         [0, 1, 2, 3, 4].map((i) => '<input type="text" inputmode="numeric" maxlength="1" autocomplete="' + (i === 0 ? "one-time-code" : "off") + '" aria-label="رقم ' + faNum(i + 1) + '">').join("") +
         "</div>" +
-        (info.dev_code ? '<div class="auth-dev">حالت آزمایشی (ارسال پیامک هنوز فعال نیست): کد شما <b>' + faNum(info.dev_code) + "</b></div>" : "") +
+        (info.dev_code ? '<div class="auth-dev">حالت آزمایشی (ارسال ' + (kind === "email" ? "ایمیل" : "پیامک") + ' هنوز فعال نیست): کد شما <b>' + faNum(info.dev_code) + "</b></div>" : "") +
         '<div class="auth-msg info" id="cMsg" role="alert"></div>' +
         '<button class="btn ghost wide" id="resend" type="button" hidden>ارسال دوباره‌ی کد</button>'
       );
@@ -1614,10 +1732,17 @@
         const code = getCode();
         if (code.length !== 5) return;
         busy = true; lock(true); setMsg("در حال بررسی…", "info");
-        const r = await authCall({ action: "verify", phone: phone, code: code, name: fullName });
+        const r = kind === "email"
+          ? await authCall({ action: "email_verify", email: email, purpose: purpose, code: code })
+          : await authCall({ action: "verify", phone: phone, code: code, name: fullName });
         if (!alive) return;
         busy = false;
-        if (r.ok) { auth.set({ token: r.token, phone: r.phone, name: cleanName(r.name || fullName) }); stepWelcome(!!r.created); return; }
+        if (r.ok) {
+          fullName = cleanName(r.name || fullName);
+          auth.set(kind === "email" ? { token: r.token, email: r.email, name: fullName } : { token: r.token, phone: r.phone, name: fullName });
+          stepWelcome(!!r.created);
+          return;
+        }
         if (r.error === "wrong") {
           otp.classList.remove("bad-code"); void otp.offsetWidth; otp.classList.add("bad-code");
           const left = Number(r.attempts_left || 0);
@@ -1680,7 +1805,9 @@
       resend.addEventListener("click", async () => {
         if (resend.disabled) return;
         resend.disabled = true; resend.classList.add("loading");
-        const r = await authCall({ action: "send", phone: phone });
+        const r = kind === "email"
+          ? await authCall({ action: "email_send", email: email, purpose: purpose, resend: true })
+          : await authCall({ action: "send", phone: phone });
         if (!alive) return;
         resend.classList.remove("loading");
         if (r.ok) {
@@ -1700,7 +1827,7 @@
           resend.disabled = false;
         }
       });
-      document.getElementById("editPh").addEventListener("click", () => stepPhone(phone));
+      document.getElementById("editPh").addEventListener("click", () => { method = kind; stepStart(); });
 
       paint();
       if (!reduceMotion()) setTimeout(() => { if (alive && !expired) boxes[0].focus({ preventScroll: true }); }, 350);
@@ -1723,7 +1850,7 @@
       navTimer = setTimeout(() => { if (alive) location.hash = nextHash; }, 1700);
     }
 
-    stepPhone("");
+    stepStart();
     return function cleanup() { alive = false; stopTimers(); clearTimeout(navTimer); };
   }
 
@@ -1733,8 +1860,8 @@
     if (!s) { location.hash = "#/signup"; return null; }
     app.innerHTML =
       '<div class="auth-wrap"><div class="card auth-card"><div class="auth-logo">' + LOGO_CHECK + "</div>" +
-      '<div class="auth-step"><h1>حساب من</h1><p class="sub">' + (cleanName(s.name) ? "<strong>" + esc(cleanName(s.name)) + "</strong><br>" : "") + "با این شماره وارد شده‌اید:</p>" +
-      '<div class="acc-phone">' + showPhone(s.phone) + "</div>" +
+      '<div class="auth-step"><h1>حساب من</h1><p class="sub">' + (cleanName(s.name) ? "<strong>" + esc(cleanName(s.name)) + "</strong><br>" : "") + (s.phone ? "با این شماره" : "با این ایمیل") + " وارد شده‌اید:</p>" +
+      '<div class="acc-phone">' + esc(showPhone(s.phone || s.email)) + "</div>" +
       '<a class="btn wide" href="#/create">ساخت آزمون</a>' +
       '<button class="btn ghost wide" id="logout" type="button">خروج از حساب</button></div></div></div>';
     document.getElementById("logout").addEventListener("click", (e) => doLogout(e.currentTarget));
@@ -1746,7 +1873,7 @@
     if (!s || !cfg.SUPABASE_URL) return;
     const r = await authCall({ action: "me", token: s.token });
     if (r && r.ok === false && r.error === "no_session") { auth.clear(); if (/^#\/account/.test(location.hash)) location.hash = "#/signup"; }
-    else if (r && r.ok && cleanName(r.name) !== cleanName(s.name)) auth.set({ token: s.token, phone: s.phone, name: cleanName(r.name) });
+    else if (r && r.ok && cleanName(r.name) !== cleanName(s.name)) auth.set(Object.assign({}, s, { name: cleanName(r.name) }));
   }
 
 
@@ -1834,7 +1961,8 @@
       const list = (r && Array.isArray(r.invites)) ? r.invites : [];
       if (r && Array.isArray(r.groups)) groupsCache = r.groups;
       setInviteBadge(list.length);
-      const seenKey = "seenInv_" + (auth.get() || {}).phone;
+      const cur = auth.get() || {};
+      const seenKey = "seenInv_" + (cur.phone || cur.email);
       if (!inv.seen) inv.seen = new Set(store.get(seenKey, []));
       const fresh = list.filter((x) => !inv.seen.has(x.group_id));
       if (fresh.length) {
@@ -2551,8 +2679,8 @@
       const ms = g.members || [];
       const pend = g.invites || [];
       return (owner()
-          ? '<div class="card"><h2>دعوت با شماره‌ی موبایل</h2><p class="hint" style="margin-top:0">شخص فوراً عضو نمی‌شود؛ دعوت را داخل پازمونک می‌بیند و خودش می‌پذیرد یا رد می‌کند.</p>' +
-            '<div class="grp-add"><input id="gPhone" type="text" inputmode="tel" dir="ltr" maxlength="16" autocomplete="off" placeholder="09123456789" aria-label="شماره‌ی موبایل" value="' + esc(phoneVal) + '"><button class="btn" type="button" id="gInv">دعوت</button></div><div id="gMsg"></div></div>'
+          ? '<div class="card"><h2>دعوت با شماره‌ی موبایل یا ایمیل</h2><p class="hint" style="margin-top:0">شخص فوراً عضو نمی‌شود؛ دعوت را داخل پازمونک می‌بیند و خودش می‌پذیرد یا رد می‌کند.</p>' +
+            '<div class="grp-add"><input id="gPhone" type="text" inputmode="email" dir="ltr" maxlength="254" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="09123456789 یا name@example.com" aria-label="شماره‌ی موبایل یا ایمیل" value="' + esc(phoneVal) + '"><button class="btn" type="button" id="gInv">دعوت</button></div><div id="gMsg"></div></div>'
           : "") +
         '<div class="card"><div class="sec-t"><h2>اعضا</h2><span class="badge">' + faNum(ms.length) + "</span></div>" +
         ms.map((m) =>
@@ -2628,10 +2756,10 @@
     const invite = async () => {
       const inp = document.getElementById("gPhone"), msg = document.getElementById("gMsg"), btn = document.getElementById("gInv");
       if (!inp) return;
-      const p = cleanPhone(inp.value);
-      if (!validPhone(p)) { msg.innerHTML = '<div class="err" role="alert">شماره‌ی موبایل معتبر نیست. مثل ۰۹۱۲۳۴۵۶۷۸۹ وارد کنید.</div>'; inp.focus(); return; }
+      const id = cleanIdent(inp.value), p = id.v;
+      if (!id.ok) { msg.innerHTML = '<div class="err" role="alert">شماره‌ی موبایل یا ایمیل معتبر نیست. مثل ۰۹۱۲۳۴۵۶۷۸۹ یا name@example.com وارد کنید.</div>'; inp.focus(); return; }
       msg.innerHTML = "";
-      const yes = await askConfirm({ title: "دعوت فرستاده شود؟", text: "برای شماره‌ی " + showPhone(p) + " دعوت‌نامه‌ی گروه «" + g.name + "» فرستاده می‌شود. اگر شماره را اشتباه زده‌اید، «برگشت» را بزنید.", yes: "بله، دعوت را بفرست" });
+      const yes = await askConfirm({ title: "دعوت فرستاده شود؟", text: "برای " + (p.indexOf("@") >= 0 ? "ایمیل " : "شماره‌ی ") + showPhone(p) + " دعوت‌نامه‌ی گروه «" + g.name + "» فرستاده می‌شود. اگر اشتباه نوشته‌اید، «برگشت» را بزنید.", yes: "بله، دعوت را بفرست" });
       if (!yes || !ok()) return;
       btn.disabled = true; btn.classList.add("loading");
       try {
