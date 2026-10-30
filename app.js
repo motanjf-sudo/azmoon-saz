@@ -1614,13 +1614,14 @@
         "<h1>" + (isSignup ? "ثبت‌نام" : isLogin ? "ورود" : "فراموشی رمز") + "</h1>" + methodSeg() +
         '<p class="sub">' + (isSignup ? "با ایمیل و رمز عبور ثبت‌نام کنید؛ یک کد تأیید به ایمیل‌تان می‌فرستیم تا مطمئن شویم ایمیل مال خودتان است."
           : isLogin ? "ایمیل و رمز عبورتان را وارد کنید."
-          : "ایمیل‌تان را بنویسید و یک رمز جدید انتخاب کنید؛ برای تأیید، کدی به ایمیل‌تان می‌فرستیم.") + "</p>" +
+          : "ایمیل‌تان را بنویسید. یک کد تأیید برایتان می‌فرستیم و بعد از وارد کردن آن می‌توانید رمز جدید بگذارید.") + "</p>" +
         '<form id="emForm" novalidate>' +
         (isSignup ? '<label for="nm">نام و نام خانوادگی</label><input id="nm" class="auth-input auth-name" type="text" autocomplete="name" maxlength="60" placeholder="مثلاً علی رضایی">' : "") +
         '<label for="em">ایمیل</label><input id="em" class="auth-input auth-plain" type="email" inputmode="email" autocomplete="email" maxlength="254" autocapitalize="off" spellcheck="false" placeholder="name@example.com">' +
-        '<label for="pw" style="margin-top:12px">' + (mode === "forgot" ? "رمز عبور جدید" : "رمز عبور") + "</label>" +
+        (mode === "forgot" ? "" :
+        '<label for="pw" style="margin-top:12px">رمز عبور</label>' +
         '<div class="pw-wrap"><input id="pw" class="auth-input auth-plain" type="password" maxlength="100" autocomplete="' + (isLogin ? "current-password" : "new-password") + '" placeholder="' + (isLogin ? "" : "حداقل ۸ حرف") + '">' +
-        '<button class="pw-eye" id="pwEye" type="button" aria-label="نمایش رمز عبور" aria-pressed="false">' + EYE + "</button></div>" +
+        '<button class="pw-eye" id="pwEye" type="button" aria-label="نمایش رمز عبور" aria-pressed="false">' + EYE + "</button></div>") +
         '<div class="auth-msg" id="emMsg" role="alert"></div>' +
         '<button class="btn wide" id="emGo" type="submit">' + (isLogin ? "ورود" : "دریافت کد تأیید") + "</button></form>" +
         '<div class="auth-alt">' +
@@ -1635,7 +1636,7 @@
       if (nmEl) nmEl.value = fullName;
       const clearBad = (el) => () => { el.classList.remove("bad"); msg.textContent = ""; };
       [emEl, pwEl, nmEl].forEach((el) => { if (el) el.addEventListener("input", clearBad(el)); });
-      eye.addEventListener("click", () => {
+      if (eye && pwEl) eye.addEventListener("click", () => {
         const show = pwEl.type === "password";
         pwEl.type = show ? "text" : "password";
         eye.setAttribute("aria-pressed", String(show));
@@ -1647,15 +1648,15 @@
         e.preventDefault();
         const n = nmEl ? cleanName(nmEl.value) : "";
         const em = emEl.value.trim().toLowerCase();
-        const pw = pwEl.value;
+        const pw = pwEl ? pwEl.value : "";
         if (nmEl && !validName(n)) return bad(nmEl, "نام و نام خانوادگی‌تان را وارد کنید (حداقل ۲ حرف).");
         if (!validEmail(em)) return bad(emEl, "ایمیل معتبر نیست. مثل name@example.com وارد کنید.");
-        if (!pw) return bad(pwEl, "رمز عبور را وارد کنید.");
-        if (!isLogin && pw.length < 8) return bad(pwEl, "رمز عبور باید حداقل ۸ حرف باشد.");
+        if (pwEl && !pw) return bad(pwEl, "رمز عبور را وارد کنید.");
+        if (pwEl && !isLogin && pw.length < 8) return bad(pwEl, "رمز عبور باید حداقل ۸ حرف باشد.");
         go.disabled = true; go.classList.add("loading"); msg.textContent = "";
         const r = isLogin
           ? await authCall({ action: "email_login", email: em, password: pw })
-          : await authCall({ action: "email_send", email: em, purpose: isSignup ? "signup" : "reset", name: n, password: pw });
+          : await authCall({ action: "email_send", email: em, purpose: isSignup ? "signup" : "reset", name: n, password: isSignup ? pw : undefined });
         if (!alive) return;
         go.disabled = false; go.classList.remove("loading");
         if (r.ok && isLogin) { fullName = cleanName(r.name); auth.set({ token: r.token, email: r.email, name: fullName }); stepWelcome(false); return; }
@@ -1667,6 +1668,45 @@
       const first = nmEl && !fullName ? nmEl : emEl;
       if (!reduceMotion()) setTimeout(() => { if (alive) first.focus({ preventScroll: true }); }, 350);
       else first.focus({ preventScroll: true });
+    }
+
+    /* ----- فراموشی رمز، مرحله‌ی آخر: رمز جدید (بعد از درست‌بودن کد) ----- */
+    function stepNewPass(code) {
+      mount(
+        "<h1>رمز جدید</h1>" +
+        '<p class="sub">کد تأیید درست بود. حالا رمز عبور جدیدتان را بنویسید (حداقل ۸ حرف).</p>' +
+        '<form id="npForm" novalidate>' +
+        '<label for="npw">رمز عبور جدید</label>' +
+        '<div class="pw-wrap"><input id="npw" class="auth-input auth-plain" type="password" maxlength="100" autocomplete="new-password" placeholder="حداقل ۸ حرف">' +
+        '<button class="pw-eye" id="npEye" type="button" aria-label="نمایش رمز عبور" aria-pressed="false">' + EYE + "</button></div>" +
+        '<div class="auth-msg" id="npMsg" role="alert"></div>' +
+        '<button class="btn wide" id="npGo" type="submit">ذخیره‌ی رمز و ورود</button></form>' +
+        '<div class="auth-alt"><button class="auth-link" type="button" id="npBack">بازگشت</button></div>'
+      );
+      const pwEl = document.getElementById("npw"), eye = document.getElementById("npEye");
+      const msg = document.getElementById("npMsg"), go = document.getElementById("npGo");
+      pwEl.addEventListener("input", () => { pwEl.classList.remove("bad"); msg.textContent = ""; });
+      eye.addEventListener("click", () => {
+        const show = pwEl.type === "password";
+        pwEl.type = show ? "text" : "password";
+        eye.setAttribute("aria-pressed", String(show));
+        eye.setAttribute("aria-label", show ? "پنهان کردن رمز عبور" : "نمایش رمز عبور");
+      });
+      document.getElementById("npBack").addEventListener("click", () => stepEmail("forgot", email));
+      document.getElementById("npForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const pw = pwEl.value;
+        if (pw.length < 8) { pwEl.classList.add("bad"); msg.className = "auth-msg m-err"; msg.textContent = "رمز عبور باید حداقل ۸ حرف باشد."; pwEl.focus(); return; }
+        go.disabled = true; go.classList.add("loading"); msg.textContent = "";
+        const r = await authCall({ action: "email_verify", email: email, purpose: "reset", code: code, password: pw });
+        if (!alive) return;
+        go.disabled = false; go.classList.remove("loading");
+        if (r.ok) { fullName = cleanName(r.name || fullName); auth.set({ token: r.token, email: r.email, name: fullName }); stepWelcome(false); return; }
+        msg.className = "auth-msg m-err";
+        msg.textContent = (r.message || "درخواست ناموفق بود.") + (r.error === "expired" || r.error === "wrong" || r.error === "locked" ? " از «بازگشت» دوباره شروع کنید." : "");
+      });
+      if (!reduceMotion()) setTimeout(() => { if (alive) pwEl.focus({ preventScroll: true }); }, 300);
+      else pwEl.focus({ preventScroll: true });
     }
 
     /* ----- مرحله‌ی ۲: کد + ساعت دایره‌ای ----- */
@@ -1732,11 +1772,15 @@
         const code = getCode();
         if (code.length !== 5) return;
         busy = true; lock(true); setMsg("در حال بررسی…", "info");
-        const r = kind === "email"
+        const isReset = kind === "email" && purpose === "reset";
+        const r = isReset
+          ? await authCall({ action: "email_check", email: email, code: code })
+          : kind === "email"
           ? await authCall({ action: "email_verify", email: email, purpose: purpose, code: code })
           : await authCall({ action: "verify", phone: phone, code: code, name: fullName });
         if (!alive) return;
         busy = false;
+        if (r.ok && isReset) { stepNewPass(code); return; }
         if (r.ok) {
           fullName = cleanName(r.name || fullName);
           auth.set(kind === "email" ? { token: r.token, email: r.email, name: fullName } : { token: r.token, phone: r.phone, name: fullName });
