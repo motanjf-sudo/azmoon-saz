@@ -1308,13 +1308,13 @@
       (subs.length
         ? '<div style="overflow-x:auto"><table class="rtbl"><thead><tr><th>نام</th><th>نمره</th><th>زمان</th><th></th></tr></thead><tbody>' +
           subs.map((s, i) => '<tr class="srow"><td class="c-name">' + esc(s.name) + '</td><td class="c-score" data-l="نمره">' + faNum(s.score) + " از " + faNum(s.total) + '</td><td class="c-time" data-l="زمان">' + esc(when(s.created_at)) + '</td><td class="det-cell"><button class="btn ghost small" type="button" data-det="' + i + '" aria-haspopup="dialog">مشاهده جزئیات</button></td></tr>').join("") +
-          '</tbody></table></div><div class="actions"><button class="btn ghost small" type="button" id="csv">دانلود CSV</button><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button></div>'
+          '</tbody></table></div><div class="actions"><button class="btn ghost small" type="button" id="xlsx">دانلود اکسل</button><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button></div>'
         : '<p class="muted">هنوز کسی شرکت نکرده است. لینک آزمون را برای دیگران بفرستید.</p><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button>') +
       "</div>" +
       (subs.length && qs.length ? '<div class="card"><h2>آمار هر سؤال <span class="hint">(درصد پاسخ درست)</span></h2>' + qstat + "</div>" : "") +
       '<div class="actions"><a class="btn ghost" href="' + (d.group_id && GROUP_ID_RE.test(d.group_id) ? "#/g/" + d.group_id : "#/") + '">' + ICONS.back + (d.group_id ? " بازگشت به گروه" : " بازگشت به صفحه‌ی اصلی") + "</a></div>";
 
-    /* جزئیات پاسخ هر شرکت‌کننده (فقط در سایت؛ در CSV نیست) */
+    /* جزئیات پاسخ هر شرکت‌کننده (فقط در سایت؛ در فایل اکسل نیست) */
     const detailHtml = (s) => {
       const ans = Array.isArray(s.answers) ? s.answers : [];
       return qs.map((q, i) => {
@@ -1363,20 +1363,14 @@
     document.getElementById("refresh").addEventListener("click", () => viewManage(id, secret, false, token));
     const share = document.getElementById("shareBtn");
     if (share) share.addEventListener("click", () => { navigator.share({ title: d.title, url: take }).catch(() => {}); });
-    const csv = document.getElementById("csv");
-    if (csv) csv.addEventListener("click", () => {
-      const cell = (v) => {
-        let t = String(v);
-        if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; /* جلوگیری از اجرای فرمول در اکسل */
-        return '"' + t.replace(/"/g, '""') + '"';
-      };
-      const lines = [["نام", "نمره", "از", "زمان"].map(cell).join(",")].concat(
-        subs.map((s) => [s.name, s.score, s.total, s.created_at].map(cell).join(","))
-      );
-      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const xlsxBtn = document.getElementById("xlsx");
+    if (xlsxBtn) xlsxBtn.addEventListener("click", () => {
+      const rows = [["نام", "نمره", "از", "زمان"]].concat(subs.map((s) => [s.name, s.score, s.total, s.created_at]));
+      const bytes = makeXlsx(rows);
+      const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "results-" + id + ".csv";
+      a.download = "results-" + id + ".xlsx";
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1384,6 +1378,48 @@
     });
   }
 
+  /* ساخت فایل اکسل (xlsx) بدون کتابخانه: یک zip ساده (بدون فشرده‌سازی) از چند فایل XML. ردیف اول پررنگ، شیت راست‌به‌چپ */
+  function makeXlsx(rows) {
+    const enc = new TextEncoder();
+    const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
+    const col = (i) => String.fromCharCode(65 + i);
+    const sheetRows = rows.map((r, ri) => '<row r="' + (ri + 1) + '">' + r.map((v, ci) => {
+      const ref = col(ci) + (ri + 1);
+      if (ri > 0 && typeof v === "number" && isFinite(v)) return '<c r="' + ref + '"><v>' + v + "</v></c>";
+      return '<c r="' + ref + '" t="inlineStr"' + (ri === 0 ? ' s="1"' : "") + "><is><t>" + esc(v == null ? "" : v) + "</t></is></c>";
+    }).join("") + "</row>").join("");
+    const X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    const NS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
+    const files = [
+      ["[Content_Types].xml", X + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+      ["_rels/.rels", X + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+      ["xl/workbook.xml", X + "<workbook " + NS + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Results" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+      ["xl/_rels/workbook.xml.rels", X + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+      ["xl/styles.xml", X + "<styleSheet " + NS + '><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],
+      ["xl/worksheets/sheet1.xml", X + "<worksheet " + NS + '><sheetViews><sheetView rightToLeft="1" workbookViewId="0"/></sheetViews><cols><col min="1" max="1" width="28" customWidth="1"/><col min="2" max="3" width="9" customWidth="1"/><col min="4" max="4" width="26" customWidth="1"/></cols><sheetData>' + sheetRows + "</sheetData></worksheet>"],
+    ];
+    const T = [];
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; T[n] = c >>> 0; }
+    const crc = (u) => { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = T[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+    const parts = [], central = [];
+    let off = 0;
+    const u16 = (n) => [n & 255, (n >>> 8) & 255], u32 = (n) => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255];
+    files.forEach(([name, text]) => {
+      const nm = enc.encode(name), data = enc.encode(text), c = crc(data);
+      const head = [0x50, 0x4B, 3, 4, ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0)];
+      parts.push(new Uint8Array(head), nm, data);
+      central.push(new Uint8Array([0x50, 0x4B, 1, 2, ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]), nm);
+      off += head.length + nm.length + data.length;
+    });
+    const cdSize = central.reduce((a, x) => a + x.length, 0);
+    const end = new Uint8Array([0x50, 0x4B, 5, 6, ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(cdSize), ...u32(off), ...u16(0)]);
+    return concatBytes(parts.concat(central, [end]));
+  }
+  function concatBytes(list) {
+    const total = list.reduce((a, x) => a + x.length, 0), out = new Uint8Array(total);
+    let o = 0; list.forEach((x) => { out.set(x, o); o += x.length; });
+    return out;
+  }
 
   /* ---------- ثبت‌نام و ورود با شماره‌ی موبایل ---------- */
   const AUTH_FN = "auth-otp";
