@@ -1437,6 +1437,12 @@
   const initialOf = (n) => { const c = Array.from(cleanName(n))[0]; return c ? c.toUpperCase() : ""; };
   const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.8-5.4 7.2-5.4s6.3 1.8 7.2 5.4"/></svg>';
 
+  /* رنگ‌های آواتار پروفایل */
+  const AV_GRADS = { g1: ["#2A9D6F", "#0F5132"], g2: ["#4C8DF6", "#1E4DB7"], g3: ["#9B6BF2", "#5A2DB0"], g4: ["#F06BA8", "#B02A6A"], g5: ["#F59E4B", "#C4620F"], g6: ["#EF6A5E", "#B42318"], g7: ["#2CC5C0", "#0B7C80"], g8: ["#7A8CA0", "#3C4A5C"] };
+  const avBg = (k) => { const g = AV_GRADS[k] || AV_GRADS.g1; return "background:linear-gradient(135deg," + g[0] + "," + g[1] + ")"; };
+  const avStyle = (k) => (k && AV_GRADS[k] && k !== "g1" ? ' style="' + avBg(k) + '"' : "");
+  const PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M14.5 7.5l3 3"/></svg>';
+
   async function doLogout(btn) {
     if (btn) { btn.disabled = true; btn.classList.add("loading"); }
     const cur = auth.get();
@@ -1472,12 +1478,13 @@
     if (!s) { wrap.innerHTML = ""; return; }
     const nm = cleanName(s.name);
     const av = nm ? "<span>" + esc(initialOf(nm)) + "</span>" : USER_ICON;
+    const avSt = avStyle(s.avatar);
     wrap.innerHTML =
-      '<button class="prof-btn" id="profBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="profPop" aria-label="پروفایل' + (nm ? "؛ " + esc(nm) : "") + '">' + av + "</button>" +
+      '<button class="prof-btn" id="profBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="profPop" aria-label="پروفایل' + (nm ? "؛ " + esc(nm) : "") + '"' + avSt + ">" + av + "</button>" +
       '<div class="prof-pop" id="profPop" role="dialog" aria-label="اطلاعات حساب" hidden>' +
-      '<div class="prof-av">' + av + "</div>" +
-      '<div class="prof-name">' + (nm ? esc(nm) : "کاربر پازمونک") + "</div>" +
-      '<div class="prof-phone" dir="ltr">' + esc(showPhone(s.phone || s.email)) + "</div>" +
+      '<button class="prof-av" id="profAv" type="button" aria-label="تغییر پروفایل"' + avSt + ">" + av + '<span class="prof-av-edit">' + PENCIL + "</span></button>" +
+      '<div class="prof-namerow"><div class="prof-name">' + (nm ? esc(nm) : "کاربر پازمونک") + '</div><button class="prof-edit" id="profEdit" type="button" aria-label="تغییر پروفایل" title="تغییر پروفایل">' + PENCIL + "</button></div>" +
+      '<div class="prof-phone" dir="ltr"' + (s.email && !s.phone ? " data-em" : "") + ">" + esc(showPhone(s.phone || s.email)) + "</div>" +
       '<button class="btn ghost small wide" id="profOut" type="button">خروج از حساب</button></div>';
     document.getElementById("profBtn").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1486,6 +1493,80 @@
     });
     document.getElementById("profPop").addEventListener("click", (e) => e.stopPropagation());
     document.getElementById("profOut").addEventListener("click", (e) => { closeProfile(); doLogout(e.currentTarget); });
+    const edit = () => { closeProfile(); openProfileEdit(); };
+    document.getElementById("profEdit").addEventListener("click", edit);
+    document.getElementById("profAv").addEventListener("click", edit);
+  }
+
+  /* پنجره‌ی «تغییر پروفایل»: نام و رنگ */
+  function openProfileEdit() {
+    const cur = auth.get();
+    if (!cur) return;
+    const prev = document.activeElement;
+    let color = AV_GRADS[cur.avatar] ? cur.avatar : "g1";
+    const ov = document.createElement("div");
+    ov.className = "modal pf-modal";
+    ov.innerHTML =
+      '<div class="modal-box pf-box" role="dialog" aria-modal="true" aria-labelledby="pfT">' +
+      '<div class="modal-head"><h2 id="pfT">تغییر پروفایل</h2></div>' +
+      '<form class="modal-body" id="pfForm" novalidate>' +
+      '<div class="pf-prev" id="pfPrev" aria-hidden="true"></div>' +
+      '<label for="pfName">نام و نام خانوادگی</label>' +
+      '<input id="pfName" class="auth-input auth-name" type="text" autocomplete="name" maxlength="60">' +
+      '<div class="pf-lbl" id="pfL">رنگ پروفایل</div>' +
+      '<div class="pf-sw" role="radiogroup" aria-labelledby="pfL">' +
+      Object.keys(AV_GRADS).map((k) => '<button type="button" role="radio" data-c="' + k + '" aria-label="رنگ ' + faNum(k.slice(1)) + '" aria-checked="false" style="' + avBg(k) + '"></button>').join("") +
+      "</div>" +
+      '<div class="auth-msg" id="pfMsg" role="alert"></div>' +
+      '<div class="actions"><button class="btn ghost" type="button" id="pfNo">انصراف</button><button class="btn" type="submit" id="pfYes">ذخیره</button></div></form></div>';
+    document.body.appendChild(ov);
+    const prevOv = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const nmEl = ov.querySelector("#pfName"), prevEl = ov.querySelector("#pfPrev"), msg = ov.querySelector("#pfMsg"), yes = ov.querySelector("#pfYes");
+    nmEl.value = cleanName(cur.name);
+    const paint = () => {
+      const n = cleanName(nmEl.value);
+      prevEl.style.background = AV_GRADS[color] ? "linear-gradient(135deg," + AV_GRADS[color][0] + "," + AV_GRADS[color][1] + ")" : "";
+      prevEl.innerHTML = n ? esc(initialOf(n)) : USER_ICON.replace("<svg", '<svg style="width:55%;height:55%"');
+      ov.querySelectorAll(".pf-sw button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.c === color)));
+    };
+    paint();
+    let done = false;
+    const close = () => {
+      if (done) return;
+      done = true;
+      document.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("hashchange", close);
+      document.body.style.overflow = prevOv;
+      ov.remove();
+      if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    };
+    const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
+    document.addEventListener("keydown", onKey, true);
+    window.addEventListener("hashchange", close);
+    ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+    ov.querySelector("#pfNo").addEventListener("click", close);
+    nmEl.addEventListener("input", () => { nmEl.classList.remove("bad"); msg.textContent = ""; paint(); });
+    ov.querySelectorAll(".pf-sw button").forEach((b) => b.addEventListener("click", () => { color = b.dataset.c; paint(); }));
+    ov.querySelector("#pfForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const n = cleanName(nmEl.value);
+      if (!validName(n)) { nmEl.classList.add("bad"); msg.className = "auth-msg m-err"; msg.textContent = "نام و نام خانوادگی‌تان را وارد کنید (حداقل ۲ حرف)."; nmEl.focus(); return; }
+      yes.disabled = true; yes.classList.add("loading"); msg.textContent = "";
+      const r = await authCall({ action: "profile_update", token: cur.token, name: n, avatar: color });
+      if (done) return;
+      yes.disabled = false; yes.classList.remove("loading");
+      if (r && r.ok) {
+        const s2 = auth.get();
+        if (s2) auth.set(Object.assign({}, s2, { name: cleanName(r.name), avatar: r.avatar || undefined }));
+        close();
+        if (window.__pzToast) window.__pzToast("پروفایل ذخیره شد");
+        return;
+      }
+      msg.className = "auth-msg m-err";
+      msg.textContent = (r && r.message) || "ذخیره نشد. دوباره تلاش کنید.";
+    });
+    setTimeout(() => { if (!done) { try { nmEl.focus({ preventScroll: true }); nmEl.select(); } catch (e) { /* ignore */ } } }, 60);
   }
   document.addEventListener("click", closeProfile);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { const pop = document.getElementById("profPop"); if (pop && !pop.hidden) { closeProfile(); const b = document.getElementById("profBtn"); if (b) b.focus(); } } });
@@ -1566,10 +1647,8 @@
     let phone = "";
     let fullName = "";
     let method = "phone";       /* روش ورود: phone | email */
-    let emailMode = "signup";   /* signup | login | forgot */
     let email = "";
     let kind = "phone";         /* کدِ تأیید به کجا رفته: phone | email */
-    let purpose = "signup";     /* هدفِ کد ایمیلی: signup | reset */
 
     const stopTimers = () => { cancelAnimationFrame(raf); raf = 0; };
     const mount = (html) => { stopTimers(); box.innerHTML = '<div class="auth-step">' + html + "</div>"; return box.firstChild; };
@@ -1580,8 +1659,7 @@
       method = b.dataset.m;
       stepStart();
     }));
-    const stepStart = () => { if (method === "email") stepEmail(emailMode, email); else stepPhone(phone); };
-    const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const stepStart = () => { if (method === "email") stepEmail(email); else stepPhone(phone); };
 
     /* ----- مرحله‌ی ۱: شماره ----- */
     function stepPhone(prefill) {
@@ -1642,107 +1720,42 @@
     }
 
 
-    /* ----- مرحله‌ی ۱ (ایمیل): ثبت‌نام / ورود / فراموشی رمز ----- */
-    function stepEmail(mode, prefill) {
-      emailMode = mode;
-      const isSignup = mode === "signup", isLogin = mode === "login";
+    /* ----- مرحله‌ی ۱ (ایمیل): نام + ایمیل → کد تأیید (بدون رمز عبور؛ همان روشِ شماره‌ی موبایل) ----- */
+    function stepEmail(prefill) {
       mount(
-        "<h1>" + (isSignup ? "ثبت‌نام" : isLogin ? "ورود" : "فراموشی رمز") + "</h1>" + methodSeg() +
-        '<p class="sub">' + (isSignup ? "با ایمیل و رمز عبور ثبت‌نام کنید؛ یک کد تأیید به ایمیل‌تان می‌فرستیم تا مطمئن شویم ایمیل مال خودتان است."
-          : isLogin ? "ایمیل و رمز عبورتان را وارد کنید."
-          : "ایمیل‌تان را بنویسید. یک کد تأیید برایتان می‌فرستیم و بعد از وارد کردن آن می‌توانید رمز جدید بگذارید.") + "</p>" +
+        "<h1>ثبت‌نام</h1>" + methodSeg() +
+        '<p class="sub">ایمیل‌تان را وارد کنید تا یک کد تأیید برایتان بفرستیم. اگر قبلاً ثبت‌نام کرده‌اید، وارد حساب‌تان می‌شوید.</p>' +
         '<form id="emForm" novalidate>' +
-        (isSignup ? '<label for="nm">نام و نام خانوادگی</label><input id="nm" class="auth-input auth-name" type="text" autocomplete="name" maxlength="60" placeholder="مثلاً علی رضایی">' : "") +
+        '<label for="nm">نام و نام خانوادگی</label><input id="nm" class="auth-input auth-name" type="text" autocomplete="name" maxlength="60" placeholder="مثلاً علی رضایی">' +
         '<label for="em">ایمیل</label><input id="em" class="auth-input auth-plain" type="email" inputmode="email" autocomplete="email" maxlength="254" autocapitalize="off" spellcheck="false" placeholder="name@example.com">' +
-        (mode === "forgot" ? "" :
-        '<label for="pw" style="margin-top:12px">رمز عبور</label>' +
-        '<div class="pw-wrap"><input id="pw" class="auth-input auth-plain" type="password" maxlength="100" autocomplete="' + (isLogin ? "current-password" : "new-password") + '" placeholder="' + (isLogin ? "" : "حداقل ۸ حرف") + '">' +
-        '<button class="pw-eye" id="pwEye" type="button" aria-label="نمایش رمز عبور" aria-pressed="false">' + EYE + "</button></div>") +
         '<div class="auth-msg" id="emMsg" role="alert"></div>' +
-        '<button class="btn wide" id="emGo" type="submit">' + (isLogin ? "ورود" : "دریافت کد تأیید") + "</button></form>" +
-        '<div class="auth-alt">' +
-        (isSignup ? '<button class="auth-link" type="button" data-to="login">قبلاً ثبت‌نام کرده‌اید؟ ورود</button>'
-          : isLogin ? '<button class="auth-link" type="button" data-to="signup">حساب ندارید؟ ثبت‌نام</button><button class="auth-link" type="button" data-to="forgot">رمز را فراموش کرده‌ام</button>'
-          : '<button class="auth-link" type="button" data-to="login">بازگشت به ورود</button>') + "</div>"
+        '<button class="btn wide" id="emGo" type="submit">دریافت کد</button></form>'
       );
       bindSeg();
-      const emEl = document.getElementById("em"), pwEl = document.getElementById("pw"), nmEl = document.getElementById("nm");
-      const msg = document.getElementById("emMsg"), go = document.getElementById("emGo"), eye = document.getElementById("pwEye");
+      const emEl = document.getElementById("em"), nmEl = document.getElementById("nm");
+      const msg = document.getElementById("emMsg"), go = document.getElementById("emGo");
       emEl.value = prefill || "";
-      if (nmEl) nmEl.value = fullName;
+      nmEl.value = fullName;
       const clearBad = (el) => () => { el.classList.remove("bad"); msg.textContent = ""; };
-      [emEl, pwEl, nmEl].forEach((el) => { if (el) el.addEventListener("input", clearBad(el)); });
-      if (eye && pwEl) eye.addEventListener("click", () => {
-        const show = pwEl.type === "password";
-        pwEl.type = show ? "text" : "password";
-        eye.setAttribute("aria-pressed", String(show));
-        eye.setAttribute("aria-label", show ? "پنهان کردن رمز عبور" : "نمایش رمز عبور");
-      });
-      box.querySelectorAll("button[data-to]").forEach((b) => b.addEventListener("click", () => { email = emEl.value.trim().toLowerCase(); if (nmEl) fullName = cleanName(nmEl.value); stepEmail(b.dataset.to, email); }));
+      [emEl, nmEl].forEach((el) => el.addEventListener("input", clearBad(el)));
       const bad = (el, text) => { el.classList.add("bad"); msg.className = "auth-msg m-err"; msg.textContent = text; el.focus(); };
       document.getElementById("emForm").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const n = nmEl ? cleanName(nmEl.value) : "";
+        const n = cleanName(nmEl.value);
         const em = emEl.value.trim().toLowerCase();
-        const pw = pwEl ? pwEl.value : "";
-        if (nmEl && !validName(n)) return bad(nmEl, "نام و نام خانوادگی‌تان را وارد کنید (حداقل ۲ حرف).");
+        if (!validName(n)) return bad(nmEl, "نام و نام خانوادگی‌تان را وارد کنید (حداقل ۲ حرف).");
         if (!validEmail(em)) return bad(emEl, "ایمیل معتبر نیست. مثل name@example.com وارد کنید.");
-        if (pwEl && !pw) return bad(pwEl, "رمز عبور را وارد کنید.");
-        if (pwEl && !isLogin && pw.length < 8) return bad(pwEl, "رمز عبور باید حداقل ۸ حرف باشد.");
         go.disabled = true; go.classList.add("loading"); msg.textContent = "";
-        const r = isLogin
-          ? await authCall({ action: "email_login", email: em, password: pw })
-          : await authCall({ action: "email_send", email: em, purpose: isSignup ? "signup" : "reset", name: n, password: isSignup ? pw : undefined });
+        const r = await authCall({ action: "email_send", email: em });
         if (!alive) return;
         go.disabled = false; go.classList.remove("loading");
-        if (r.ok && isLogin) { fullName = cleanName(r.name); auth.set({ token: r.token, email: r.email, name: fullName }); stepWelcome(false); return; }
-        if (r.ok) { email = em; if (isSignup) fullName = n; kind = "email"; purpose = isSignup ? "signup" : "reset"; stepCode(r); return; }
+        if (r.ok) { email = em; fullName = n; kind = "email"; stepCode(r); return; }
         msg.className = "auth-msg m-err";
         msg.textContent = r.message || "درخواست ناموفق بود.";
-        if (r.retry_in && r.error !== "locked") msg.textContent += " (" + faNum(r.retry_in) + " ثانیه)";
+        if (r.retry_in) msg.textContent += " (" + faNum(r.retry_in) + " ثانیه)";
       });
-      const first = nmEl && !fullName ? nmEl : emEl;
-      if (!reduceMotion()) setTimeout(() => { if (alive) first.focus({ preventScroll: true }); }, 350);
-      else first.focus({ preventScroll: true });
-    }
-
-    /* ----- فراموشی رمز، مرحله‌ی آخر: رمز جدید (بعد از درست‌بودن کد) ----- */
-    function stepNewPass(code) {
-      mount(
-        "<h1>رمز جدید</h1>" +
-        '<p class="sub">کد تأیید درست بود. حالا رمز عبور جدیدتان را بنویسید (حداقل ۸ حرف).</p>' +
-        '<form id="npForm" novalidate>' +
-        '<label for="npw">رمز عبور جدید</label>' +
-        '<div class="pw-wrap"><input id="npw" class="auth-input auth-plain" type="password" maxlength="100" autocomplete="new-password" placeholder="حداقل ۸ حرف">' +
-        '<button class="pw-eye" id="npEye" type="button" aria-label="نمایش رمز عبور" aria-pressed="false">' + EYE + "</button></div>" +
-        '<div class="auth-msg" id="npMsg" role="alert"></div>' +
-        '<button class="btn wide" id="npGo" type="submit">ذخیره‌ی رمز و ورود</button></form>' +
-        '<div class="auth-alt"><button class="auth-link" type="button" id="npBack">بازگشت</button></div>'
-      );
-      const pwEl = document.getElementById("npw"), eye = document.getElementById("npEye");
-      const msg = document.getElementById("npMsg"), go = document.getElementById("npGo");
-      pwEl.addEventListener("input", () => { pwEl.classList.remove("bad"); msg.textContent = ""; });
-      eye.addEventListener("click", () => {
-        const show = pwEl.type === "password";
-        pwEl.type = show ? "text" : "password";
-        eye.setAttribute("aria-pressed", String(show));
-        eye.setAttribute("aria-label", show ? "پنهان کردن رمز عبور" : "نمایش رمز عبور");
-      });
-      document.getElementById("npBack").addEventListener("click", () => stepEmail("forgot", email));
-      document.getElementById("npForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const pw = pwEl.value;
-        if (pw.length < 8) { pwEl.classList.add("bad"); msg.className = "auth-msg m-err"; msg.textContent = "رمز عبور باید حداقل ۸ حرف باشد."; pwEl.focus(); return; }
-        go.disabled = true; go.classList.add("loading"); msg.textContent = "";
-        const r = await authCall({ action: "email_verify", email: email, purpose: "reset", code: code, password: pw });
-        if (!alive) return;
-        go.disabled = false; go.classList.remove("loading");
-        if (r.ok) { fullName = cleanName(r.name || fullName); auth.set({ token: r.token, email: r.email, name: fullName }); stepWelcome(false); return; }
-        msg.className = "auth-msg m-err";
-        msg.textContent = (r.message || "درخواست ناموفق بود.") + (r.error === "expired" || r.error === "wrong" || r.error === "locked" ? " از «بازگشت» دوباره شروع کنید." : "");
-      });
-      if (!reduceMotion()) setTimeout(() => { if (alive) pwEl.focus({ preventScroll: true }); }, 300);
-      else pwEl.focus({ preventScroll: true });
+      if (!reduceMotion()) setTimeout(() => { if (alive) (fullName ? emEl : nmEl).focus({ preventScroll: true }); }, 350);
+      else (fullName ? emEl : nmEl).focus({ preventScroll: true });
     }
 
     /* ----- مرحله‌ی ۲: کد + ساعت دایره‌ای ----- */
@@ -1808,18 +1821,14 @@
         const code = getCode();
         if (code.length !== 5) return;
         busy = true; lock(true); setMsg("در حال بررسی…", "info");
-        const isReset = kind === "email" && purpose === "reset";
-        const r = isReset
-          ? await authCall({ action: "email_check", email: email, code: code })
-          : kind === "email"
-          ? await authCall({ action: "email_verify", email: email, purpose: purpose, code: code })
+        const r = kind === "email"
+          ? await authCall({ action: "email_verify", email: email, code: code, name: fullName })
           : await authCall({ action: "verify", phone: phone, code: code, name: fullName });
         if (!alive) return;
         busy = false;
-        if (r.ok && isReset) { stepNewPass(code); return; }
         if (r.ok) {
           fullName = cleanName(r.name || fullName);
-          auth.set(kind === "email" ? { token: r.token, email: r.email, name: fullName } : { token: r.token, phone: r.phone, name: fullName });
+          auth.set(kind === "email" ? { token: r.token, email: r.email, name: fullName, avatar: r.avatar || undefined } : { token: r.token, phone: r.phone, name: fullName });
           stepWelcome(!!r.created);
           return;
         }
@@ -1886,7 +1895,7 @@
         if (resend.disabled) return;
         resend.disabled = true; resend.classList.add("loading");
         const r = kind === "email"
-          ? await authCall({ action: "email_send", email: email, purpose: purpose, resend: true })
+          ? await authCall({ action: "email_send", email: email })
           : await authCall({ action: "send", phone: phone });
         if (!alive) return;
         resend.classList.remove("loading");
@@ -1953,7 +1962,7 @@
     if (!s || !cfg.SUPABASE_URL) return;
     const r = await authCall({ action: "me", token: s.token });
     if (r && r.ok === false && r.error === "no_session") { auth.clear(); if (/^#\/account/.test(location.hash)) location.hash = "#/signup"; }
-    else if (r && r.ok && cleanName(r.name) !== cleanName(s.name)) auth.set(Object.assign({}, s, { name: cleanName(r.name) }));
+    else if (r && r.ok && (cleanName(r.name) !== cleanName(s.name) || (r.avatar || "") !== (s.avatar || ""))) auth.set(Object.assign({}, s, { name: cleanName(r.name), avatar: r.avatar || undefined }));
   }
 
 
