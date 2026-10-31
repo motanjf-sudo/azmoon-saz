@@ -125,9 +125,27 @@
       n.onerror = () => rej(new Error("load"));
       document.head.appendChild(n);
     });
-    /* اول فایل داخل خود سایت (katex-bundle.js، همه‌چیز در یک فایل)، اگر نبود از cdnjs */
-    katexP = addScript("katex-bundle.js")
-      .catch(() => addCss(KATEX + "katex.min.css").then(() => addScript(KATEX + "katex.min.js")).then(() => addScript(KATEX + "contrib/auto-render.min.js")))
+    /* اول فایل داخل خود سایت (katex-bundle.js، همه‌چیز در یک فایل) که بعد از بار اول در حافظه‌ی مرورگر (Cache Storage) می‌ماند تا دفعه‌های بعد فوری بالا بیاید؛ اگر نبود از cdnjs (با مهلت کوتاه) */
+    const timed = (p, ms) => Promise.race([p, new Promise((res, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+    const bundleCached = async () => {
+      const KV = "katex-bundle-0.16.11";
+      if (!("caches" in window)) throw new Error("nocache");
+      const c = await caches.open("pz-katex");
+      let r = await c.match(KV);
+      if (!r) {
+        const n = await timed(fetch("katex-bundle.js"), 25000);
+        if (!n.ok) throw new Error("http");
+        try { await c.put(KV, n.clone()); } catch (e) { /* ignore */ }
+        r = n;
+      }
+      const code = await r.text();
+      if (code.length < 100000) { try { await c.delete(KV); } catch (e) { /* ignore */ } throw new Error("bad"); }
+      const u = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+      try { await addScript(u); } finally { URL.revokeObjectURL(u); }
+    };
+    katexP = bundleCached()
+      .catch(() => addScript("katex-bundle.js"))
+      .catch(() => timed(addCss(KATEX + "katex.min.css").then(() => addScript(KATEX + "katex.min.js")).then(() => addScript(KATEX + "contrib/auto-render.min.js")), 10000))
       .then(() => !!window.renderMathInElement)
       .catch(() => false)
       .then((ok) => { if (!ok) katexP = null; return ok; });
@@ -1930,8 +1948,8 @@
         '<div class="okmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>' +
         "<h1>" + (created ? "ثبت‌نام شما انجام شد 🎉" : "خوش آمدید 👋") + "</h1>" +
         (fullName ? '<p class="auth-hello">' + esc(fullName) + "</p>" : "") +
-        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به " + (/^q\//.test(signupNext) ? "آزمون…" : /^(groups|g\/)/.test(signupNext) ? "گروه‌ها…" : signupNext ? "صفحه‌ی ساخت آزمون…" : "صفحه‌ی اصلی…") + "</p>" +
-        '<a class="btn wide" href="' + nextHash + '">' + (/^q\//.test(signupNext) ? "ادامه و شرکت در آزمون" : /^(groups|g\/)/.test(signupNext) ? "ادامه" : signupNext ? "ادامه و ساخت آزمون" : "ورود به سایت") + "</a></div>"
+        '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به " + (/^q\//.test(signupNext) ? "آزمون…" : /^(groups|g\/)/.test(signupNext) ? "گروه‌ها…" : signupNext === "tutor" ? "معلم هوشمند…" : signupNext ? "صفحه‌ی ساخت آزمون…" : "صفحه‌ی اصلی…") + "</p>" +
+        '<a class="btn wide" href="' + nextHash + '">' + (/^q\//.test(signupNext) ? "ادامه و شرکت در آزمون" : /^(groups|g\/)/.test(signupNext) || signupNext === "tutor" ? "ادامه" : signupNext ? "ادامه و ساخت آزمون" : "ورود به سایت") + "</a></div>"
       );
       const prog = document.getElementById("ringProg");
       prog.style.strokeDashoffset = "100";
@@ -2954,7 +2972,8 @@
   function viewGate(target, token) {
     const take = /^q\//.test(target);
     const grp = /^(groups|g\/)/.test(target);
-    setTitle(grp ? "ورود برای گروه‌ها" : take ? "ورود برای شرکت در آزمون" : "ورود برای ساخت آزمون");
+    const tut = target === "tutor";
+    setTitle(tut ? "ورود برای معلم هوشمند" : grp ? "ورود برای گروه‌ها" : take ? "ورود برای شرکت در آزمون" : "ورود برای ساخت آزمون");
     viewHome();                               /* پس‌زمینه‌ی تار: صفحه‌ی اصلی */
     gateOn = true;
     document.documentElement.classList.add("gate-on");
@@ -2966,14 +2985,273 @@
     g.innerHTML =
       '<div class="gate-box" role="dialog" aria-modal="true" aria-labelledby="gateT" aria-describedby="gateD">' +
       '<div class="gate-ic">' + LOCK_ICON + "</div>" +
-      '<h2 id="gateT">' + (grp ? "برای دیدن گروه‌ها وارد شوید" : take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
-      '<p id="gateD">' + (grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : grp ? " بعد از ورود، مستقیم به همین صفحه برمی‌گردید." : "") + "</p>" +
+      '<h2 id="gateT">' + (tut ? "برای استفاده از معلم هوشمند وارد شوید" : grp ? "برای دیدن گروه‌ها وارد شوید" : take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
+      '<p id="gateD">' + (tut ? "معلم هوشمند" : grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل یا ایمیل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : (grp || tut) ? " بعد از ورود، مستقیم به همین صفحه برمی‌گردید." : "") + "</p>" +
       '<a class="btn wide" id="gateGo" href="#/signup' + (/^create/.test(target) ? "" : "?next=" + target) + '">ثبت‌نام / ورود</a>' +
       '<a class="gate-back" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
     document.body.appendChild(g);
     document.addEventListener("keydown", onGateKey, true);
     setTimeout(() => { if (token === routeToken) { const b = document.getElementById("gateGo"); if (b) b.focus({ preventScroll: true }); } }, 30);
     return function () { closeGate(); };
+  }
+
+  /* ---------- معلم هوشمند ---------- */
+  const TT_GRADES = ["هفتم", "هشتم", "نهم", "دهم", "یازدهم", "دوازدهم", "دانشگاه", "عمومی"];
+  const TT_JR = ["ریاضی", "علوم تجربی", "فارسی", "عربی", "زبان انگلیسی", "مطالعات اجتماعی", "هدیه‌های آسمان"];
+  const TT_SUBJECTS = {
+    "هفتم": TT_JR, "هشتم": TT_JR, "نهم": TT_JR,
+    "دهم": ["ریاضی", "فیزیک", "شیمی", "زیست‌شناسی", "فارسی", "عربی", "زبان انگلیسی", "دین و زندگی", "هندسه", "زمین‌شناسی", "جامعه‌شناسی", "اقتصاد", "تاریخ", "جغرافیا", "منطق"],
+    "یازدهم": ["ریاضی", "حسابان", "هندسه", "آمار و احتمال", "فیزیک", "شیمی", "زیست‌شناسی", "فارسی", "عربی", "زبان انگلیسی", "دین و زندگی", "جامعه‌شناسی", "اقتصاد", "تاریخ", "جغرافیا", "فلسفه"],
+    "دوازدهم": ["حسابان", "هندسه", "ریاضیات گسسته", "فیزیک", "شیمی", "زیست‌شناسی", "فارسی", "عربی", "زبان انگلیسی", "دین و زندگی", "جامعه‌شناسی", "اقتصاد", "تاریخ", "جغرافیا", "فلسفه", "روان‌شناسی"],
+    "دانشگاه": ["ریاضی عمومی", "فیزیک عمومی", "شیمی عمومی", "آمار و احتمال", "برنامه‌نویسی", "اقتصاد"],
+    "عمومی": ["هر درسی"],
+  };
+  const TT_OTHER = "__other";
+  const TT_CHIPS = [
+    "این درس را از اول برایم ساده توضیح بده",
+    "یک مثال حل‌شده با توضیح قدم‌به‌قدم نشان بده",
+    "از من چند سؤال بپرس تا خودم را بسنجم",
+    "خلاصه‌ی نکته‌های مهم این درس را بگو",
+  ];
+  const TT_CAP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9.5 12 5l10 4.5-10 4.5z"/><path d="M6 11.6v4.4c0 1.4 2.7 3 6 3s6-1.6 6-3v-4.4"/><path d="M22 9.5V15"/></svg>';
+  const TT_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>';
+  const TT_NEW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+
+  /* نمایش متنِ پاسخ (Markdown ساده + فرمول‌های ریاضی) بدون innerHTML خام */
+  function ttMd(src) {
+    const maths = [];
+    let t = String(src == null ? "" : src).replace(/\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)/g, (m) => { maths.push(m); return "" + (maths.length - 1) + ""; });
+    const codes = [];
+    t = t.replace(/```[^\n]*\n?([\s\S]*?)```/g, (m, c) => { codes.push(c.replace(/\n$/, "")); return "" + (codes.length - 1) + ""; });
+    const inline = (s) => {
+      let h = esc(s);
+      h = h.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+      h = h.replace(/\*\*([^*\n]+?)\*\*|__([^_\n]+?)__/g, (m, a, b) => "<strong>" + (a || b) + "</strong>");
+      h = h.replace(/(^|[\s(،؛:])\*([^*\n]+?)\*(?=$|[\s).،؛:!؟?])/g, "$1<em>$2</em>");
+      return h;
+    };
+    const lines = t.split("\n");
+    const out = [];
+    let para = [], list = null;
+    const flushP = () => { if (para.length) { out.push("<p>" + para.map(inline).join("<br>") + "</p>"); para = []; } };
+    const flushL = () => { if (list) { out.push("<" + list.t + ">" + list.items.map((i) => "<li>" + inline(i) + "</li>").join("") + "</" + list.t + ">"); list = null; } };
+    lines.forEach((ln) => {
+      let m;
+      if (/^\s*$/.test(ln)) { flushP(); flushL(); return; }
+      if ((m = /^\s*(\d+)\s*$/.exec(ln))) { flushP(); flushL(); out.push("<pre><code>" + esc(codes[+m[1]]) + "</code></pre>"); return; }
+      if ((m = /^\s{0,3}(#{1,4})\s+(.+)$/.exec(ln))) { flushP(); flushL(); out.push('<h4 class="tt-h">' + inline(m[2].replace(/\s*#+\s*$/, "")) + "</h4>"); return; }
+      if ((m = /^\s*[-*•]\s+(.+)$/.exec(ln))) { flushP(); if (!list || list.t !== "ul") { flushL(); list = { t: "ul", items: [] }; } list.items.push(m[1]); return; }
+      if ((m = /^\s*(?:\d+|[۰-۹]+)[.)\-]\s+(.+)$/.exec(ln))) { flushP(); if (!list || list.t !== "ol") { flushL(); list = { t: "ol", items: [] }; } list.items.push(m[1]); return; }
+      if ((m = /^\s*>\s?(.*)$/.exec(ln))) { flushP(); flushL(); out.push("<blockquote>" + inline(m[1]) + "</blockquote>"); return; }
+      flushL(); para.push(ln);
+    });
+    flushP(); flushL();
+    return out.join("").replace(/(\d+)/g, (m, i) => esc(maths[+i])).replace(/(\d+)/g, (m, i) => "<code>" + esc(codes[+i]) + "</code>");
+  }
+
+  function viewTutor(token) {
+    setTitle("معلم هوشمند");
+    const ok = () => token === routeToken;
+    const KEY = "tutor:v1";
+    const saved = store.get(KEY, {}) || {};
+    const st = {
+      grade: TT_GRADES.indexOf(saved.grade) >= 0 ? saved.grade : "نهم",
+      subject: typeof saved.subject === "string" ? saved.subject : "",
+      other: typeof saved.other === "string" ? saved.other.slice(0, 40) : "",
+      model: AI_MODELS.some((m) => m.id === saved.model) ? saved.model : "cl-sonnet",
+      chats: saved.chats && typeof saved.chats === "object" ? saved.chats : {},
+    };
+    if (st.subject !== TT_OTHER && TT_SUBJECTS[st.grade].indexOf(st.subject) < 0) st.subject = TT_SUBJECTS[st.grade][0];
+    const persist = () => {
+      const keys = Object.keys(st.chats);
+      if (keys.length > 14) keys.slice(0, keys.length - 14).forEach((k) => delete st.chats[k]);
+      store.set(KEY, { grade: st.grade, subject: st.subject, other: st.other, model: st.model, chats: st.chats });
+    };
+    loadKatex();   /* فرمول‌ها از همین حالا آماده می‌شوند تا اولین پاسخ معطل نماند */
+    const subjName = () => (st.subject === TT_OTHER ? st.other.trim() : st.subject);
+    const chatKey = () => st.grade + "|" + (subjName() || "؟");
+    const hist = () => (Array.isArray(st.chats[chatKey()]) ? st.chats[chatKey()] : []);
+
+    app.innerHTML =
+      '<section class="tt" aria-labelledby="ttH">' +
+      '<div class="tt-head"><span class="tt-ic">' + TT_CAP + '</span><div><h1 id="ttH">معلم هوشمند</h1><p class="tt-sub">پایه و درس را انتخاب کن و هر چیزی را که نمی‌فهمی بپرس؛ مثل یک معلم خصوصی، قدم‌به‌قدم توضیح می‌دهد.</p></div></div>' +
+      '<div class="tt-bar">' +
+      '<label class="tt-f"><span>پایه</span><select id="ttGrade">' + TT_GRADES.map((g) => '<option value="' + g + '">' + (g === "عمومی" ? "عمومی (همه‌ی درس‌ها)" : g) + "</option>").join("") + "</select></label>" +
+      '<label class="tt-f"><span>درس</span><select id="ttSubj"></select></label>' +
+      '<label class="tt-f tt-f-other" id="ttOtherBox" hidden><span>اسم درس</span><input id="ttOther" type="text" maxlength="40" placeholder="مثلاً مدار الکتریکی" autocomplete="off"></label>' +
+      '<label class="tt-f tt-f-model"><span>مدل هوش مصنوعی</span><select id="ttModel">' +
+      AI_GROUPS.map((g) => '<optgroup label="' + g + '">' + AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '">' + m.label + "</option>").join("") + "</optgroup>").join("") + "</select></label>" +
+      '<button class="btn ghost small tt-new" id="ttNew" type="button">' + TT_NEW + "<span>گفت‌وگوی جدید</span></button></div>" +
+      '<div class="tt-box"><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
+      '<form class="chat-in tt-in" id="ttForm" autocomplete="off"><textarea id="ttTa" rows="1" maxlength="2000" dir="auto" enterkeyhint="send" placeholder="سؤالت را بنویس…" aria-label="سؤال شما"></textarea>' +
+      '<button class="chat-send" type="submit" id="ttSend" aria-label="ارسال" disabled>' + CI.send + "</button></form></div>" +
+      '<p class="muted tt-note">معلم هوشمند ممکن است گاهی اشتباه کند؛ نکته‌های مهم را با کتاب درسی‌ات مقایسه کن.</p></section>';
+
+    const $ = (id) => document.getElementById(id);
+    const log = $("ttLog"), ta = $("ttTa"), sendBtn = $("ttSend"), subj = $("ttSubj"), other = $("ttOther"), otherBox = $("ttOtherBox");
+    let busy = false;
+    let alive = true;
+    let lastFailed = null;
+
+    const fillSubjects = () => {
+      subj.innerHTML = TT_SUBJECTS[st.grade].map((s) => '<option value="' + s + '">' + s + "</option>").join("") + '<option value="' + TT_OTHER + '">درس دیگر…</option>';
+      subj.value = st.subject;
+      otherBox.hidden = st.subject !== TT_OTHER;
+      other.value = st.other;
+    };
+    $("ttGrade").value = st.grade;
+    $("ttModel").value = st.model;
+    fillSubjects();
+
+    const bubble = (role, text, extra) => {
+      const d = document.createElement("div");
+      d.className = "tt-m " + (role === "user" ? "me" : "ai") + (extra ? " " + extra : "");
+      if (role === "user") {
+        const b = document.createElement("div");
+        b.className = "tt-b";
+        b.textContent = text;
+        d.appendChild(b);
+      } else {
+        const av = document.createElement("span");
+        av.className = "tt-av";
+        av.innerHTML = TT_CAP;
+        const b = document.createElement("div");
+        b.className = "tt-b tt-md";
+        b.innerHTML = ttMd(text);
+        const cp = document.createElement("button");
+        cp.type = "button";
+        cp.className = "tt-cp";
+        cp.setAttribute("aria-label", "کپی پاسخ");
+        cp.title = "کپی";
+        cp.innerHTML = TT_COPY;
+        cp.addEventListener("click", async () => { const r = await copyText(text); if (window.__pzToast) window.__pzToast(r === false ? "کپی نشد" : "کپی شد"); });
+        d.appendChild(av); d.appendChild(b); d.appendChild(cp);
+        renderMath(b);
+      }
+      return d;
+    };
+    const scrollEnd = () => { log.scrollTop = log.scrollHeight; };
+    const scrollToEl = (el) => { log.scrollTop = Math.max(0, el.offsetTop - 10); };
+
+    function renderLog() {
+      log.innerHTML = "";
+      const h = hist();
+      if (!h.length) {
+        const e = document.createElement("div");
+        e.className = "tt-empty";
+        e.innerHTML = '<span class="tt-ic big">' + TT_CAP + "</span><h2>سلام! من معلم پازمونک‌ام 👋</h2><p>" +
+          (subjName() ? "درسِ «" + esc(subjName()) + "»" + (st.grade === "عمومی" ? "" : " پایه‌ی " + esc(st.grade)) + " را با هم مرور می‌کنیم." : "اسم درس را بنویس تا شروع کنیم.") +
+          '</p><div class="tt-chips">' + TT_CHIPS.map((c) => '<button type="button" class="tt-chip">' + esc(c) + "</button>").join("") + "</div>";
+        log.appendChild(e);
+        e.querySelectorAll(".tt-chip").forEach((b) => b.addEventListener("click", () => { ta.value = b.textContent; autosize(); sync(); submit(); }));
+        return;
+      }
+      h.forEach((m) => log.appendChild(bubble(m.r === "u" ? "user" : "ai", m.c)));
+      scrollEnd();
+    }
+
+    function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; }
+    function sync() { sendBtn.disabled = busy || !ta.value.trim() || !subjName(); }
+
+    const typing = () => {
+      const d = document.createElement("div");
+      d.className = "tt-m ai typing";
+      d.innerHTML = '<span class="tt-av">' + TT_CAP + '</span><div class="tt-b"><span class="tt-dots" aria-label="معلم در حال نوشتن است"><i></i><i></i><i></i></span></div>';
+      return d;
+    };
+
+    async function ask(history) {
+      const M = aiModel(st.model);
+      const s = auth.get();
+      if (!s) return { error: "نشست شما منقضی شده است. دوباره وارد شوید.", code: "no_session" };
+      let res;
+      try {
+        res = await fetch(cfg.SUPABASE_URL + "/functions/v1/tutor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+          body: JSON.stringify({ token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), provider: M.provider, model: M.model, messages: history.slice(-16).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
+        });
+      } catch (e) { return { error: "اتصال به سرور برقرار نشد. اینترنت‌تان را بررسی کنید و دوباره تلاش کنید." }; }
+      let d = null;
+      try { d = await res.json(); } catch (e) { /* ignore */ }
+      if (res.ok && d && d.reply) return { reply: String(d.reply), left: d.left };
+      if (res.status === 401 && d && d.code === "no_session") { auth.clear(); }
+      return { error: (d && d.error) || "پاسخ دادن ممکن نشد. دوباره تلاش کنید.", code: d && d.code };
+    }
+
+    async function submit(retry) {
+      if (busy) return;
+      let text;
+      if (retry && lastFailed) text = lastFailed;
+      else { text = ta.value.trim(); if (!text || !subjName()) return; }
+      lastFailed = null;
+      const key = chatKey();
+      const h = (Array.isArray(st.chats[key]) ? st.chats[key] : (st.chats[key] = []));
+      log.querySelectorAll(".tt-m.err").forEach((n) => n.remove());
+      if (!retry) {
+        if (!h.length) log.innerHTML = "";
+        h.push({ r: "u", c: text });
+        log.appendChild(bubble("user", text));
+        ta.value = ""; autosize();
+      }
+      persist();
+      busy = true; sync();
+      const ty = typing();
+      log.appendChild(ty);
+      scrollEnd();
+      const r = await ask(h);
+      if (!alive || !ok()) return;
+      busy = false;
+      ty.remove();
+      if (r.reply) {
+        (st.chats[key] = st.chats[key] || []).push({ r: "a", c: r.reply });
+        if (st.chats[key].length > 40) st.chats[key] = st.chats[key].slice(-40);
+        persist();
+        if (key === chatKey()) {
+          const el = bubble("ai", r.reply, "in");
+          log.appendChild(el);
+          scrollToEl(el);
+        }
+      } else if (key === chatKey()) {
+        lastFailed = text;
+        const e = document.createElement("div");
+        e.className = "tt-m ai err";
+        e.setAttribute("role", "alert");
+        e.innerHTML = '<span class="tt-av">!</span><div class="tt-b"></div>';
+        e.querySelector(".tt-b").textContent = r.error;
+        if (r.code !== "limit" && r.code !== "no_session") {
+          const rb = document.createElement("button");
+          rb.type = "button"; rb.className = "btn ghost small"; rb.textContent = "تلاش دوباره";
+          rb.addEventListener("click", () => submit(true));
+          e.querySelector(".tt-b").appendChild(document.createElement("br"));
+          e.querySelector(".tt-b").appendChild(rb);
+        }
+        log.appendChild(e);
+        scrollEnd();
+        if (r.code === "no_session") setTimeout(() => { if (ok()) location.hash = "#/signup?next=tutor"; }, 1800);
+      }
+      sync();
+      if (fine.matches) { try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    }
+
+    const fine = window.matchMedia("(pointer: fine)");
+    ta.addEventListener("input", () => { autosize(); sync(); });
+    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && fine.matches) { e.preventDefault(); submit(); } });
+    $("ttForm").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
+    $("ttGrade").addEventListener("change", (e) => { st.grade = e.target.value; st.subject = TT_SUBJECTS[st.grade][0]; fillSubjects(); persist(); lastFailed = null; renderLog(); sync(); });
+    subj.addEventListener("change", () => { st.subject = subj.value; otherBox.hidden = st.subject !== TT_OTHER; persist(); lastFailed = null; renderLog(); sync(); if (st.subject === TT_OTHER) other.focus(); });
+    other.addEventListener("input", () => { st.other = other.value.slice(0, 40); persist(); if (!hist().length && !busy) renderLog(); sync(); });
+    $("ttModel").addEventListener("change", (e) => { st.model = e.target.value; persist(); });
+    $("ttNew").addEventListener("click", async () => {
+      if (!hist().length) { ta.focus(); return; }
+      const yes = await askConfirm({ title: "گفت‌وگوی جدید؟", text: "گفت‌وگوی فعلیِ این درس پاک می‌شود.", yes: "پاک کن و شروع کن" });
+      if (!yes || !ok()) return;
+      st.chats[chatKey()] = [];
+      persist(); lastFailed = null; renderLog(); sync(); ta.focus();
+    });
+
+    renderLog(); sync(); autosize();
+    return function () { alive = false; };
   }
 
   /* ---------- مسیریابی ---------- */
@@ -3033,8 +3311,10 @@
       else cleanup = auth.get() ? viewGroup(parts[1], token) : viewGate("g/" + parts[1], token);
     } else if (parts[0] === "signup") {
       const nx = ((/(^|&)next=([^&]*)/.exec(query) || [])[2] || "");
-      signupNext = /^(q\/[A-Za-z0-9_-]{1,64}|groups|g\/[0-9a-f]{8})$/.test(nx) ? nx : "";
+      signupNext = /^(q\/[A-Za-z0-9_-]{1,64}|groups|tutor|g\/[0-9a-f]{8})$/.test(nx) ? nx : "";
       cleanup = viewSignup();
+    } else if (parts[0] === "tutor") {
+      cleanup = auth.get() ? viewTutor(token) : viewGate("tutor", token);
     } else if (parts[0] === "account") {
       cleanup = viewAccount();
     } else if (parts[0] === "create" && !auth.get()) {
