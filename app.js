@@ -179,12 +179,17 @@
     });
     if (!any && !/\\[(\[]/.test(root.textContent)) return;
     loadKatex().then((ok) => {
-      if (!ok || !window.renderMathInElement || !root.isConnected) return;
+      if (!root.isConnected) return;
+      if (!ok || !window.renderMathInElement) {   /* بارگذاری فرمول‌ها نشد (اینترنت ضعیف): چند بار دیگر، با فاصله، دوباره تلاش می‌شود */
+        const n = (root._mrt = (root._mrt || 0) + 1);
+        if (n <= 4) setTimeout(() => renderMath(root), 3000 * n);
+        return;
+      }
       try {
         window.renderMathInElement(root, {
           delimiters: [{ left: "\\[", right: "\\]", display: true }, { left: "\\(", right: "\\)", display: false }],
           throwOnError: false,
-          ignoredTags: ["script", "style", "textarea", "input", "option"],
+          ignoredTags: ["script", "style", "textarea", "input", "option", "pre", "code"],
         });
       } catch (e) { /* ignore */ }
     });
@@ -3017,37 +3022,112 @@
   const TT_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>';
   const TT_NEW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
-  /* نمایش متنِ پاسخ (Markdown ساده + فرمول‌های ریاضی) بدون innerHTML خام */
-  function ttMd(src) {
-    const maths = [];
-    let t = String(src == null ? "" : src).replace(/\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)/g, (m) => { maths.push(m); return "" + (maths.length - 1) + ""; });
+  /* نمایش متنِ پاسخ (Markdown ساده + فرمول‌های ریاضی) بدون innerHTML خام
+     live=true: متنِ نیمه‌تمام (در حال استریم) است؛ کدِ باز مانده بسته فرض می‌شود */
+  function ttMd(src, live) {
+    const P = "", Q = "", R = "";
+    let t = String(src == null ? "" : src).replace(/\r\n?/g, "\n");
+    /* ۱) بلوک‌های کد (اول از همه تا چیزی داخلشان دستکاری نشود) */
     const codes = [];
-    t = t.replace(/```[^\n]*\n?([\s\S]*?)```/g, (m, c) => { codes.push(c.replace(/\n$/, "")); return "" + (codes.length - 1) + ""; });
-    const inline = (s) => {
-      let h = esc(s);
-      h = h.replace(/`([^`\n]+)`/g, "<code>$1</code>");
-      h = h.replace(/\*\*([^*\n]+?)\*\*|__([^_\n]+?)__/g, (m, a, b) => "<strong>" + (a || b) + "</strong>");
+    if (live && ((t.match(/^[ \t]*```/gm) || []).length % 2) === 1) t += "\n```";
+    t = t.replace(/```[^\n]*\n?([\s\S]*?)```/g, (m, c) => { codes.push(c.replace(/\n$/, "")); return "\n" + P + (codes.length - 1) + P + "\n"; });
+    /* ۲) کدِ درون‌خطی */
+    const icodes = [];
+    t = t.replace(/`([^`\n]+)`/g, (m, c) => { icodes.push(c); return Q + (icodes.length - 1) + Q; });
+    /* ۳) فرمول‌ها (\( \) و \[ \] و $…$ و $$…$$ که واقعاً فرمول باشند) */
+    if (live) {   /* فرمولِ نیمه‌نوشته نشان داده نمی‌شود (LaTeX خام در متن راست‌به‌چپ به‌هم می‌ریزد) */
+      const o1 = t.lastIndexOf("\\["); if (o1 >= 0 && t.indexOf("\\]", o1) < 0) t = t.slice(0, o1);
+      const o2 = t.lastIndexOf("\\("); if (o2 >= 0 && t.indexOf("\\)", o2) < 0) t = t.slice(0, o2);
+      t = t.replace(/\\$/, "");
+    }
+    const maths = [];
+    t = normalizeMath(t).replace(/\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)/g, (m) => { maths.push(m); return R + (maths.length - 1) + R; });
+    const inline = (x) => {
+      let h = esc(x);
+      h = h.replace(/\*\*([^*\n]+?)\*\*|__([^_\n]+?)__/g, (m, a1, b1) => "<strong>" + (a1 || b1) + "</strong>");
       h = h.replace(/(^|[\s(،؛:])\*([^*\n]+?)\*(?=$|[\s).،؛:!؟?])/g, "$1<em>$2</em>");
       return h;
     };
+    const dig = (n) => String(n).replace(/[۰-۹]/g, (c) => "۰۱۲۳۴۵۶۷۸۹".indexOf(c));
     const lines = t.split("\n");
     const out = [];
     let para = [], list = null;
+    const li = (it) => "<li>" + it.lines.map(inline).join("<br>") + (it.sub && it.sub.length ? "<" + it.sub[0].t + ">" + it.sub.map((x) => "<li>" + inline(x.c) + "</li>").join("") + "</" + it.sub[0].t + ">" : "") + "</li>";
     const flushP = () => { if (para.length) { out.push("<p>" + para.map(inline).join("<br>") + "</p>"); para = []; } };
-    const flushL = () => { if (list) { out.push("<" + list.t + ">" + list.items.map((i) => "<li>" + inline(i) + "</li>").join("") + "</" + list.t + ">"); list = null; } };
-    lines.forEach((ln) => {
+    const flushL = () => { if (list) { out.push("<" + list.t + (list.t === "ol" && list.start > 1 ? ' start="' + list.start + '"' : "") + ">" + list.items.map(li).join("") + "</" + list.t + ">"); list = null; } };
+    const BUL = /^(\s*)[-*•]\s+(.+)$/, NUM = /^(\s*)(\d+|[۰-۹]+)[.)\-]\s+(.+)$/;
+    const cells = (r) => r.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+    const SEP = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines[i];
       let m;
-      if (/^\s*$/.test(ln)) { flushP(); flushL(); return; }
-      if ((m = /^\s*(\d+)\s*$/.exec(ln))) { flushP(); flushL(); out.push("<pre><code>" + esc(codes[+m[1]]) + "</code></pre>"); return; }
-      if ((m = /^\s{0,3}(#{1,4})\s+(.+)$/.exec(ln))) { flushP(); flushL(); out.push('<h4 class="tt-h">' + inline(m[2].replace(/\s*#+\s*$/, "")) + "</h4>"); return; }
-      if ((m = /^\s*[-*•]\s+(.+)$/.exec(ln))) { flushP(); if (!list || list.t !== "ul") { flushL(); list = { t: "ul", items: [] }; } list.items.push(m[1]); return; }
-      if ((m = /^\s*(?:\d+|[۰-۹]+)[.)\-]\s+(.+)$/.exec(ln))) { flushP(); if (!list || list.t !== "ol") { flushL(); list = { t: "ol", items: [] }; } list.items.push(m[1]); return; }
-      if ((m = /^\s*>\s?(.*)$/.exec(ln))) { flushP(); flushL(); out.push("<blockquote>" + inline(m[1]) + "</blockquote>"); return; }
+      if (/^\s*$/.test(ln)) { flushP(); if (list) list.gap = true; continue; }   /* لیست با خط خالی تمام نمی‌شود؛ اگر آیتم بعدی هم‌نوع بود ادامه می‌یابد */
+      if ((m = new RegExp("^\\s*" + P + "(\\d+)" + P + "\\s*$").exec(ln))) { flushP(); flushL(); out.push("<pre><code>" + esc(codes[+m[1]]) + "</code></pre>"); continue; }
+      if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(ln) && !BUL.test(ln)) { flushP(); flushL(); out.push("<hr>"); continue; }
+      if ((m = /^\s{0,3}(#{1,4})\s+(.+)$/.exec(ln))) { flushP(); flushL(); out.push('<h4 class="tt-h">' + inline(m[2].replace(/\s*#+\s*$/, "")) + "</h4>"); continue; }
+      if (ln.indexOf("|") >= 0 && i + 1 < lines.length && SEP.test(lines[i + 1]) && lines[i + 1].indexOf("-") >= 0) {
+        flushP(); flushL();
+        const head = cells(ln); let j = i + 2; const rows = [];
+        while (j < lines.length && lines[j].indexOf("|") >= 0 && !/^\s*$/.test(lines[j])) { rows.push(cells(lines[j])); j++; }
+        out.push('<div class="tt-tbl"><table><thead><tr>' + head.map((c) => "<th>" + inline(c) + "</th>").join("") + "</tr></thead><tbody>" +
+          rows.map((r) => "<tr>" + head.map((_, k) => "<td>" + inline(r[k] || "") + "</td>").join("") + "</tr>").join("") + "</tbody></table></div>");
+        i = j - 1; continue;
+      }
+      if ((m = /^\s*>\s?(.*)$/.exec(ln))) { flushP(); flushL(); out.push("<blockquote>" + inline(m[1]) + "</blockquote>"); continue; }
+      const mb = BUL.exec(ln), mn = mb ? null : NUM.exec(ln);
+      if (mb || mn) {
+        const indent = (mb ? mb[1] : mn[1]).replace(/\t/g, "    ").length;
+        const kind = mb ? "ul" : "ol", text = mb ? mb[2] : mn[3];
+        if (list && indent >= 2 && list.items.length) {   /* زیرلیست (یک سطح) */
+          const last = list.items[list.items.length - 1];
+          (last.sub = last.sub || []).push({ t: kind, c: text });
+          list.gap = false; continue;
+        }
+        flushP();
+        if (!list || list.t !== kind) { flushL(); list = { t: kind, items: [], start: mn ? +dig(mn[2]) || 1 : 1 }; }
+        list.items.push({ lines: [text] }); list.gap = false;
+        continue;
+      }
+      if (list && /^\s{2,}\S/.test(ln) && !list.gap) { list.items[list.items.length - 1].lines.push(ln.trim()); continue; }   /* ادامه‌ی آیتم با تورفتگی */
       flushL(); para.push(ln);
-    });
+    }
     flushP(); flushL();
-    return out.join("").replace(/(\d+)/g, (m, i) => esc(maths[+i])).replace(/(\d+)/g, (m, i) => "<code>" + esc(codes[+i]) + "</code>");
+    return out.join("")
+      .replace(new RegExp(R + "(\\d+)" + R, "g"), (m, k) => (live ? '<span class="tt-rawm" dir="ltr">' + esc(maths[+k]) + "</span>" : esc(maths[+k])))
+      .replace(new RegExp(Q + "(\\d+)" + Q, "g"), (m, k) => "<code>" + esc(icodes[+k]) + "</code>")
+      .replace(new RegExp(P + "(\\d+)" + P, "g"), (m, k) => "<code>" + esc(codes[+k]) + "</code>");
   }
+
+  /* در متنِ در حال استریم: تا کجا «پاراگرافِ تمام‌شده» است؟ (مرزِ امن = خط خالی بیرون از کد و فرمولِ باز). فقط از from به بعد بررسی می‌شود */
+  function ttSplit(text, from) {
+    let pos = from, fence = false, lastCut = from, open = 0, prevItem = false;
+    const ITEM = /^\s*(?:[-*•]|\d+[.)\-]|[۰-۹]+[.)\-])\s+\S/;
+    while (pos < text.length) {
+      let e = text.indexOf("\n", pos);
+      const last = e < 0;
+      if (last) e = text.length;
+      const ln = text.slice(pos, e);
+      if (/^[ \t]*```/.test(ln)) { fence = !fence; prevItem = false; }
+      else if (!fence) {
+        open += (ln.split("\\[").length - 1) - (ln.split("\\]").length - 1);
+        if ((ln.split("$$").length - 1) % 2) open += open > 0 ? -1 : 1;
+        if (/^\s*$/.test(ln)) {
+          if (open <= 0 && !last) {
+            /* بین دو آیتمِ یک لیست خط خالی باشد، لیست را نشکن (تا شماره‌ها و فاصله‌ها مثلِ رندر کامل شود) */
+            const nx = /^(?:[ \t]*\n)*([^\n]*)/.exec(text.slice(e + 1, e + 600));
+            const next = nx ? nx[1] : "";
+            const hold = prevItem && (!next.trim() || ITEM.test(next) || /^\s{2,}\S/.test(next));
+            if (!hold) lastCut = e + 1;
+          }
+        } else prevItem = ITEM.test(ln) || (prevItem && /^\s{2,}\S/.test(ln));
+      }
+      pos = e + 1;
+    }
+    return lastCut;
+  }
+
+  const TT_STOP = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>';
+  const TT_CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 
   function viewTutor(token) {
     setTitle("معلم هوشمند");
@@ -3063,11 +3143,13 @@
     };
     if (st.subject !== TT_OTHER && TT_SUBJECTS[st.grade].indexOf(st.subject) < 0) st.subject = TT_SUBJECTS[st.grade][0];
     const persist = () => {
-      const keys = Object.keys(st.chats);
-      if (keys.length > 14) keys.slice(0, keys.length - 14).forEach((k) => delete st.chats[k]);
-      store.set(KEY, { grade: st.grade, subject: st.subject, other: st.other, model: st.model, chats: st.chats });
+      const trim = (n) => { const k = Object.keys(st.chats); if (k.length > n) k.slice(0, k.length - n).forEach((x) => delete st.chats[x]); };
+      trim(14);
+      const pack = () => store.set(KEY, { grade: st.grade, subject: st.subject, other: st.other, model: st.model, chats: st.chats });
+      if (!pack()) { trim(Math.max(1, Math.floor(Object.keys(st.chats).length / 2))); pack(); }   /* حافظه‌ی مرورگر پر بود: قدیمی‌ترین گفت‌وگوها پاک می‌شوند */
     };
     loadKatex();   /* فرمول‌ها از همین حالا آماده می‌شوند تا اولین پاسخ معطل نماند */
+    document.documentElement.classList.add("tt-page");
     const subjName = () => (st.subject === TT_OTHER ? st.other.trim() : st.subject);
     const chatKey = () => st.grade + "|" + (subjName() || "؟");
     const hist = () => (Array.isArray(st.chats[chatKey()]) ? st.chats[chatKey()] : []);
@@ -3075,23 +3157,50 @@
     app.innerHTML =
       '<section class="tt" aria-labelledby="ttH">' +
       '<div class="tt-head"><span class="tt-ic">' + TT_CAP + '</span><div><h1 id="ttH">معلم هوشمند</h1><p class="tt-sub">پایه و درس را انتخاب کن و هر چیزی را که نمی‌فهمی بپرس؛ مثل یک معلم خصوصی، قدم‌به‌قدم توضیح می‌دهد.</p></div></div>' +
-      '<div class="tt-bar">' +
+      '<div class="tt-sumrow"><button class="tt-sum" id="ttSum" type="button" aria-expanded="false" aria-controls="ttBar"><span id="ttSumT"></span>' + TT_CHEV + "</button>" +
+      '<button class="btn ghost small tt-new2" id="ttNew2" type="button" aria-label="گفت‌وگوی جدید">' + TT_NEW + "<span>جدید</span></button></div>" +
+      '<div class="tt-bar" id="ttBar">' +
       '<label class="tt-f"><span>پایه</span><select id="ttGrade">' + TT_GRADES.map((g) => '<option value="' + g + '">' + (g === "عمومی" ? "عمومی (همه‌ی درس‌ها)" : g) + "</option>").join("") + "</select></label>" +
       '<label class="tt-f"><span>درس</span><select id="ttSubj"></select></label>' +
       '<label class="tt-f tt-f-other" id="ttOtherBox" hidden><span>اسم درس</span><input id="ttOther" type="text" maxlength="40" placeholder="مثلاً مدار الکتریکی" autocomplete="off"></label>' +
       '<label class="tt-f tt-f-model"><span>مدل هوش مصنوعی</span><select id="ttModel">' +
       AI_GROUPS.map((g) => '<optgroup label="' + g + '">' + AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '">' + m.label + "</option>").join("") + "</optgroup>").join("") + "</select></label>" +
       '<button class="btn ghost small tt-new" id="ttNew" type="button">' + TT_NEW + "<span>گفت‌وگوی جدید</span></button></div>" +
-      '<div class="tt-box"><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
+      '<div class="tt-box" id="ttBox"><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
       '<form class="chat-in tt-in" id="ttForm" autocomplete="off"><textarea id="ttTa" rows="1" maxlength="2000" dir="auto" enterkeyhint="send" placeholder="سؤالت را بنویس…" aria-label="سؤال شما"></textarea>' +
       '<button class="chat-send" type="submit" id="ttSend" aria-label="ارسال" disabled>' + CI.send + "</button></form></div>" +
-      '<p class="muted tt-note">معلم هوشمند ممکن است گاهی اشتباه کند؛ نکته‌های مهم را با کتاب درسی‌ات مقایسه کن.</p></section>';
+      '<p class="muted tt-note" id="ttNote">معلم هوشمند ممکن است گاهی اشتباه کند؛ نکته‌های مهم را با کتاب درسی‌ات مقایسه کن.</p></section>';
 
     const $ = (id) => document.getElementById(id);
-    const log = $("ttLog"), ta = $("ttTa"), sendBtn = $("ttSend"), subj = $("ttSubj"), other = $("ttOther"), otherBox = $("ttOtherBox");
+    const log = $("ttLog"), ta = $("ttTa"), sendBtn = $("ttSend"), subj = $("ttSubj"), other = $("ttOther"), otherBox = $("ttOtherBox"), box = $("ttBox");
     let busy = false;
     let alive = true;
     let lastFailed = null;
+    let follow = true;
+    let ctl = null, userStop = false;
+    const tallEnough = () => (window.visualViewport ? window.visualViewport.height : window.innerHeight) >= 760;
+    let cfgOpen = !hist().length && tallEnough();
+
+    /* ارتفاع جعبه‌ی چت = همه‌ی جای خالیِ صفحه (بدون اسکرولِ اضافه‌ی صفحه؛ با کیبورد موبایل هم درست می‌شود) */
+    const fit = () => {
+      if (!alive || !box.isConnected) return;
+      const vv = window.visualViewport;
+      const H = vv ? vv.height : window.innerHeight;
+      const top = box.getBoundingClientRect().top + window.scrollY;
+      const pad = parseFloat(getComputedStyle(app).paddingBottom) || 0;
+      const avail = H - top - $("ttNote").offsetHeight - 12 - pad - 2;
+      box.style.height = Math.max(260, Math.floor(avail)) + "px";
+    };
+    const onResize = () => { fit(); if (follow) log.scrollTop = log.scrollHeight; };
+    window.addEventListener("resize", onResize);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
+
+    const applyCfg = () => {
+      $("ttBar").classList.toggle("closed", !cfgOpen);
+      $("ttSum").setAttribute("aria-expanded", cfgOpen ? "true" : "false");
+      $("ttSumT").textContent = st.grade + " · " + (subjName() || "؟") + " · " + String(aiModel(st.model).label).split(" ")[0];
+      fit();
+    };
 
     const fillSubjects = () => {
       subj.innerHTML = TT_SUBJECTS[st.grade].map((s) => '<option value="' + s + '">' + s + "</option>").join("") + '<option value="' + TT_OTHER + '">درس دیگر…</option>';
@@ -3103,7 +3212,24 @@
     $("ttModel").value = st.model;
     fillSubjects();
 
-    const bubble = (role, text, extra) => {
+    /* یادداشتِ «پاسخ ناقص» با دکمه‌ی ادامه */
+    const incNote = (el, msg, withBtn) => {
+      const b = el.querySelector(".tt-b");
+      const n = document.createElement("div");
+      n.className = "tt-inc";
+      const sp = document.createElement("span");
+      sp.textContent = msg || "پاسخ ناقص ماند.";
+      n.appendChild(sp);
+      if (withBtn) {
+        const bt = document.createElement("button");
+        bt.type = "button"; bt.className = "btn ghost small"; bt.textContent = "ادامه بده";
+        bt.addEventListener("click", () => submit(false, "ادامه بده"));
+        n.appendChild(bt);
+      }
+      b.appendChild(n);
+    };
+
+    const bubble = (role, text, extra, inc) => {
       const d = document.createElement("div");
       d.className = "tt-m " + (role === "user" ? "me" : "ai") + (extra ? " " + extra : "");
       if (role === "user") {
@@ -3127,12 +3253,14 @@
         d._t = text;
         cp.addEventListener("click", async () => { const r = await copyText(d._t); if (window.__pzToast) window.__pzToast(r === false ? "کپی نشد" : "کپی شد"); });
         d.appendChild(av); d.appendChild(b); d.appendChild(cp);
-        renderMath(b);
+        if (text) renderMath(b);
+        if (inc) incNote(d, "", inc.btn);
       }
       return d;
     };
     const scrollEnd = () => { log.scrollTop = log.scrollHeight; };
     const scrollToEl = (el) => { log.scrollTop = Math.max(0, el.offsetTop - 10); };
+    log.addEventListener("scroll", () => { follow = log.scrollHeight - log.scrollTop - log.clientHeight < 80; }, { passive: true });
 
     function renderLog() {
       log.innerHTML = "";
@@ -3147,27 +3275,43 @@
         e.querySelectorAll(".tt-chip").forEach((b) => b.addEventListener("click", () => { ta.value = b.textContent; autosize(); sync(); submit(); }));
         return;
       }
-      h.forEach((m) => log.appendChild(bubble(m.r === "u" ? "user" : "ai", m.c)));
-      scrollEnd();
+      h.forEach((m, i) => log.appendChild(bubble(m.r === "u" ? "user" : "ai", m.c, "", m.r === "a" && m.p ? { btn: i === h.length - 1 } : null)));
+      follow = true; scrollEnd();
     }
 
     function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; }
-    function sync() { sendBtn.disabled = busy || !ta.value.trim() || !subjName(); }
+    let sendMode = "";
+    function sync() {
+      ["ttGrade", "ttSubj", "ttModel", "ttNew", "ttNew2"].forEach((id) => { $(id).disabled = busy; });
+      other.disabled = busy;
+      const mode = busy ? "stop" : "send";
+      if (mode !== sendMode) {
+        sendMode = mode;
+        sendBtn.classList.toggle("stop", busy);
+        sendBtn.innerHTML = busy ? TT_STOP : CI.send;
+        sendBtn.setAttribute("aria-label", busy ? "توقف پاسخ" : "ارسال");
+      }
+      sendBtn.disabled = busy ? false : (!ta.value.trim() || !subjName());
+    }
+    const stop = () => { userStop = true; try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ } };
 
     const typing = () => {
       const d = document.createElement("div");
       d.className = "tt-m ai typing";
-      d.innerHTML = '<span class="tt-av">' + TT_CAP + '</span><div class="tt-b"><span class="tt-dots" aria-label="معلم در حال نوشتن است"><i></i><i></i><i></i></span></div>';
+      d.innerHTML = '<span class="tt-av">' + TT_CAP + '</span><div class="tt-b"><span class="tt-dots" role="status" aria-label="معلم در حال نوشتن است"><i></i><i></i><i></i></span></div>';
       return d;
     };
 
-    let ctl = null;
+    /* درخواست به معلم. onText(متنِ تا‌اکنون) با رسیدن هر تکه صدا زده می‌شود.
+       نتیجه: {reply, left, inc, error?, stopped?}  یا  {error, code?, stopped?} */
     async function ask(history, onText) {
       const M = aiModel(st.model);
       const s = auth.get();
       if (!s) return { error: "نشست شما منقضی شده است. دوباره وارد شوید.", code: "no_session" };
-      let res;
+      userStop = false;
       ctl = window.AbortController ? new AbortController() : null;
+      const hdr = setTimeout(() => { try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ } }, 75000);
+      let res;
       try {
         res = await fetch(cfg.SUPABASE_URL + "/functions/v1/tutor", {
           method: "POST",
@@ -3175,74 +3319,105 @@
           headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
           body: JSON.stringify({ token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), provider: M.provider, model: M.model, stream: true, messages: history.slice(-16).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
         });
-      } catch (e) { return { error: "اتصال به سرور برقرار نشد. اینترنت‌تان را بررسی کنید و دوباره تلاش کنید." }; }
+      } catch (e) {
+        clearTimeout(hdr);
+        if (userStop) return { error: "پاسخ متوقف شد.", stopped: true };
+        return { error: "اتصال به سرور برقرار نشد. اینترنت‌تان را بررسی کنید و دوباره تلاش کنید." };
+      }
+      clearTimeout(hdr);
       if (res.ok && /text\/event-stream/i.test(res.headers.get("content-type") || "") && res.body && res.body.getReader) {
         const rd = res.body.getReader();
         const dec = new TextDecoder();
-        let buf = "", txt = "", left, err = null, done = false;
+        let buf = "", txt = "", left, err = "", done = false, trunc = false, stall = false;
         const line = (ln) => {
           ln = ln.replace(/\r$/, "");
           if (ln.indexOf("data:") !== 0) return;
           let j; try { j = JSON.parse(ln.slice(5)); } catch (e) { return; }
           if (typeof j.d === "string") { txt += j.d; onText(txt); }
-          else if (j.done) { done = true; left = j.left; }
+          else if (j.done) { done = true; left = j.left; trunc = !!j.truncated; }
           else if (j.error) err = String(j.error);
         };
+        const read = () => new Promise((resolve, reject) => {
+          /* اگر ۴۵ ثانیه هیچ چیزی (حتی ضربانِ سرور) نرسد، اتصال مرده است */
+          const tm = setTimeout(() => { stall = true; try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ } reject(new Error("stall")); }, 45000);
+          rd.read().then((v) => { clearTimeout(tm); resolve(v); }, (e) => { clearTimeout(tm); reject(e); });
+        });
         try {
           for (;;) {
-            const r = await rd.read();
+            const r = await read();
             if (r.done) break;
             buf += dec.decode(r.value, { stream: true });
             let i;
             while ((i = buf.indexOf("\n")) >= 0) { const ln = buf.slice(0, i); buf = buf.slice(i + 1); line(ln); }
           }
           if (buf) line(buf);
-        } catch (e) { if (!err && !done) err = (e && e.name === "AbortError") ? "" : "اتصال در میانه‌ی پاسخ قطع شد."; }
-        if (txt && done) return { reply: txt, left: left };
-        return { error: err || "پاسخ ناقص بود. دوباره تلاش کنید.", partial: !!txt };
+        } catch (e) { if (!err && !done && !userStop) err = stall ? "پاسخ دیر رسید و قطع شد." : "اتصال در میانه‌ی پاسخ قطع شد."; }
+        if (txt && done && !err) return { reply: txt, left: left, inc: trunc };
+        if (txt) return { reply: txt, inc: true, error: userStop ? "پاسخ را متوقف کردی." : (err || "پاسخ ناقص ماند."), stopped: userStop };
+        if (userStop) return { error: "پاسخ متوقف شد.", stopped: true };
+        return { error: err || "پاسخ ناقص بود. دوباره تلاش کنید." };
       }
       let d = null;
       try { d = await res.json(); } catch (e) { /* ignore */ }
-      if (res.ok && d && d.reply) return { reply: String(d.reply), left: d.left };
+      if (res.ok && d && d.reply) return { reply: String(d.reply), left: d.left, inc: false };
       if (res.status === 401 && d && d.code === "no_session") { auth.clear(); }
       return { error: (d && d.error) || "پاسخ دادن ممکن نشد. دوباره تلاش کنید.", code: d && d.code };
     }
 
-    async function submit(retry) {
+    async function submit(retry, forced) {
       if (busy) return;
       let text;
-      if (retry && lastFailed) text = lastFailed;
+      if (forced) text = forced;
+      else if (retry && lastFailed) text = lastFailed;
       else { text = ta.value.trim(); if (!text || !subjName()) return; }
       lastFailed = null;
       const key = chatKey();
-      const h = (Array.isArray(st.chats[key]) ? st.chats[key] : (st.chats[key] = []));
+      const h = Array.isArray(st.chats[key]) ? st.chats[key] : [];
+      delete st.chats[key]; st.chats[key] = h;   /* تازه‌ترین گفت‌وگو آخر لیست می‌ماند (برای پاک‌کردن قدیمی‌ها) */
       log.querySelectorAll(".tt-m.err").forEach((n) => n.remove());
+      log.querySelectorAll(".tt-inc .btn").forEach((n) => n.remove());
       if (!retry) {
         if (!h.length) log.innerHTML = "";
         h.push({ r: "u", c: text });
         log.appendChild(bubble("user", text));
-        ta.value = ""; autosize();
+        if (!forced) { ta.value = ""; autosize(); }
+        if (cfgOpen) { cfgOpen = false; applyCfg(); }
       }
       persist();
       busy = true; sync();
       const ty = typing();
       log.appendChild(ty);
-      scrollEnd();
-      /* نمایش زنده‌ی پاسخ: متن در همان لحظه که می‌رسد نوشته می‌شود؛ فرمول‌ها فقط یک بار در پایان رندر می‌شوند (سبک برای گوشی‌های ضعیف) */
-      let live = null, liveB = null, follow = true, tm = 0, cur = "";
-      const stop = () => { follow = false; };
-      log.addEventListener("wheel", stop, { passive: true });
-      log.addEventListener("touchmove", stop, { passive: true });
+      follow = true; scrollEnd();
+      /* نمایش زنده: پاراگراف‌های تمام‌شده یک بار رندر می‌شوند (فرمول‌ها هم)، فقط پاراگرافِ در حال نوشتن هر ~۱۱۰ms دوباره ساخته می‌شود */
+      let live = null, liveB = null, tail = null, cur = "", stableLen = 0, tm = 0, lastPaint = 0, fin = false;
+      const addChunk = (html) => {
+        const tmp = document.createElement("div");
+        tmp.innerHTML = html;
+        const added = [];
+        while (tmp.firstChild) { added.push(tmp.firstChild); liveB.insertBefore(tmp.firstChild, tail); }
+        added.forEach((n) => { if (n.nodeType === 1) renderMath(n); });
+      };
       const paint = () => {
         tm = 0;
-        if (!liveB) return;
-        liveB.innerHTML = ttMd(cur);
-        if (follow) {
-          log.scrollTop = log.scrollHeight;
-          if (live.offsetTop - 10 <= log.scrollTop) { log.scrollTop = Math.max(0, live.offsetTop - 10); follow = false; }
-        }
+        if (fin || !live || document.hidden) return;
+        lastPaint = performance.now();
+        const cut = ttSplit(cur, stableLen);
+        if (cut > stableLen) { addChunk(ttMd(cur.slice(stableLen, cut))); stableLen = cut; }
+        tail.innerHTML = ttMd(cur.slice(stableLen), true);
+        if (follow) log.scrollTop = log.scrollHeight;
+      };
+      const schedule = () => { if (tm) return; tm = setTimeout(() => requestAnimationFrame(paint), Math.max(0, 110 - (performance.now() - lastPaint))); };
+      const finish = (full) => {
+        fin = true; clearTimeout(tm); tm = 0;
+        if (!live) return;
+        const rest = full.slice(stableLen);
+        if (rest.trim()) addChunk(ttMd(rest));
+        tail.remove();
+        live.classList.remove("streaming");
+        live._t = full;
       };
       log.setAttribute("aria-busy", "true");
+      log.setAttribute("aria-live", "off");
       const r = await ask(h, (t) => {
         if (!alive || !ok() || key !== chatKey()) return;
         cur = t;
@@ -3250,29 +3425,31 @@
           ty.remove();
           live = bubble("ai", "", "in streaming");
           liveB = live.querySelector(".tt-b");
+          tail = document.createElement("div");
+          tail.className = "tt-tail";
+          liveB.appendChild(tail);
           log.appendChild(live);
         }
-        if (!tm) tm = setTimeout(paint, 70);
+        schedule();
       });
-      log.removeEventListener("wheel", stop);
-      log.removeEventListener("touchmove", stop);
       log.removeAttribute("aria-busy");
-      clearTimeout(tm); tm = 0;
+      log.setAttribute("aria-live", "polite");
+      clearTimeout(tm); tm = 0; fin = true;
       if (!alive || !ok()) return;
       busy = false;
       ty.remove();
       if (r.reply) {
-        (st.chats[key] = st.chats[key] || []).push({ r: "a", c: r.reply });
-        if (st.chats[key].length > 40) st.chats[key] = st.chats[key].slice(-40);
+        const arr = (st.chats[key] = st.chats[key] || []);
+        arr.push(r.inc ? { r: "a", c: r.reply, p: 1 } : { r: "a", c: r.reply });
+        if (arr.length > 40) st.chats[key] = arr.slice(-40);
         persist();
         if (key === chatKey()) {
           if (live && live.isConnected) {
-            live.classList.remove("streaming");
-            live._t = r.reply;
-            liveB.innerHTML = ttMd(r.reply);
-            renderMath(liveB);
+            finish(r.reply);
+            if (r.inc) incNote(live, r.error, true);
+            if (follow) scrollEnd();
           } else {
-            const el = bubble("ai", r.reply, "in");
+            const el = bubble("ai", r.reply, "in", r.inc ? { btn: true } : null);
             log.appendChild(el);
             scrollToEl(el);
           }
@@ -3293,7 +3470,7 @@
           e.querySelector(".tt-b").appendChild(rb);
         }
         log.appendChild(e);
-        scrollEnd();
+        follow = true; scrollEnd();
         if (r.code === "no_session") setTimeout(() => { if (ok()) location.hash = "#/signup?next=tutor"; }, 1800);
       }
       sync();
@@ -3302,22 +3479,34 @@
 
     const fine = window.matchMedia("(pointer: fine)");
     ta.addEventListener("input", () => { autosize(); sync(); });
-    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && fine.matches) { e.preventDefault(); submit(); } });
-    $("ttForm").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
-    $("ttGrade").addEventListener("change", (e) => { st.grade = e.target.value; st.subject = TT_SUBJECTS[st.grade][0]; fillSubjects(); persist(); lastFailed = null; renderLog(); sync(); });
-    subj.addEventListener("change", () => { st.subject = subj.value; otherBox.hidden = st.subject !== TT_OTHER; persist(); lastFailed = null; renderLog(); sync(); if (st.subject === TT_OTHER) other.focus(); });
-    other.addEventListener("input", () => { st.other = other.value.slice(0, 40); persist(); if (!hist().length && !busy) renderLog(); sync(); });
-    $("ttModel").addEventListener("change", (e) => { st.model = e.target.value; persist(); });
-    $("ttNew").addEventListener("click", async () => {
+    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && fine.matches) { e.preventDefault(); if (!busy) submit(); } });
+    $("ttForm").addEventListener("submit", (e) => { e.preventDefault(); if (busy) stop(); else submit(); });
+    $("ttSum").addEventListener("click", () => { cfgOpen = !cfgOpen; applyCfg(); });
+    $("ttGrade").addEventListener("change", (e) => { st.grade = e.target.value; st.subject = TT_SUBJECTS[st.grade][0]; fillSubjects(); persist(); lastFailed = null; renderLog(); cfgOpen = !hist().length && tallEnough(); applyCfg(); sync(); });
+    subj.addEventListener("change", () => { st.subject = subj.value; otherBox.hidden = st.subject !== TT_OTHER; persist(); lastFailed = null; renderLog(); cfgOpen = (!hist().length && tallEnough()) || st.subject === TT_OTHER; applyCfg(); sync(); if (st.subject === TT_OTHER) other.focus(); });
+    other.addEventListener("input", () => { st.other = other.value.slice(0, 40); persist(); if (!hist().length && !busy) renderLog(); applyCfg(); sync(); });
+    $("ttModel").addEventListener("change", (e) => { st.model = e.target.value; persist(); applyCfg(); });
+    const newChat = async () => {
       if (!hist().length) { ta.focus(); return; }
       const yes = await askConfirm({ title: "گفت‌وگوی جدید؟", text: "گفت‌وگوی فعلیِ این درس پاک می‌شود.", yes: "پاک کن و شروع کن" });
       if (!yes || !ok()) return;
       st.chats[chatKey()] = [];
-      persist(); lastFailed = null; renderLog(); sync(); ta.focus();
-    });
+      persist(); lastFailed = null; renderLog(); cfgOpen = tallEnough(); applyCfg(); sync(); ta.focus();
+    };
+    $("ttNew").addEventListener("click", newChat);
+    $("ttNew2").addEventListener("click", newChat);
 
-    renderLog(); sync(); autosize();
-    return function () { alive = false; try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ } };
+    renderLog(); applyCfg(); sync(); autosize();
+    requestAnimationFrame(fit);
+    setTimeout(fit, 700);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+    return function () {
+      alive = false;
+      try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ }
+      window.removeEventListener("resize", onResize);
+      if (window.visualViewport) window.visualViewport.removeEventListener("resize", onResize);
+      document.documentElement.classList.remove("tt-page");
+    };
   }
 
   /* ---------- مسیریابی ---------- */
