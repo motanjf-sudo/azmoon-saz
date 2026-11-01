@@ -3124,7 +3124,8 @@
         cp.setAttribute("aria-label", "کپی پاسخ");
         cp.title = "کپی";
         cp.innerHTML = TT_COPY;
-        cp.addEventListener("click", async () => { const r = await copyText(text); if (window.__pzToast) window.__pzToast(r === false ? "کپی نشد" : "کپی شد"); });
+        d._t = text;
+        cp.addEventListener("click", async () => { const r = await copyText(d._t); if (window.__pzToast) window.__pzToast(r === false ? "کپی نشد" : "کپی شد"); });
         d.appendChild(av); d.appendChild(b); d.appendChild(cp);
         renderMath(b);
       }
@@ -3160,18 +3161,46 @@
       return d;
     };
 
-    async function ask(history) {
+    let ctl = null;
+    async function ask(history, onText) {
       const M = aiModel(st.model);
       const s = auth.get();
       if (!s) return { error: "نشست شما منقضی شده است. دوباره وارد شوید.", code: "no_session" };
       let res;
+      ctl = window.AbortController ? new AbortController() : null;
       try {
         res = await fetch(cfg.SUPABASE_URL + "/functions/v1/tutor", {
           method: "POST",
+          signal: ctl ? ctl.signal : undefined,
           headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
-          body: JSON.stringify({ token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), provider: M.provider, model: M.model, messages: history.slice(-16).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
+          body: JSON.stringify({ token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), provider: M.provider, model: M.model, stream: true, messages: history.slice(-16).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
         });
       } catch (e) { return { error: "اتصال به سرور برقرار نشد. اینترنت‌تان را بررسی کنید و دوباره تلاش کنید." }; }
+      if (res.ok && /text\/event-stream/i.test(res.headers.get("content-type") || "") && res.body && res.body.getReader) {
+        const rd = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "", txt = "", left, err = null, done = false;
+        const line = (ln) => {
+          ln = ln.replace(/\r$/, "");
+          if (ln.indexOf("data:") !== 0) return;
+          let j; try { j = JSON.parse(ln.slice(5)); } catch (e) { return; }
+          if (typeof j.d === "string") { txt += j.d; onText(txt); }
+          else if (j.done) { done = true; left = j.left; }
+          else if (j.error) err = String(j.error);
+        };
+        try {
+          for (;;) {
+            const r = await rd.read();
+            if (r.done) break;
+            buf += dec.decode(r.value, { stream: true });
+            let i;
+            while ((i = buf.indexOf("\n")) >= 0) { const ln = buf.slice(0, i); buf = buf.slice(i + 1); line(ln); }
+          }
+          if (buf) line(buf);
+        } catch (e) { if (!err && !done) err = (e && e.name === "AbortError") ? "" : "اتصال در میانه‌ی پاسخ قطع شد."; }
+        if (txt && done) return { reply: txt, left: left };
+        return { error: err || "پاسخ ناقص بود. دوباره تلاش کنید.", partial: !!txt };
+      }
       let d = null;
       try { d = await res.json(); } catch (e) { /* ignore */ }
       if (res.ok && d && d.reply) return { reply: String(d.reply), left: d.left };
@@ -3199,7 +3228,36 @@
       const ty = typing();
       log.appendChild(ty);
       scrollEnd();
-      const r = await ask(h);
+      /* نمایش زنده‌ی پاسخ: متن در همان لحظه که می‌رسد نوشته می‌شود؛ فرمول‌ها فقط یک بار در پایان رندر می‌شوند (سبک برای گوشی‌های ضعیف) */
+      let live = null, liveB = null, follow = true, tm = 0, cur = "";
+      const stop = () => { follow = false; };
+      log.addEventListener("wheel", stop, { passive: true });
+      log.addEventListener("touchmove", stop, { passive: true });
+      const paint = () => {
+        tm = 0;
+        if (!liveB) return;
+        liveB.innerHTML = ttMd(cur);
+        if (follow) {
+          log.scrollTop = log.scrollHeight;
+          if (live.offsetTop - 10 <= log.scrollTop) { log.scrollTop = Math.max(0, live.offsetTop - 10); follow = false; }
+        }
+      };
+      log.setAttribute("aria-busy", "true");
+      const r = await ask(h, (t) => {
+        if (!alive || !ok() || key !== chatKey()) return;
+        cur = t;
+        if (!live) {
+          ty.remove();
+          live = bubble("ai", "", "in streaming");
+          liveB = live.querySelector(".tt-b");
+          log.appendChild(live);
+        }
+        if (!tm) tm = setTimeout(paint, 70);
+      });
+      log.removeEventListener("wheel", stop);
+      log.removeEventListener("touchmove", stop);
+      log.removeAttribute("aria-busy");
+      clearTimeout(tm); tm = 0;
       if (!alive || !ok()) return;
       busy = false;
       ty.remove();
@@ -3208,11 +3266,19 @@
         if (st.chats[key].length > 40) st.chats[key] = st.chats[key].slice(-40);
         persist();
         if (key === chatKey()) {
-          const el = bubble("ai", r.reply, "in");
-          log.appendChild(el);
-          scrollToEl(el);
+          if (live && live.isConnected) {
+            live.classList.remove("streaming");
+            live._t = r.reply;
+            liveB.innerHTML = ttMd(r.reply);
+            renderMath(liveB);
+          } else {
+            const el = bubble("ai", r.reply, "in");
+            log.appendChild(el);
+            scrollToEl(el);
+          }
         }
       } else if (key === chatKey()) {
+        if (live) live.remove();
         lastFailed = text;
         const e = document.createElement("div");
         e.className = "tt-m ai err";
@@ -3251,7 +3317,7 @@
     });
 
     renderLog(); sync(); autosize();
-    return function () { alive = false; };
+    return function () { alive = false; try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ } };
   }
 
   /* ---------- مسیریابی ---------- */
