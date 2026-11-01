@@ -3177,7 +3177,7 @@
     let alive = true;
     let lastFailed = null;
     let follow = true;
-    let ctl = null, userStop = false;
+    let ctl = null, userStop = false, stopHook = null, autoLeft = 0;
     const tallEnough = () => (window.visualViewport ? window.visualViewport.height : window.innerHeight) >= 760;
     let cfgOpen = !hist().length && tallEnough();
 
@@ -3275,7 +3275,7 @@
         e.querySelectorAll(".tt-chip").forEach((b) => b.addEventListener("click", () => { ta.value = b.textContent; autosize(); sync(); submit(); }));
         return;
       }
-      h.forEach((m, i) => log.appendChild(bubble(m.r === "u" ? "user" : "ai", m.c, "", m.r === "a" && m.p ? { btn: i === h.length - 1 } : null)));
+      h.forEach((m, i) => log.appendChild(bubble(m.r === "u" ? "user" : "ai", m.c, "", m.r === "a" && m.p && i === h.length - 1 ? { btn: true } : null)));
       follow = true; scrollEnd();
     }
 
@@ -3293,7 +3293,7 @@
       }
       sendBtn.disabled = busy ? false : (!ta.value.trim() || !subjName());
     }
-    const stop = () => { userStop = true; try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ } };
+    const stop = () => { userStop = true; try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ } if (stopHook) stopHook(); };
 
     const typing = () => {
       const d = document.createElement("div");
@@ -3371,6 +3371,7 @@
       else if (retry && lastFailed) text = lastFailed;
       else { text = ta.value.trim(); if (!text || !subjName()) return; }
       lastFailed = null;
+      if (!forced && !retry) autoLeft = 1;   /* اگر پاسخ وسط کار قطع شد، یک بار خودکار «ادامه بده» می‌فرستیم */
       const key = chatKey();
       const h = Array.isArray(st.chats[key]) ? st.chats[key] : [];
       delete st.chats[key]; st.chats[key] = h;   /* تازه‌ترین گفت‌وگو آخر لیست می‌ماند (برای پاک‌کردن قدیمی‌ها) */
@@ -3388,8 +3389,9 @@
       const ty = typing();
       log.appendChild(ty);
       follow = true; scrollEnd();
-      /* نمایش زنده: پاراگراف‌های تمام‌شده یک بار رندر می‌شوند (فرمول‌ها هم)، فقط پاراگرافِ در حال نوشتن هر ~۱۱۰ms دوباره ساخته می‌شود */
-      let live = null, liveB = null, tail = null, cur = "", stableLen = 0, tm = 0, lastPaint = 0, fin = false;
+      /* نمایش زنده، حرف‌به‌حرف: متنی که از شبکه می‌رسد در صف می‌ماند و «ماشین‌تحریر» آن را با سرعتِ وفقی (هرچه صف بلندتر، سریع‌تر) نمایش می‌دهد؛
+         پس حتی اگر شبکه دسته‌دسته بفرستد، نوشتن نرم و یکنواخت دیده می‌شود. پاراگراف‌های تمام‌شده یک بار رندر می‌شوند (فرمول‌ها هم) و فقط پاراگرافِ در حال نوشتن هر ~۵۵ms دوباره ساخته می‌شود. */
+      let live = null, liveB = null, tail = null, cur = "", shown = 0, stableLen = 0, raf = 0, lastT = 0, acc = 0, lastRender = 0, fin = false, ending = false, drainRes = null;
       const addChunk = (html) => {
         const tmp = document.createElement("div");
         tmp.innerHTML = html;
@@ -3397,18 +3399,49 @@
         while (tmp.firstChild) { added.push(tmp.firstChild); liveB.insertBefore(tmp.firstChild, tail); }
         added.forEach((n) => { if (n.nodeType === 1) renderMath(n); });
       };
-      const paint = () => {
-        tm = 0;
-        if (fin || !live || document.hidden) return;
-        lastPaint = performance.now();
-        const cut = ttSplit(cur, stableLen);
-        if (cut > stableLen) { addChunk(ttMd(cur.slice(stableLen, cut))); stableLen = cut; }
-        tail.innerHTML = ttMd(cur.slice(stableLen), true);
+      const render = () => {
+        lastRender = performance.now();
+        if (!live) return;
+        const v = cur.slice(0, shown);
+        const cut = ttSplit(v, stableLen);
+        if (cut > stableLen) { addChunk(ttMd(v.slice(stableLen, cut))); stableLen = cut; }
+        tail.innerHTML = ttMd(v.slice(stableLen), true);
         if (follow) log.scrollTop = log.scrollHeight;
       };
-      const schedule = () => { if (tm) return; tm = setTimeout(() => requestAnimationFrame(paint), Math.max(0, 110 - (performance.now() - lastPaint))); };
+      const settle = () => { if (drainRes) { const f = drainRes; drainRes = null; f(); } };
+      const step = (t) => {
+        raf = 0;
+        if (fin) return;
+        const dt = Math.min(100, t - (lastT || t));
+        lastT = t;
+        if (document.hidden) shown = cur.length;
+        let backlog = cur.length - shown;
+        if (backlog > 0) {
+          const rate = Math.min(1200, Math.max(40, backlog * (ending ? 8 : 1.5)));
+          acc += (rate * dt) / 1000;
+          const n = Math.floor(acc);
+          if (n > 0) {
+            acc -= n;
+            shown = Math.min(cur.length, shown + n);
+            if (shown < cur.length && /[\uD800-\uDBFF]/.test(cur.charAt(shown - 1))) shown++;   /* ایموجی نصفه نشود */
+            backlog = cur.length - shown;
+          }
+          if (live && (backlog === 0 || performance.now() - lastRender >= 55)) render();
+        }
+        if (cur.length - shown > 0) raf = requestAnimationFrame(step);
+        else { lastT = 0; acc = 0; settle(); }
+      };
+      const kick = () => { if (!raf && !fin) raf = requestAnimationFrame(step); };
+      const flushNow = () => { shown = cur.length; settle(); };
+      const drain = () => new Promise((res) => {
+        if (!live || cur.length <= shown) return res();
+        ending = true; drainRes = res; kick();
+        setTimeout(flushNow, 2500);   /* اگر به هر دلیل رندر نشد، گیر نکن */
+      });
+      stopHook = flushNow;
       const finish = (full) => {
-        fin = true; clearTimeout(tm); tm = 0;
+        fin = true;
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
         if (!live) return;
         const rest = full.slice(stableLen);
         if (rest.trim()) addChunk(ttMd(rest));
@@ -3421,6 +3454,7 @@
       const r = await ask(h, (t) => {
         if (!alive || !ok() || key !== chatKey()) return;
         cur = t;
+        if (document.hidden) shown = cur.length;
         if (!live) {
           ty.remove();
           live = bubble("ai", "", "in streaming");
@@ -3430,14 +3464,18 @@
           liveB.appendChild(tail);
           log.appendChild(live);
         }
-        schedule();
+        kick();
       });
+      if (alive && ok() && live && !r.stopped) await drain(); else flushNow();
+      stopHook = null;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      fin = true;
       log.removeAttribute("aria-busy");
       log.setAttribute("aria-live", "polite");
-      clearTimeout(tm); tm = 0; fin = true;
       if (!alive || !ok()) return;
       busy = false;
       ty.remove();
+      const willAuto = !!(r.reply && r.inc && !r.stopped && !userStop && autoLeft > 0 && key === chatKey());
       if (r.reply) {
         const arr = (st.chats[key] = st.chats[key] || []);
         arr.push(r.inc ? { r: "a", c: r.reply, p: 1 } : { r: "a", c: r.reply });
@@ -3446,10 +3484,10 @@
         if (key === chatKey()) {
           if (live && live.isConnected) {
             finish(r.reply);
-            if (r.inc) incNote(live, r.error, true);
+            if (r.inc && !willAuto) incNote(live, r.error, true);
             if (follow) scrollEnd();
           } else {
-            const el = bubble("ai", r.reply, "in", r.inc ? { btn: true } : null);
+            const el = bubble("ai", r.reply, "in", r.inc && !willAuto ? { btn: true } : null);
             log.appendChild(el);
             scrollToEl(el);
           }
@@ -3474,7 +3512,8 @@
         if (r.code === "no_session") setTimeout(() => { if (ok()) location.hash = "#/signup?next=tutor"; }, 1800);
       }
       sync();
-      if (fine.matches) { try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+      if (willAuto) { autoLeft--; setTimeout(() => { if (alive && ok() && !busy) submit(false, "ادامه بده"); }, 500); }
+      else if (fine.matches) { try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     }
 
     const fine = window.matchMedia("(pointer: fine)");
