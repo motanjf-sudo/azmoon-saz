@@ -914,6 +914,7 @@
   const AI_MODELS = [
     { id: "ds-v3", group: "DeepSeek", label: "DeepSeek V3", provider: "deepseek", model: "deepseek-chat", files: "txt" },
     { id: "ds-v41", group: "DeepSeek", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash", files: "txt" },
+    { id: "ds-vision", group: "DeepSeek", label: "DeepSeek Vision", provider: "deepseek", model: "deepseek-v4-flash-vision-exp", files: "txt", tutorOnly: true, vision: true },
     { id: "gem-argon", group: "Gemini", label: "Gemini 4 Argon", provider: "gemini", model: "gemini-4-argon", files: "pdfimg" },
     { id: "gem-flash", group: "Gemini", label: "Gemini 3.8 Flash", provider: "gemini", model: "gemini-3.8-flash", files: "pdfimg" },
     { id: "cl-sonnet", group: "Claude", label: "Claude Sonnet 5.5", provider: "perplexity", model: "anthropic/claude-sonnet-5-5", files: "all" },
@@ -963,7 +964,7 @@
       '<div class="card ai-form">' +
       '<label for="mid">مدل هوش مصنوعی</label><select id="mid">' +
       AI_GROUPS.map((g) => '<optgroup label="' + g + '">' +
-        AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.files === "txt" ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
+        AI_MODELS.filter((m) => m.group === g && !m.tutorOnly).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.files === "txt" ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
       "</select>" +
       '<label>منبع سؤال‌ها</label>' + seg("src", [["file", "از روی فایل"], ["topic", "فقط موضوع (بدون فایل)"]]) +
       '<div id="srcFile"><div class="drop" id="drop" tabindex="0" role="button" aria-label="انتخاب فایل">' + ICONS.upload +
@@ -3020,6 +3021,7 @@
   ];
   const TT_CAP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9.5 12 5l10 4.5-10 4.5z"/><path d="M6 11.6v4.4c0 1.4 2.7 3 6 3s6-1.6 6-3v-4.4"/><path d="M22 9.5V15"/></svg>';
   const TT_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>';
+  const TT_IMG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3.5"/><circle cx="9" cy="10" r="1.7"/><path d="m21 16-5.2-5.2L8 19"/></svg>';
   const TT_NEW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
   /* نمایش متنِ پاسخ (Markdown ساده + فرمول‌های ریاضی) بدون innerHTML خام
@@ -3167,7 +3169,8 @@
       AI_GROUPS.map((g) => '<optgroup label="' + g + '">' + AI_MODELS.filter((m) => m.group === g).map((m) => '<option value="' + m.id + '">' + m.label + "</option>").join("") + "</optgroup>").join("") + "</select></label>" +
       '<button class="btn ghost small tt-new" id="ttNew" type="button">' + TT_NEW + "<span>گفت‌وگوی جدید</span></button></div>" +
       '<div class="tt-box" id="ttBox"><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
-      '<form class="chat-in tt-in" id="ttForm" autocomplete="off"><textarea id="ttTa" rows="1" maxlength="2000" dir="auto" enterkeyhint="send" placeholder="سؤالت را بنویس…" aria-label="سؤال شما"></textarea>' +
+      '<div class="tt-att" id="ttAttBox" hidden><img id="ttAttImg" alt="عکس پیوست‌شده"><span id="ttAttT">عکس پیوست شد؛ همراه همه‌ی پیام‌های این گفت‌وگو فرستاده می‌شود.</span><button type="button" id="ttAttX" aria-label="حذف عکس">' + CI.close + "</button></div>" +
+      '<form class="chat-in tt-in" id="ttForm" autocomplete="off"><button class="tt-clip" type="button" id="ttClip" aria-label="پیوست عکس" title="پیوست عکس" hidden>' + TT_IMG + '</button><input type="file" id="ttFile" accept="image/*" hidden><textarea id="ttTa" rows="1" maxlength="2000" dir="auto" enterkeyhint="send" placeholder="سؤالت را بنویس…" aria-label="سؤال شما"></textarea>' +
       '<button class="chat-send" type="submit" id="ttSend" aria-label="ارسال" disabled>' + CI.send + "</button></form></div>" +
       '<p class="muted tt-note" id="ttNote">معلم هوشمند ممکن است گاهی اشتباه کند؛ نکته‌های مهم را با کتاب درسی‌ات مقایسه کن.</p></section>';
 
@@ -3176,6 +3179,8 @@
     let busy = false;
     let alive = true;
     let lastFailed = null;
+    let att = null, attShown = false;   /* عکس پیوست (فقط مدل DeepSeek Vision): data URL کوچک‌شده */
+    const toast = (m) => { if (window.__pzToast) window.__pzToast(m); };
     let follow = true;
     let ctl = null, userStop = false, stopHook = null, autoLeft = 0;
     const tallEnough = () => (window.visualViewport ? window.visualViewport.height : window.innerHeight) >= 760;
@@ -3282,7 +3287,7 @@
     function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; }
     let sendMode = "";
     function sync() {
-      ["ttGrade", "ttSubj", "ttModel", "ttNew", "ttNew2"].forEach((id) => { $(id).disabled = busy; });
+      ["ttGrade", "ttSubj", "ttModel", "ttNew", "ttNew2", "ttClip", "ttAttX"].forEach((id) => { $(id).disabled = busy; });
       other.disabled = busy;
       const mode = busy ? "stop" : "send";
       if (mode !== sendMode) {
@@ -3317,7 +3322,7 @@
           method: "POST",
           signal: ctl ? ctl.signal : undefined,
           headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
-          body: JSON.stringify({ token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), provider: M.provider, model: M.model, stream: true, messages: history.slice(-16).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
+          body: JSON.stringify({ token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), provider: M.provider, model: M.model, stream: true, image: (M.vision && att) ? att : undefined, messages: history.slice(-16).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
         });
       } catch (e) {
         clearTimeout(hdr);
@@ -3380,7 +3385,14 @@
       if (!retry) {
         if (!h.length) log.innerHTML = "";
         h.push({ r: "u", c: text });
-        log.appendChild(bubble("user", text));
+        const ub = bubble("user", text);
+        if (att && aiModel(st.model).vision && !attShown) {   /* کوچکِ عکس فقط در اولین پیامی که با آن فرستاده می‌شود */
+          const im = document.createElement("img");
+          im.className = "tt-pic"; im.alt = "عکس پیوست‌شده"; im.src = att;
+          ub.querySelector(".tt-b").insertBefore(im, ub.querySelector(".tt-b").firstChild);
+          attShown = true;
+        }
+        log.appendChild(ub);
         if (!forced) { ta.value = ""; autosize(); }
         if (cfgOpen) { cfgOpen = false; applyCfg(); }
       }
@@ -3524,18 +3536,66 @@
     $("ttGrade").addEventListener("change", (e) => { st.grade = e.target.value; st.subject = TT_SUBJECTS[st.grade][0]; fillSubjects(); persist(); lastFailed = null; renderLog(); cfgOpen = !hist().length && tallEnough(); applyCfg(); sync(); });
     subj.addEventListener("change", () => { st.subject = subj.value; otherBox.hidden = st.subject !== TT_OTHER; persist(); lastFailed = null; renderLog(); cfgOpen = (!hist().length && tallEnough()) || st.subject === TT_OTHER; applyCfg(); sync(); if (st.subject === TT_OTHER) other.focus(); });
     other.addEventListener("input", () => { st.other = other.value.slice(0, 40); persist(); if (!hist().length && !busy) renderLog(); applyCfg(); sync(); });
-    $("ttModel").addEventListener("change", (e) => { st.model = e.target.value; persist(); applyCfg(); });
+    const clipSync = () => {
+      const v = !!aiModel(st.model).vision;
+      $("ttClip").hidden = !v;
+      if (!v && att) attReset();
+      ta.placeholder = v && att ? "درباره‌ی عکس بپرس…" : "سؤالت را بنویس…";
+      fit();
+    };
+    const attReset = () => { att = null; attShown = false; $("ttAttBox").hidden = true; $("ttAttImg").removeAttribute("src"); ta.placeholder = "سؤالت را بنویس…"; };
+    /* عکس را کوچک می‌کنیم (حداکثر ۱۲۸۰ پیکسل، JPEG) تا سریع بالا برود و روی گوشی‌های ضعیف هم کند نشود */
+    const readImg = (file) => new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const im = new Image();
+      im.onload = () => {
+        try {
+          let w = im.naturalWidth, h = im.naturalHeight;
+          if (!w || !h) throw new Error("size");
+          const k = Math.min(1, 1280 / Math.max(w, h));
+          w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k));
+          const c = document.createElement("canvas");
+          c.width = w; c.height = h;
+          const g = c.getContext("2d");
+          g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0, w, h);
+          let q = 0.84, out = c.toDataURL("image/jpeg", q);
+          while (out.length > 3000000 && q > 0.4) { q -= 0.12; out = c.toDataURL("image/jpeg", q); }
+          URL.revokeObjectURL(url); resolve(out);
+        } catch (e) { URL.revokeObjectURL(url); reject(e); }
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); reject(new Error("decode")); };
+      im.src = url;
+    });
+    $("ttClip").addEventListener("click", () => { if (!busy) $("ttFile").click(); });
+    $("ttFile").addEventListener("change", async () => {
+      const f = $("ttFile").files && $("ttFile").files[0];
+      $("ttFile").value = "";
+      if (!f || busy || !alive) return;
+      if (!/^image\//.test(f.type) && !/\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(f.name)) { toast("فقط فایل عکس را می‌شود پیوست کرد."); return; }
+      if (f.size > 25 * 1024 * 1024) { toast("حجم عکس زیاد است؛ عکس کوچک‌تری انتخاب کنید."); return; }
+      try {
+        const d = await readImg(f);
+        if (!alive || !aiModel(st.model).vision) return;
+        att = d; attShown = false;
+        $("ttAttImg").src = d; $("ttAttBox").hidden = false;
+        ta.placeholder = "درباره‌ی عکس بپرس…";
+        sync(); fit(); ta.focus();
+      } catch (e) { toast("این عکس باز نشد. یک عکس JPG یا PNG انتخاب کنید."); }
+    });
+    $("ttAttX").addEventListener("click", () => { if (busy) return; attReset(); sync(); fit(); ta.focus(); });
+    $("ttModel").addEventListener("change", (e) => { st.model = e.target.value; persist(); applyCfg(); clipSync(); });
     const newChat = async () => {
       if (!hist().length) { ta.focus(); return; }
       const yes = await askConfirm({ title: "گفت‌وگوی جدید؟", text: "گفت‌وگوی فعلیِ این درس پاک می‌شود.", yes: "پاک کن و شروع کن" });
       if (!yes || !ok()) return;
       st.chats[chatKey()] = [];
+      attReset();
       persist(); lastFailed = null; renderLog(); cfgOpen = tallEnough(); applyCfg(); sync(); ta.focus();
     };
     $("ttNew").addEventListener("click", newChat);
     $("ttNew2").addEventListener("click", newChat);
 
-    renderLog(); applyCfg(); sync(); autosize();
+    renderLog(); applyCfg(); sync(); autosize(); clipSync();
     requestAnimationFrame(fit);
     setTimeout(fit, 700);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
