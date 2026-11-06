@@ -222,14 +222,18 @@
     return data;
   }
 
+  /* اگر حافظه‌ی مرورگر بسته یا پر باشد (حالت خصوصی/مسدود)، داده‌ها دست‌کم تا بسته شدن همین زبانه در حافظه می‌مانند تا ورود و پیش‌نویس کار کند */
+  const memStore = Object.create(null);
   const store = {
     get(k, d) {
+      if (k in memStore) return memStore[k];
       try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; }
     },
     set(k, v) {
-      try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; }
+      try { localStorage.setItem(k, JSON.stringify(v)); delete memStore[k]; return true; } catch (e) { memStore[k] = v; return false; }
     },
     del(k) {
+      delete memStore[k];
       try { localStorage.removeItem(k); } catch (e) { /* ignore */ }
     },
     addQuiz(item) {
@@ -356,7 +360,8 @@
     const my = routeToken;
     app.innerHTML = '<div class="card"><p class="muted">در حال بارگذاری آزمون‌های شما…</p></div>';
     loadAccountQuizzes(sess).then((res) => {
-      if (my !== routeToken) return;
+      /* اگر در این فاصله صفحه عوض شد یا کاربر خارج/وارد حساب دیگری شد، فهرست قبلی نشان داده نشود */
+      if (my !== routeToken || (auth.get() || {}).token !== sess.token) return;
       const left = store.localQuizzes().filter((m) => !res.items.some((x) => x.id === m.id));
       let note = "";
       if (res.error) note = '<div class="card warn-card"><strong>فهرست حساب‌تان الان بارگذاری نشد.</strong><div class="hint">اتصال اینترنت را بررسی کنید و صفحه را دوباره باز کنید. آزمون‌هایتان گم نشده‌اند.</div></div>';
@@ -473,7 +478,7 @@
     setTitle(edit ? "ویرایش آزمون" : "ساخت آزمون " + M.label);
     if (!edit) setTimeout(fillGroupChip, 0);
     const backHref = edit ? "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret : withG("#/create");
-    const nSubs = edit ? edit.submissions : 0;
+    let nSubs = edit ? edit.submissions : 0;
 
     let uid = 0;
     const questions = [];
@@ -835,6 +840,15 @@
       } catch (e) {
         saveBtn.disabled = false;
         saveBtn.classList.remove("loading");
+        /* اگر در همین فاصله کسی در آزمون شرکت کرده باشد، تأیید پاک شدن نتایج همین‌جا پرسیده می‌شود (تغییرات از دست نمی‌رود) */
+        if (edit && !document.getElementById("confirmClear") && /پاک شدن نتایج/.test(String(e.message))) {
+          nSubs = 1;
+          msg.insertAdjacentHTML("beforebegin", '<div class="card warn-card" role="alert"><strong>⚠️ در همین فاصله کسی در این آزمون شرکت کرده است.</strong>' +
+            "<p>با ذخیره‌ی تغییرات، <b>همه‌ی نتایج قبلی برای همیشه پاک می‌شوند</b>.</p>" +
+            '<label class="chk"><input type="checkbox" id="confirmClear"><span>متوجه‌ام و می‌خواهم نتایج قبلی پاک شوند</span></label></div>');
+          msg.innerHTML = '<div class="err" role="alert">برای ذخیره، تیک بالا را بزنید و دوباره «ذخیره» را بزنید.</div>';
+          return;
+        }
         msg.innerHTML = '<div class="err" role="alert">' + esc(e.message) + "</div>";
       }
     });
@@ -1208,6 +1222,17 @@
       document.getElementById("apTxt").textContent = faNum(done) + " از " + faNum(n) + " سؤال پاسخ داده شده";
       document.getElementById("apBar").style.setProperty("--v", n ? done / n : 0);
     };
+    /* پاسخ‌ها در همین زبانه نگه داشته می‌شوند تا اگر صفحه دوباره بارگذاری شد یا نشست منقضی شد و دوباره وارد شد، از دست نروند */
+    const DKEY = "takeDraft:" + id;
+    const saveDraft = () => { try { sessionStorage.setItem(DKEY, JSON.stringify({ n: n, a: answers })); } catch (e) { /* بی‌اهمیت */ } };
+    const dropDraft = () => { try { sessionStorage.removeItem(DKEY); } catch (e) { /* بی‌اهمیت */ } };
+    try {
+      const d = JSON.parse(sessionStorage.getItem(DKEY) || "null");
+      if (d && d.n === n && Array.isArray(d.a)) d.a.forEach((v, i) => {
+        const r = Number.isInteger(v) ? form.querySelector('input[name="q' + i + '"][value="' + v + '"]') : null;
+        if (r) { r.checked = true; answers[i] = v; }
+      });
+    } catch (e) { /* بی‌اهمیت */ }
     updateProgress();
 
     form.addEventListener("change", (e) => {
@@ -1219,6 +1244,7 @@
           const c = form.querySelector('.qcard[data-i="' + m[1] + '"]');
           if (c) c.classList.remove("unanswered");
           updateProgress();
+          saveDraft();
         }
       }
     });
@@ -1254,6 +1280,7 @@
       btn.classList.add("loading");
       try {
         const r = await rpc("submit_quiz", { p_id: id, p_name: name, p_answers: answers, p_token: tokenOf() });
+        dropDraft();
         if (token !== routeToken) return;
         if (!accName()) store.set("lastName", name);
         showResult(quiz, qs, answers, r, token);
@@ -1271,7 +1298,7 @@
     const review = (q, i) => {
       const right = r.correct[i];
       const mine = answers[i];
-      const state = mine == null ? '<span class="badge skip">بدون پاسخ</span>' : mine === right ? '<span class="badge okb">درست</span>' : '<span class="badge badb">نادرست</span>';
+      const state = mine == null ? '<span class="badge skipb">بدون پاسخ</span>' : mine === right ? '<span class="badge okb">درست</span>' : '<span class="badge badb">نادرست</span>';
       const opts = q.options.map((o, j) => {
         const cls = j === right ? "right" : j === mine ? "wrong" : "";
         const tag = j === right ? " ✓ پاسخ درست" : j === mine ? " ✗ پاسخ شما" : "";
@@ -1627,7 +1654,8 @@
     return d.slice(0, 11);
   }
   const validPhone = (p) => /^09\d{9}$/.test(p);
-  const showPhone = (p) => (p.indexOf("@") >= 0 ? p : faNum(p.slice(0, 4) + " " + p.slice(4, 7) + " " + p.slice(7)));   /* ایمیل همان‌طور که هست */
+  /* ایمیل همان‌طور که هست؛ شماره در گروه‌های ۴-۳-۴. هر دو «جدا» (LRI…PDI) تا وسط متن فارسی ترتیبشان برعکس نشود */
+  const showPhone = (p) => "\u2066" + (p.indexOf("@") >= 0 ? p : faNum(p.slice(0, 4) + " " + p.slice(4, 7) + " " + p.slice(7))) + "\u2069";
   const validEmail = (e) => e.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
   /* ورودیِ «شماره یا ایمیل» (برای دعوت به گروه) → { v: مقدار پاک‌شده, ok } */
   function cleanIdent(raw) {
@@ -1638,7 +1666,7 @@
   }
   const mmss = (sec) => faNum(Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"));
 
-  const LOGO_CHECK = '<span class="logo-img" aria-hidden="true"></span>';
+  const LOGO_CHECK = '<svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M70.2 4.0C68.5 3.1 66.8 2.4 65.4 1.9C64.0 1.4 63.4 1.3 62.0 1.0C60.6 0.7 58.9 0.3 57.1 0.2C55.3 0.0 57.7 -0.3 51.1 0.0C44.6 0.3 23.8 1.3 17.8 1.8C11.7 2.3 15.7 2.3 14.8 2.8C13.9 3.4 13.1 4.0 12.5 5.1C11.9 6.2 11.5 -1.3 11.3 9.2C11.2 19.7 10.9 59.6 11.5 68.2C12.1 76.8 13.6 63.2 15.0 60.9C16.4 58.7 18.0 56.6 19.7 54.8C21.4 53.0 22.9 51.6 25.0 50.0C27.2 48.4 31.4 49.6 32.7 45.4C34.0 41.1 32.6 28.5 32.7 24.7C32.8 21.0 32.9 23.2 33.3 22.6C33.7 22.0 34.2 21.3 34.9 20.9C35.6 20.5 35.1 20.3 37.4 20.1C39.8 19.9 46.2 19.9 49.0 19.9C51.8 19.9 52.8 19.9 54.3 20.1C55.8 20.3 56.8 20.5 58.0 21.0C59.2 21.4 60.5 22.1 61.5 22.9C62.5 23.7 63.3 24.6 64.0 25.7C64.8 26.7 65.4 28.0 65.8 29.3C66.2 30.5 66.4 31.8 66.5 33.1C66.6 34.3 66.4 35.6 66.3 36.7C66.1 37.8 65.8 38.7 65.3 39.7C64.9 40.7 64.1 42.0 63.3 42.9C62.5 43.8 62.0 44.4 60.7 45.1C59.4 45.8 57.8 46.7 55.5 47.1C53.3 47.5 49.7 47.5 47.3 47.7C45.0 48.0 43.8 48.1 41.5 48.8C39.2 49.4 36.1 50.3 33.4 51.5C30.6 52.8 27.1 55.0 25.1 56.4C23.0 57.8 22.5 58.3 21.1 59.7C19.7 61.1 17.8 63.1 16.6 64.8C15.3 66.4 14.4 68.0 13.6 69.6C12.8 71.3 12.2 73.5 11.8 74.9C11.4 76.3 11.4 75.5 11.3 77.9C11.2 80.2 11.2 86.4 11.3 88.8C11.4 91.2 11.6 91.2 11.8 92.2C12.1 93.2 12.5 94.0 12.9 94.7C13.3 95.5 13.6 95.9 14.2 96.6C14.9 97.3 15.8 98.2 16.9 98.7C17.9 99.2 19.2 99.7 20.6 99.9C22.0 100.0 23.9 100.0 25.4 99.6C26.8 99.2 28.2 98.5 29.3 97.6C30.4 96.8 31.4 95.4 32.0 94.5C32.7 93.5 32.9 92.7 33.2 91.7C33.5 90.7 33.8 92.3 33.9 88.5C34.0 84.7 33.7 72.3 33.8 68.7C33.9 65.2 34.1 67.6 34.5 67.3C34.9 67.1 34.0 66.9 36.2 67.2C38.3 67.4 44.4 68.4 47.5 68.7C50.5 69.0 52.3 68.9 54.5 68.8C56.7 68.7 58.8 68.4 60.6 68.1C62.5 67.7 63.5 67.5 65.3 66.8C67.2 66.1 69.8 65.0 71.6 64.0C73.4 63.1 74.7 62.1 76.2 60.9C77.6 59.7 78.9 58.5 80.2 56.9C81.6 55.4 83.0 53.6 84.1 51.6C85.2 49.6 86.3 47.2 87.0 45.0C87.8 42.8 88.2 40.6 88.4 38.4C88.7 36.2 88.7 33.9 88.5 31.7C88.3 29.4 87.8 27.0 87.1 24.8C86.4 22.6 85.4 20.2 84.3 18.2C83.2 16.1 82.0 14.4 80.5 12.6C79.0 10.8 77.0 8.8 75.3 7.4C73.5 5.9 71.8 4.9 70.2 4.0Z"/></svg>';
 
   function ringSvg() {
     let ticks = "";
@@ -1662,7 +1690,7 @@
       '<div class="auth-wrap"><div class="card auth-card">' +
       '<div class="auth-logo">' + LOGO_CHECK + "</div>" +
       '<div id="authStep"></div></div>' +
-      '<div class="actions" style="justify-content:center"><a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a></div></div>";
+      '<div class="actions" id="authBack" style="justify-content:center"><a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a></div></div>";
     const box = document.getElementById("authStep");
 
     let alive = true;
@@ -1677,7 +1705,7 @@
     const stopTimers = () => { cancelAnimationFrame(raf); raf = 0; };
     const mount = (html) => { stopTimers(); box.innerHTML = '<div class="auth-step">' + html + "</div>"; return box.firstChild; };
 
-    const methodSeg = () => '<div class="seg auth-seg" role="group" aria-label="روش ثبت‌نام و ورود"><button type="button" data-m="phone" aria-pressed="' + (method === "phone") + '">با موبایل</button><button type="button" data-m="email" aria-pressed="' + (method === "email") + '">با ایمیل</button></div>';
+    const methodSeg = () => '<div class="seg auth-seg" role="group" aria-label="روش ثبت‌نام و ورود"><button type="button" data-m="phone" aria-pressed="' + (method === "phone") + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M11 18h2"/></svg><span>با موبایل</span></button><button type="button" data-m="email" aria-pressed="' + (method === "email") + '"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>با ایمیل</span></button></div>';
     const bindSeg = () => box.querySelectorAll("button[data-m]").forEach((b) => b.addEventListener("click", () => {
       if (b.dataset.m === method) return;
       method = b.dataset.m;
@@ -1705,9 +1733,17 @@
       ph.value = faNum(prefill || "");
       nmEl.value = fullName;
       nmEl.addEventListener("input", () => { nmEl.classList.remove("bad"); msg.textContent = ""; });
+      /* هنگام تایپ فقط رقم‌ها فارسی می‌شوند (و جای مکان‌نما حفظ می‌شود)؛ پیش‌شماره‌ی ‎+98‎ و صفر اول هنگام ارسال درست می‌شود */
       ph.addEventListener("input", () => {
-        const c = cleanPhone(ph.value);
-        ph.value = faNum(c);
+        const v = ph.value;
+        const keep = (t) => toLatinDigits(t).replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "");
+        const clean = keep(v).slice(0, 14);
+        const out = clean.replace(/\d/g, (d) => FA[d]);
+        if (out !== v) {
+          const pos = Math.min(keep(v.slice(0, ph.selectionStart == null ? v.length : ph.selectionStart)).length, out.length);
+          ph.value = out;
+          try { ph.setSelectionRange(pos, pos); } catch (e) { /* بی‌اهمیت */ }
+        }
         ph.classList.remove("bad");
         msg.textContent = "";
       });
@@ -1792,7 +1828,7 @@
         '<div class="ring" id="ring" role="timer" aria-label="زمان باقی‌مانده تا انقضای کد">' + ringSvg() +
         '<div class="ring-t"><b id="ringT">۲:۰۰</b><span>زمان باقی‌مانده</span></div></div>' +
         '<div class="otp" id="otp" role="group" aria-label="کد ۵ رقمی">' +
-        [0, 1, 2, 3, 4].map((i) => '<input type="text" inputmode="numeric" maxlength="1" autocomplete="' + (i === 0 ? "one-time-code" : "off") + '" aria-label="رقم ' + faNum(i + 1) + '">').join("") +
+        [0, 1, 2, 3, 4].map((i) => '<input type="text" inputmode="numeric" maxlength="' + (i === 0 ? 5 : 1) + '" autocomplete="' + (i === 0 ? "one-time-code" : "off") + '" aria-label="رقم ' + faNum(i + 1) + '">').join("") +
         "</div>" +
         (info.dev_code ? '<div class="auth-dev">حالت آزمایشی (ارسال ' + (kind === "email" ? "ایمیل" : "پیامک") + ' هنوز فعال نیست): کد شما <b>' + faNum(info.dev_code) + "</b></div>" : "") +
         '<div class="auth-msg info" id="cMsg" role="alert"></div>' +
@@ -1949,6 +1985,8 @@
 
     /* ----- موفقیت: خودکار وارد می‌شود ----- */
     function stepWelcome(created) {
+      const bk = document.getElementById("authBack");
+      if (bk) bk.hidden = true;   /* دکمه‌ی «ورود به سایت» همین کار را می‌کند */
       mount(
         '<div class="auth-welcome"><div class="ring done" id="ring">' + ringSvg() +
         '<div class="okmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>' +
@@ -2916,7 +2954,7 @@
         run(() => gcall("group_member_remove", { p_group: gid, p_user: uid }), "عضو حذف شد");
       } else if (act === "cancel") {
         const ph = b.dataset.p;
-        if (!(await askConfirm({ title: "دعوت لغو شود؟", text: "دعوت برای شماره‌ی " + showPhone(ph) + " لغو می‌شود و او دیگر آن را نمی‌بیند.", yes: "بله، لغو کن", danger: true })) || !ok()) return;
+        if (!(await askConfirm({ title: "دعوت لغو شود؟", text: "دعوت برای " + (String(ph).indexOf("@") >= 0 ? "ایمیل " : "شماره‌ی ") + showPhone(ph) + " لغو می‌شود و او دیگر آن را نمی‌بیند.", yes: "بله، لغو کن", danger: true })) || !ok()) return;
         b.disabled = true; b.classList.add("loading");
         run(() => gcall("group_invite_cancel", { p_group: gid, p_phone: ph }), "دعوت لغو شد");
       } else if (act === "leave") {
@@ -2992,7 +3030,7 @@
       '<div class="gate-box" role="dialog" aria-modal="true" aria-labelledby="gateT" aria-describedby="gateD">' +
       '<div class="gate-ic">' + LOCK_ICON + "</div>" +
       '<h2 id="gateT">' + (tut ? "برای استفاده از معلم هوشمند وارد شوید" : grp ? "برای دیدن گروه‌ها وارد شوید" : take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
-      '<p id="gateD">' + (tut ? "معلم هوشمند" : grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل یا ایمیل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : (grp || tut) ? " بعد از ورود، مستقیم به همین صفحه برمی‌گردید." : "") + "</p>" +
+      '<p id="gateD">' + (tut ? "معلم هوشمند" : grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل یا ایمیل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : "") + "</p>" +
       '<a class="btn wide" id="gateGo" href="#/signup' + (/^create/.test(target) ? "" : "?next=" + target) + '">ثبت‌نام / ورود</a>' +
       '<a class="gate-back" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
     document.body.appendChild(g);
@@ -3536,7 +3574,7 @@
         }
         log.appendChild(e);
         follow = true; scrollEnd();
-        if (r.code === "no_session") setTimeout(() => { if (ok()) location.hash = "#/signup?next=tutor"; }, 1800);
+        if (r.code === "no_session") setTimeout(() => { if (ok()) location.hash = "#/signup"; }, 1800);
       }
       sync();
       if (willAuto) { autoLeft--; setTimeout(() => { if (alive && ok() && !busy) submit(false, "ادامه بده"); }, 500); }
@@ -3681,7 +3719,8 @@
       else cleanup = auth.get() ? viewGroup(parts[1], token) : viewGate("g/" + parts[1], token);
     } else if (parts[0] === "signup") {
       const nx = ((/(^|&)next=([^&]*)/.exec(query) || [])[2] || "");
-      signupNext = /^(q\/[A-Za-z0-9_-]{1,64}|groups|tutor|g\/[0-9a-f]{8})$/.test(nx) ? nx : "";
+      /* بعد از ثبت‌نام/ورود همیشه به خانه می‌رود؛ فقط لینک مستقیم یک آزمون (q/…) بعد از ورود همان آزمون را باز می‌کند */
+      signupNext = /^q\/[A-Za-z0-9_-]{1,64}$/.test(nx) ? nx : "";
       cleanup = viewSignup();
     } else if (parts[0] === "tutor") {
       cleanup = auth.get() ? viewTutor(token) : viewGate("tutor", token);
