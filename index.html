@@ -987,8 +987,8 @@
   .site-foot-in{max-width:1120px;margin:0 auto;padding:38px 18px 34px;display:grid;
     grid-template-columns:auto minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:34px 44px;align-items:start}
   .ft-seal{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:14px}
-  #zibal{display:flex;align-items:center;justify-content:center;line-height:0}
-  #zibal img{height:120px!important;width:auto;max-width:100%}
+  #zibal{display:flex;align-items:center;justify-content:center;line-height:0;max-width:100%;position:relative}
+  #zibal iframe{border:0;display:block;max-width:100%;background:transparent}
   .trust{display:flex;align-items:center;justify-content:center}
   .trust a{display:flex;align-items:center;justify-content:center;min-width:104px;min-height:112px;background:#fff;border-radius:16px;padding:8px 10px;line-height:0;box-shadow:0 6px 18px rgba(0,0,0,.22)}
   .trust img{max-width:92px;height:auto;display:block}
@@ -1115,7 +1115,7 @@
 
   <main id="app" class="wrap" tabindex="-1"></main>
   <footer class="site-foot" id="siteFoot"><div class="site-foot-in">
-    <div class="ft-seal"><div class="trust" id="trustSeal"><a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8331341&Code=8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8331341&Code=8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU' alt='' style='cursor:pointer' code='8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU'></a></div><div id="zibal"><script src="https://zibal.ir/trust/scripts/zibal-trust-v4.js" type="text/javascript"></script></div></div>
+    <div class="ft-seal"><div class="trust" id="trustSeal"><a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8331341&Code=8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8331341&Code=8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU' alt='' style='cursor:pointer' code='8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU'></a></div><div id="zibal"></div></div>
     <section class="ft-col ft-about" aria-labelledby="ftAbout">
       <h3 id="ftAbout">درباره‌ی ما</h3>
       <p>پازمونک جایی است برای ساختن آزمون آنلاین در چند دقیقه. آزمونت را می‌سازی، لینکش را برای دوستان یا دانش‌آموزهایت می‌فرستی و نتیجه‌ی همه را همان لحظه می‌بینی؛ ساده و سریع.</p>
@@ -1171,7 +1171,52 @@
       root.setAttribute('data-theme', next);
       try { localStorage.setItem('theme', next); } catch (e) { /* storage blocked */ }
       syncMeta(next);
+      zibalSync(next);
     }
+    /* نماد زیبال: برای هر حالت، نسخه‌ی خودش (روشن یا تیره) در یک قاب جدا و ایمن بارگذاری می‌شود.
+       قاب جدا یعنی اسکریپت زیبال به بقیه‌ی صفحه دست نمی‌زند و اگر کند یا قطع بود، سایت اصلی را متوقف نمی‌کند. */
+    var zibalWrap = document.getElementById('zibal'), zibalMode = '';
+    function zibalSync(mode) {
+      if (!zibalWrap) return;
+      mode = mode === 'dark' ? 'dark' : 'light';
+      if (mode === zibalMode) return;
+      zibalMode = mode;
+      var old = zibalWrap.querySelector('iframe');
+      var f = document.createElement('iframe');
+      f.title = 'نماد زیبال';
+      f.setAttribute('scrolling', 'no');
+      f.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:120px;height:120px;color-scheme:' + mode;
+      var shown = false;
+      var src = 'https://zibal.ir/trust/scripts/zibal-trust-v4.js' + (mode === 'dark' ? '?theme=dark' : '');
+      f.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="' + mode + '"><base target="_blank">' +
+        '<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}#zibal{display:inline-block;line-height:0}#zibal img{height:120px!important;width:auto;max-width:none}</style></head>' +
+        '<body><div id="zibal"><script src="' + src + '" type="text/javascript"><\/script></div></body></html>';
+      var tries = 0;
+      var fit = function () {
+        try {
+          var d = f.contentDocument, z = d && d.getElementById('zibal');
+          var r = z && z.getBoundingClientRect();
+          if (r && r.width > 4 && r.height > 4) {
+            f.style.width = Math.ceil(r.width) + 'px'; f.style.height = Math.ceil(r.height) + 'px';
+            if (!shown) { shown = true; f.style.cssText = 'position:static;opacity:1;width:' + f.style.width + ';height:' + f.style.height + ';color-scheme:' + mode; if (old && old.parentNode) old.parentNode.removeChild(old); }
+            return true;
+          }
+        } catch (e) { /* ignore */ }
+        return false;
+      };
+      f.addEventListener('load', function () {
+        var tick = function () { if (fit() || ++tries > 25) return; setTimeout(tick, 400); };
+        tick();
+        try { var im = f.contentDocument.getElementById('zibal'); if (im) im.addEventListener('load', function () { setTimeout(fit, 30); }, true); } catch (e) { /* ignore */ }
+      });
+      zibalWrap.appendChild(f);
+    }
+    window.addEventListener('load', function () { setTimeout(function () { zibalSync(currentTheme()); }, 300); });
+    try {
+      var zmq = window.matchMedia('(prefers-color-scheme: dark)');
+      var zch = function () { if (!root.getAttribute('data-theme')) zibalSync(currentTheme()); };
+      if (zmq.addEventListener) zmq.addEventListener('change', zch); else if (zmq.addListener) zmq.addListener(zch);
+    } catch (e) { /* ignore */ }
     function weakDevice() {
       return (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
     }
