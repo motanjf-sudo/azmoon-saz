@@ -2028,6 +2028,123 @@
   }
 
 
+
+  /* ---------- پنل مدیریت (فقط برای ادمین؛ دسترسی سمت سرور بررسی می‌شود و این دکمه فقط یک میان‌بر است) ---------- */
+  let adminTok = "", adminOk = false;
+  function adminSync() {
+    const b = document.getElementById("admBtn");
+    if (!b) return;
+    const s = auth.get();
+    const root = document.documentElement;
+    if (!s) { adminTok = ""; adminOk = false; b.hidden = true; root.classList.remove("has-adm"); return; }
+    if (adminTok === s.token) { b.hidden = !adminOk; root.classList.toggle("has-adm", adminOk); return; }
+    const t = s.token;
+    adminTok = t; adminOk = false; b.hidden = true; root.classList.remove("has-adm");
+    rpc("admin_check", { p_token: t }).then((r) => {
+      const cur = auth.get();
+      if (!cur || cur.token !== t) return;
+      adminOk = r === true;
+      b.hidden = !adminOk;
+      document.documentElement.classList.toggle("has-adm", adminOk);
+    }).catch(() => { if (adminTok === t) adminTok = ""; });
+  }
+
+  function viewAdmin(token) {
+    setTitle("پنل مدیریت");
+    if (!auth.get()) { location.replace("#/signup"); return null; }
+    const ok = () => token === routeToken;
+    const PER = 25;
+    let page = 0, q = "", seq = 0, timer = 0, total = 0, loaded = false;
+    const REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
+    const fmtD = (v) => {
+      const t = new Date(v);
+      if (isNaN(t)) return ["—", ""];
+      try {
+        return [t.toLocaleDateString("fa-IR", { timeZone: "Asia/Tehran", year: "numeric", month: "long", day: "numeric" }), t.toLocaleTimeString("fa-IR", { timeZone: "Asia/Tehran", hour: "2-digit", minute: "2-digit" })];
+      } catch (e) {
+        return [t.toLocaleDateString("fa-IR"), t.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })];
+      }
+    };
+    app.innerHTML =
+      '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
+      '<div class="page-head"><h1>پنل مدیریت</h1><button class="btn small ghost" id="admRef" type="button">' + REFRESH + " بروزرسانی</button></div>" +
+      '<p class="muted">فهرست کاربرانی که در پازمونک ثبت‌نام کرده‌اند؛ تازه‌ترین‌ها بالاتر.</p>' +
+      '<div class="adm-st" id="admSt" aria-live="polite"></div>' +
+      '<div class="card adm-card"><div class="adm-search"><input type="text" id="admQ" inputmode="search" autocomplete="off" spellcheck="false" maxlength="80" placeholder="جستجو بر اساس نام، شماره یا ایمیل" aria-label="جستجو"></div>' +
+      '<div id="admErr" class="err" role="alert" hidden></div>' +
+      '<div id="admList" aria-live="polite"><p class="muted">در حال بارگذاری…</p></div>' +
+      '<div class="adm-pager" id="admPager" hidden></div></div>';
+    const $ = (id) => document.getElementById(id);
+    const en = (v) => String(v).replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+
+    const drawStats = (st) => {
+      const it = [["کل کاربران", st.total], ["امروز", st.today], ["۷ روز اخیر", st.week], ["با شماره‌ی موبایل", st.phone], ["با ایمیل", st.email]];
+      $("admSt").innerHTML = it.map((x) => "<div><b>" + faNum(x[1] || 0) + "</b><span>" + x[0] + "</span></div>").join("");
+    };
+    const rowHtml = (u, i) => {
+      const d = fmtD(u.created_at);
+      const nm = cleanName(u.name);
+      return "<tr><td data-l=\"ردیف\" class=\"adm-i\">" + faNum(page * PER + i + 1) + "</td>" +
+        '<td data-l="نام"><div class="adm-n"><span class="av-s" aria-hidden="true">' + esc(nm ? initialOf(nm) : "؟") + "</span><span>" + (nm ? esc(nm) : '<em class="muted">بدون نام</em>') + "</span></div></td>" +
+        '<td data-l="موبایل">' + (u.phone ? "<span class=\"adm-ltr\">" + esc(showPhone(u.phone)) + "</span>" : '<span class="muted">—</span>') + "</td>" +
+        '<td data-l="ایمیل">' + (u.email ? '<span class="adm-ltr adm-em" dir="ltr">' + esc(u.email) + "</span>" : '<span class="muted">—</span>') + "</td>" +
+        '<td data-l="تاریخ ثبت‌نام"><span>' + esc(d[0]) + '</span> <small class="muted">' + esc(d[1]) + "</small></td></tr>";
+    };
+    const drawList = (r) => {
+      const rows = r.rows || [];
+      total = r.total || 0;
+      const pages = Math.max(1, Math.ceil(total / PER));
+      $("admList").innerHTML = rows.length
+        ? '<div class="adm-tw"><table class="adm-t"><thead><tr><th>ردیف</th><th>نام</th><th>موبایل</th><th>ایمیل</th><th>تاریخ ثبت‌نام</th></tr></thead><tbody>' + rows.map(rowHtml).join("") + "</tbody></table></div>"
+        : '<p class="muted adm-empty">' + (q ? "نتیجه‌ای پیدا نشد." : "هنوز کسی ثبت‌نام نکرده است.") + "</p>";
+      const pg = $("admPager");
+      pg.hidden = total <= PER;
+      pg.innerHTML =
+        '<button class="btn small ghost" type="button" id="admPrev"' + (page <= 0 ? " disabled" : "") + ">قبلی</button>" +
+        "<span>صفحه‌ی " + faNum(page + 1) + " از " + faNum(pages) + (q ? " · " + faNum(total) + " نتیجه" : "") + "</span>" +
+        '<button class="btn small ghost" type="button" id="admNext"' + (page >= pages - 1 ? " disabled" : "") + ">بعدی</button>";
+      const go = (n) => { page = n; load(); const t = $("admQ"); if (t) t.scrollIntoView({ block: "start", behavior: reduceMotion() ? "auto" : "smooth" }); };
+      const pv = $("admPrev"), nx = $("admNext");
+      if (pv) pv.addEventListener("click", () => go(page - 1));
+      if (nx) nx.addEventListener("click", () => go(page + 1));
+    };
+
+    const load = async () => {
+      const my = ++seq;
+      const list = $("admList");
+      if (list && loaded) list.classList.add("busy");
+      let r;
+      try {
+        r = await rpc("admin_users", { p_token: tokenOf(), p_q: q || null, p_limit: PER, p_offset: page * PER });
+      } catch (e) {
+        if (my !== seq || !ok()) return;
+        if (/forbidden|دسترسی مجاز نیست/.test(e.message)) { location.replace("#/"); return; }
+        if (list) list.classList.remove("busy");
+        const er = $("admErr");
+        if (!loaded) $("admList").innerHTML = "";
+        er.hidden = false; er.textContent = e.message || "خطایی رخ داد.";
+        return;
+      }
+      if (my !== seq || !ok()) return;
+      if (!r || r.ok !== true) { location.replace("#/"); return; }
+      if (!(r.rows || []).length && page > 0 && r.total > 0) { page = 0; return load(); }
+      loaded = true;
+      $("admErr").hidden = true;
+      if (list) list.classList.remove("busy");
+      drawStats(r.stats || {});
+      drawList(r);
+    };
+
+    $("admQ").addEventListener("input", (e) => {
+      clearTimeout(timer);
+      const v = cleanName(en(e.target.value));
+      timer = setTimeout(() => { if (v === q) return; q = v; page = 0; load(); }, 300);
+    });
+    $("admRef").addEventListener("click", () => load());
+    load();
+    return () => { clearTimeout(timer); seq++; };
+  }
+
   /* ---------- گروه‌ها ---------- */
   const GROUP_ID_RE = /^[0-9a-f]{8}$/;
   let createGroup = "";        /* گروهِ انتخاب‌شده برای ساخت آزمون ("" یعنی آزمون عمومی) */
@@ -2131,6 +2248,7 @@
     inv.seen = null;
     const g = document.getElementById("grpBtn");
     if (g) g.hidden = !auth.get();
+    adminSync();
     if (!auth.get()) { setInviteBadge(0); groupsCache = null; return; }
     pollInvites();
     inv.timer = setInterval(pollInvites, 45000);
@@ -3724,6 +3842,8 @@
       cleanup = viewSignup();
     } else if (parts[0] === "tutor") {
       cleanup = auth.get() ? viewTutor(token) : viewGate("tutor", token);
+    } else if (parts[0] === "admin") {
+      cleanup = viewAdmin(token);
     } else if (parts[0] === "account") {
       cleanup = viewAccount();
     } else if (parts[0] === "create" && !auth.get()) {
