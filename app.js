@@ -506,7 +506,7 @@
       '<div class="seg" role="group" aria-label="مخاطب آزمون"><button type="button" data-aud="pub" aria-pressed="' + (!createGroup) + '">همه (عمومی)</button><button type="button" data-aud="grp" aria-pressed="' + (!!createGroup) + '">فقط یک گروه</button></div>' +
       '<p class="hint" id="audHint" style="margin:6px 0 0"></p><div id="audSel" hidden></div></div>' +
       '<div class="types" id="typesBox"><a class="card type-card ai-card" href="' + withG("#/create/ai") + '" data-base="#/create/ai"><span class="ti">' + ICONS.spark + '</span><h3>ساخت با هوش مصنوعی <span class="soon-badge ai-badge">جدید</span></h3>' +
-      "<p>یک فایل متنی بدهید یا فقط موضوع را بنویسید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید.</p></a>" +
+      "<p>فقط موضوع را بنویسید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید. هر سؤال ۱ توکن است.</p></a>" +
       ["tf", "mcq", "essay", "mixed"].map(card).join("") + "</div>";
     const dropBtn = document.getElementById("dropDraft");
     if (dropBtn) dropBtn.addEventListener("click", () => { store.del("quizDraft"); viewChoose(); });
@@ -973,28 +973,6 @@
   /* ---------- ساخت آزمون با هوش مصنوعی ---------- */
   /* اسم نشانی تابع روی Supabase (در لیست Edge Functions ستون URL را ببینید) */
   const AI_FN = "node-api";
-  const AI_MAX_BYTES = 4 * 1024 * 1024;
-  const AI_FILE_TYPES = {
-    pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp",
-    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", doc: "application/msword", rtf: "application/rtf",
-  };
-
-  function readFileAsB64(file) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onerror = () => reject(new Error("خواندن فایل ممکن نشد."));
-      r.onload = () => resolve(String(r.result).split(",")[1] || "");
-      r.readAsDataURL(file);
-    });
-  }
-  function readFileAsText(file) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onerror = () => reject(new Error("خواندن فایل ممکن نشد."));
-      r.onload = () => resolve(String(r.result));
-      r.readAsText(file, "utf-8");
-    });
-  }
 
   /* خروجی سرور را قبل از ساخت آزمون دوباره بررسی می‌کنیم */
   function normalizeAI(d) {
@@ -1015,31 +993,84 @@
     return out.slice(0, LIMITS.questions);
   }
 
-  /* مدل‌های قابل انتخاب. provider/model همان چیزی است که به تابع سرور می‌رود. */
-  /* files: نوع فایلی که مدل می‌خواند. txt = فقط متن؛ pdfimg = متن، PDF و عکس؛ all = متن، PDF، Word و عکس */
+  /* مدل‌های معلم هوشمند (ساخت آزمون فقط با DeepSeek V4.1 است و مدلی برای انتخاب ندارد) */
   const AI_MODELS = [
-    { id: "ds-v3", group: "DeepSeek", label: "DeepSeek V3", provider: "deepseek", model: "deepseek-chat", files: "txt" },
-    { id: "ds-v41", group: "DeepSeek", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash", files: "txt" },
-    { id: "ds-vision", group: "DeepSeek", label: "DeepSeek Vision", provider: "deepseek", model: "deepseek-v4-flash-vision-exp", files: "txt", tutorOnly: true, vision: true },
-    { id: "gem-argon", group: "Gemini", label: "Gemini 4 Argon", provider: "gemini", model: "gemini-4-argon", files: "pdfimg" },
-    { id: "gem-flash", group: "Gemini", label: "Gemini 3.8 Flash", provider: "gemini", model: "gemini-3.8-flash", files: "pdfimg" },
-    { id: "cl-sonnet", group: "Claude", label: "Claude Sonnet 5.5", provider: "perplexity", model: "anthropic/claude-sonnet-5-5", files: "all" },
-    { id: "cl-haiku", group: "Claude", label: "Claude Haiku 5.5", provider: "perplexity", model: "anthropic/claude-haiku-5-5", files: "all" },
-    { id: "cl-opus", group: "Claude", label: "Claude Opus 5.5", provider: "perplexity", model: "anthropic/claude-opus-5-5", files: "all" },
-    { id: "gpt-luna", group: "GPT", label: "GPT-6 Luna", provider: "perplexity", model: "openai/gpt-6-luna", files: "all" },
-    { id: "gpt-sol", group: "GPT", label: "GPT-6.1 Sol", provider: "perplexity", model: "openai/gpt-6.1-sol", files: "all" },
-    { id: "glm", group: "GLM", label: "GLM 5.3", provider: "perplexity", model: "perplexity/glm-5.3", files: "all" },
+    { id: "ds-v41", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash" },
+    { id: "ds-vision", label: "DeepSeek Vision", provider: "deepseek", model: "deepseek-v4-flash-vision-exp", vision: true },
   ];
-  const AI_GROUPS = AI_MODELS.map((m) => m.group).filter((g, i, a) => a.indexOf(g) === i);
-  const AI_EXT = {
-    txt: ["txt", "md"],
-    pdfimg: ["txt", "md", "pdf", "png", "jpg", "jpeg", "webp"],
-    all: ["txt", "md", "pdf", "png", "jpg", "jpeg", "webp", "docx", "doc", "rtf"],
-  };
-  const aiOk = (M, ext) => AI_EXT[M.files].indexOf(ext) >= 0;
-  const aiHint = (M) => (M.files === "txt" ? "فایل متنی (TXT یا MD)" : M.files === "pdfimg" ? "PDF، عکس یا فایل متنی (TXT یا MD)" : "PDF، Word، عکس یا فایل متنی (TXT یا MD)") + "، حداکثر ۴ مگابایت";
-  const aiAccept = (M) => AI_EXT[M.files].map((e) => "." + e).join(",") + (M.files === "txt" ? ",text/plain,text/markdown" : "");
   const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[0];
+
+  /* ---------- توکن: اعتبار ساخت آزمون با هوش مصنوعی (هر توکن = یک سؤال) ---------- */
+  const TK_FREE = 20;          /* هدیه‌ی ثبت‌نام؛ فقط برای متن نمایشی (مقدار واقعی را دیتابیس می‌دهد) */
+  const TK_MAX_BUY = 10000;
+  const TK_MIN_STEP = 10;
+  /* قیمت پلکانی (تومان): تعداد خریداری‌شده در هر بازه باشد، همه‌ی توکن‌ها با نرخ همان بازه حساب می‌شوند */
+  const TK_TIERS = [[50, 1000], [100, 950], [250, 900], [500, 850], [1000, 800], [Infinity, 750]];
+  const TK_TIER_LBL = ["۱ تا ۵۰ توکن", "۵۱ تا ۱۰۰ توکن", "۱۰۱ تا ۲۵۰ توکن", "۲۵۱ تا ۵۰۰ توکن", "۵۰۱ تا ۱٬۰۰۰ توکن", "بیشتر از ۱٬۰۰۰ توکن"];
+  const tkTier = (n) => { for (let i = 0; i < TK_TIERS.length; i++) if (n <= TK_TIERS[i][0]) return i; return TK_TIERS.length - 1; };
+  const tkRate = (n) => TK_TIERS[tkTier(n)][1];
+  const tkPrice = (n) => n * tkRate(n);
+  const tkOffPct = (n) => Math.round((1000 - tkRate(n)) / 10);
+  const fmtN = (n) => faNum(String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "٬"));
+  const COIN = '<span class="coin" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4.2l2.1 5.7 5.7 2.1-5.7 2.1L12 19.8l-2.1-5.7L4.2 12l5.7-2.1z"/></svg></span>';
+
+  const tk = { bal: null, at: 0, tok: "" };
+  let tkBusy = null, tkAnim = 0;
+  let tkLast = null;           /* مصرف آخرین ساخت آزمون (برای یادداشت روی صفحه‌ی آزمونِ تازه‌ساخته) */
+  const tkTxt = () => (tk.bal == null ? "…" : fmtN(tk.bal));
+  /* نشان توکن در هدر؛ کلاس has-tk فقط برای جمع‌کردن هدر در گوشی‌های خیلی کوچک است */
+  function tkChip(show) {
+    const chip = document.getElementById("tkBtn");
+    if (chip) chip.hidden = !show;
+    document.documentElement.classList.toggle("has-tk", !!show);
+    return chip;
+  }
+
+  /* موجودی را همه‌جا (نشان هدر، منوی پروفایل، صفحه‌ها) یک‌جا به‌روز می‌کند */
+  function tkSet(n) {
+    if (typeof n !== "number" || !isFinite(n) || n < 0) return;
+    n = Math.floor(n);
+    const prev = tk.bal;
+    tk.bal = n;
+    tk.at = Date.now();
+    const nodes = Array.prototype.slice.call(document.querySelectorAll("[data-tk]"));
+    const chip = tkChip(!!auth.get());
+    if (chip) {
+      chip.classList.toggle("zero", n === 0);
+      chip.setAttribute("aria-label", "موجودی توکن: " + faNum(n) + " توکن");
+    }
+    cancelAnimationFrame(tkAnim);
+    const paint = (v) => { nodes.forEach((e) => { e.textContent = fmtN(v); }); };
+    if (prev == null || prev === n || reduceMotion() || !nodes.length) {
+      paint(n);
+    } else {
+      const t0 = performance.now(), D = 700;
+      const step = (t) => {
+        const k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 3);
+        paint(prev + (n - prev) * e);
+        if (k < 1) tkAnim = requestAnimationFrame(step); else paint(n);
+      };
+      tkAnim = requestAnimationFrame(step);
+      if (chip) { chip.classList.remove("bump"); void chip.offsetWidth; chip.classList.add("bump"); }
+    }
+    window.dispatchEvent(new Event("tkchange"));
+  }
+  function tkSync(force) {
+    const s = auth.get();
+    if (!s) { tk.bal = null; tk.tok = ""; tkChip(false); return Promise.resolve(null); }
+    if (tk.tok !== s.token) { tk.tok = s.token; tk.bal = null; force = true; tkChip(false); }
+    if (!force && tk.bal != null && Date.now() - tk.at < 15000) return Promise.resolve(tk.bal);
+    if (tkBusy) return tkBusy;
+    const mine = s.token;
+    tkBusy = rpc("my_tokens", { p_token: mine }).then((n) => {
+      const cur = auth.get();
+      if (cur && cur.token === mine && typeof n === "number") tkSet(n);
+      return tk.bal;
+    }).catch(() => tk.bal).then((v) => { tkBusy = null; return v; });
+    return tkBusy;
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) tkSync(); });
+  window.addEventListener("focus", () => tkSync());
 
   /* قفل کامل برنامه هنگام ساخت آزمون با هوش مصنوعی */
   let genLockHash = null;
@@ -1055,9 +1086,12 @@
   function viewAI() {
     setTitle("ساخت آزمون با هوش مصنوعی");
     setTimeout(fillGroupChip, 0);
-    const st = { src: "file", mid: "ds-v3", mode: "mixed", level: "medium", count: 10, file: null };
+    tkSync(true);
+    const st = { mode: "mixed", level: "medium", count: 10 };
     let busy = false;
     let ctl = null;
+    let gone = false;
+    let pending = null;     /* آزمونی که ساخته شد ولی ذخیره‌اش نشد؛ توکنش کم شده، پس برای ذخیره‌ی دوباره نگه داشته می‌شود */
 
     const seg = (name, items) =>
       '<div class="seg" role="group" data-seg="' + name + '">' +
@@ -1066,60 +1100,46 @@
     app.innerHTML =
       '<a class="back" href="' + withG("#/create") + '">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
       "<h1>ساخت آزمون با هوش مصنوعی</h1>" + (createGroup ? '<div id="grpChipBox">' + groupChip(groupName(createGroup)) + "</div>" : "") +
-      '<p class="muted">فایل یا موضوع را بدهید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
+      '<p class="muted">موضوع را بنویسید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
       '<div class="card ai-form">' +
-      '<label for="mid">مدل هوش مصنوعی</label><select id="mid">' +
-      AI_GROUPS.map((g) => '<optgroup label="' + g + '">' +
-        AI_MODELS.filter((m) => m.group === g && !m.tutorOnly).map((m) => '<option value="' + m.id + '"' + (m.id === st.mid ? " selected" : "") + ">" + m.label + (m.files === "txt" ? " (فقط متن و موضوع)" : "") + "</option>").join("") + "</optgroup>").join("") +
-      "</select>" +
-      '<label>منبع سؤال‌ها</label>' + seg("src", [["file", "از روی فایل"], ["topic", "فقط موضوع (بدون فایل)"]]) +
-      '<div id="srcFile"><div class="drop" id="drop" tabindex="0" role="button" aria-label="انتخاب فایل">' + ICONS.upload +
-      '<strong id="dropT">فایل را اینجا بکشید یا انتخاب کنید</strong><span class="hint" id="dropHint"></span></div>' +
-      '<input id="file" type="file" hidden></div>' +
-      '<div id="srcTopic" hidden><label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off"></div>' +
-      '<div id="topicExtra"><label for="note">توضیح اضافه (اختیاری)</label><input id="note" type="text" maxlength="300" placeholder="مثلاً: فقط از فصل دوم سؤال بده" autocomplete="off"></div>' +
+      '<div class="tk-strip">' + COIN + '<span class="tk-strip-t">موجودی شما: <b data-tk>' + tkTxt() + '</b> توکن</span><a class="tk-strip-a" href="#/tokens">خرید توکن</a></div>' +
+      '<label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off">' +
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
       '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
       '<label for="count">تعداد سؤال</label><div class="stepper"><button type="button" id="cm" aria-label="کمتر">−</button><input id="count" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="cp" aria-label="بیشتر">+</button><span class="hint">از ۱ تا ۳۰</span></div>' +
+      '<p class="tk-cost" id="tkCost" aria-live="polite"></p>' +
+      '<p class="hint tk-model">آزمون با هوش مصنوعی DeepSeek V4.1 ساخته می‌شود.</p>' +
       "</div>" +
       '<div id="msg"></div>' +
-      '<div class="actions"><a class="btn ghost" href="' + withG("#/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' ساخت آزمون و دریافت لینک</button></div>' +
+      '<div class="actions"><a class="btn ghost" href="' + withG("#/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' <span id="goT">ساخت آزمون و دریافت لینک</span><span class="go-cost" id="goCost"></span></button></div>' +
       '<p class="hint" id="wait" hidden>در حال ساخت آزمون… معمولاً ۱۰ تا ۶۰ ثانیه طول می‌کشد. تا پایان کار، همه‌ی دکمه‌ها قفل است. این صفحه را نبندید و از آن خارج نشوید.</p>';
 
     const $ = (id) => document.getElementById(id);
     const msg = $("msg");
-    const fail = (t) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + "</div>"; };
+    const fail = (t, extraHtml) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + (extraHtml || "") + "</div>"; };
+    const buyLink = ' <a class="err-a" href="#/tokens">خرید توکن</a>';
 
     app.querySelectorAll(".seg").forEach((g) => {
       g.addEventListener("click", (e) => {
         const b = e.target.closest("button");
         if (!b || busy) return;
-        const k = g.dataset.seg;
-        st[k] = b.dataset.v;
+        st[g.dataset.seg] = b.dataset.v;
         g.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-        if (k === "src") {
-          $("srcFile").hidden = st.src !== "file";
-          $("srcTopic").hidden = st.src !== "topic";
-          $("topicExtra").hidden = st.src !== "file";
-          msg.innerHTML = "";
-        }
       });
     });
 
-    /* هر مدل فایل‌های خودش را می‌خواند؛ با عوض‌کردن مدل، راهنما و نوع مجاز فایل هم عوض می‌شود */
-    const syncModel = () => {
-      const M = aiModel(st.mid);
-      $("dropHint").textContent = aiHint(M);
-      $("file").setAttribute("accept", aiAccept(M));
-      if (st.file) {
-        const ext = (st.file.name.split(".").pop() || "").toLowerCase();
-        if (!aiOk(M, ext)) { st.file = null; $("dropT").textContent = "فایل را اینجا بکشید یا انتخاب کنید"; $("drop").classList.remove("has"); fail("فایل قبلی با «" + M.label + "» سازگار نبود و برداشته شد. " + aiHint(M).replace("، حداکثر ۴ مگابایت", "") + " انتخاب کنید یا «فقط موضوع» را بزنید."); return; }
-      }
-      msg.innerHTML = "";
+    /* هزینه‌ی همین آزمون به توکن: همیشه روی صفحه و روی دکمه دیده می‌شود */
+    const cost = $("tkCost"), goCost = $("goCost");
+    const paintCost = () => {
+      const c = st.count, b = tk.bal;
+      const low = b != null && b < c;
+      cost.className = "tk-cost" + (low ? " low" : "");
+      cost.innerHTML = low
+        ? "برای " + faNum(c) + " سؤال، " + faNum(c) + " توکن لازم است و موجودی شما " + faNum(b) + " توکن است. تعداد سؤال را کمتر کنید یا " + '<a href="#/tokens">توکن بخرید</a>.'
+        : "هر سؤال ۱ توکن است؛ این آزمون <b>" + faNum(c) + " توکن</b> مصرف می‌کند.";
+      goCost.textContent = pending ? "" : " · " + faNum(c) + " توکن";
     };
-    $("mid").addEventListener("change", () => { st.mid = $("mid").value; syncModel(); });
-    syncModel();
-    const setCount = (n) => { st.count = Math.min(30, Math.max(1, n)); $("count").value = faNum(st.count); };
+    const setCount = (n) => { st.count = Math.min(30, Math.max(1, n)); $("count").value = faNum(st.count); paintCost(); };
     const parseCount = () => {
       const t = $("count").value.replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g, "");
       return t ? parseInt(t, 10) : st.count;
@@ -1127,67 +1147,60 @@
     $("cm").addEventListener("click", () => { if (!busy) setCount(parseCount() - 1); });
     $("cp").addEventListener("click", () => { if (!busy) setCount(parseCount() + 1); });
     $("count").addEventListener("blur", () => setCount(parseCount()));
-
-    /* انتخاب فایل */
-    const fileInput = $("file");
-    const drop = $("drop");
-    const showFile = () => {
-      $("dropT").textContent = st.file ? st.file.name : "فایل را اینجا بکشید یا انتخاب کنید";
-      drop.classList.toggle("has", !!st.file);
-    };
-    const pickFile = (f) => {
-      msg.innerHTML = "";
-      if (!f) return;
-      const ext = (f.name.split(".").pop() || "").toLowerCase();
-      const M = aiModel(st.mid);
-      if (!aiOk(M, ext)) return fail("«" + M.label + "» این نوع فایل را نمی‌خواند. " + aiHint(M).replace("، حداکثر ۴ مگابایت", "") + " انتخاب کنید یا «فقط موضوع» را بزنید.");
-      if (f.size > AI_MAX_BYTES) return fail("حجم فایل بیشتر از ۴ مگابایت است.");
-      if (!f.size) return fail("فایل خالی است.");
-      st.file = f;
-      showFile();
-    };
-    drop.addEventListener("click", () => { if (!busy) fileInput.click(); });
-    drop.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && !busy) { e.preventDefault(); fileInput.click(); } });
-    fileInput.addEventListener("change", () => { pickFile(fileInput.files[0]); fileInput.value = ""; });
-    ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
-    ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
-    drop.addEventListener("drop", (e) => { if (!busy && e.dataTransfer && e.dataTransfer.files) pickFile(e.dataTransfer.files[0]); });
+    const onTk = () => paintCost();
+    window.addEventListener("tkchange", onTk);
+    paintCost();
 
     const go = $("go");
+    const lockUi = (on) => {
+      busy = on;
+      go.disabled = on;
+      go.classList.toggle("loading", on);
+      $("wait").hidden = !on;
+      setGenLock(on);
+    };
+
+    /* ذخیره‌ی آزمونِ ساخته‌شده؛ اگر نشد، سؤال‌ها نگه داشته می‌شوند تا بدون خرج دوباره‌ی توکن دوباره ذخیره شوند */
+    const saveQuiz = async (p) => {
+      lockUi(true);
+      let res = null, err = null;
+      try {
+        const secret = randomSecret();
+        const id = await rpc("create_quiz", {
+          p_title: p.title, p_description: p.desc, p_questions: p.questions, p_secret: secret, p_token: tokenOf(), p_group: createGroup || null,
+        });
+        await keepQuiz({ id: id, secret: secret, title: p.title });
+        res = { id: id, secret: secret };
+      } catch (e) { err = e; }
+      if (gone) return;
+      if (res) {
+        pending = null;
+        tkLast = { used: p.used, bal: p.bal };
+        lockUi(false);
+        location.hash = "#/m/" + encodeURIComponent(res.id) + "/" + res.secret + "?new=1";
+        return;
+      }
+      pending = p;
+      lockUi(false);
+      $("goT").textContent = "ذخیره‌ی دوباره‌ی آزمون";
+      paintCost();
+      fail("آزمون ساخته شد و توکن‌تان مصرف شد، ولی ذخیره‌ی آن ناموفق بود (" + ((err && err.message) || "خطای نامشخص") + "). دکمه‌ی «ذخیره‌ی دوباره‌ی آزمون» را بزنید؛ توکن دوباره کم نمی‌شود.");
+    };
+
     go.addEventListener("click", async () => {
       if (busy) return;
       msg.innerHTML = "";
+      if (pending) return saveQuiz(pending);
       setCount(parseCount());
-      const M = aiModel(st.mid);
-      const body = { provider: M.provider, model: M.model, mode: st.mode, difficulty: st.level, count: st.count };
-      try {
-        if (st.src === "file") {
-          if (!st.file) return fail("ابتدا یک فایل انتخاب کنید یا گزینه‌ی «فقط موضوع» را بزنید.");
-          const ext = (st.file.name.split(".").pop() || "").toLowerCase();
-          if (!aiOk(M, ext)) return fail("«" + M.label + "» این نوع فایل را نمی‌خواند. " + aiHint(M).replace("، حداکثر ۴ مگابایت", "") + " انتخاب کنید یا «فقط موضوع» را بزنید.");
-          if (ext === "txt" || ext === "md") {
-            const t = await readFileAsText(st.file);
-            if (!t.trim()) return fail("فایل متنی خالی است.");
-            body.text = t;
-          } else {
-            body.file = { media_type: AI_FILE_TYPES[ext], data: await readFileAsB64(st.file) };
-          }
-          const note = $("note").value.trim();
-          if (note) body.topic = note;
-        } else {
-          const t = $("topic").value.trim();
-          if (!t) { $("topic").classList.add("bad"); $("topic").focus(); return fail("موضوع آزمون را بنویسید."); }
-          body.topic = t;
-        }
-      } catch (e) { return fail(e.message); }
+      const t = $("topic").value.trim();
+      if (!t) { $("topic").classList.add("bad"); $("topic").focus(); return fail("موضوع آزمون را بنویسید."); }
+      if (tk.bal != null && tk.bal < st.count) return fail("توکن شما کافی نیست؛ موجودی شما " + faNum(tk.bal) + " توکن است و این آزمون " + faNum(st.count) + " توکن می‌خواهد. تعداد سؤال را کمتر کنید یا توکن بخرید.", buyLink);
+      const body = { mode: st.mode, difficulty: st.level, count: st.count, topic: t };
 
-      busy = true;
-      go.disabled = true;
-      go.classList.add("loading");
-      $("wait").hidden = false;
-      setGenLock(true);
+      lockUi(true);
       ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), 130000);
+      let made = null;
       try {
         let res;
         try {
@@ -1199,53 +1212,223 @@
           });
         } catch (e) {
           console.error("generate fetch failed", e);
-          throw new Error(e && e.name === "AbortError" ? "ساخت آزمون بیش از حد طول کشید. دوباره تلاش کنید." : "ارتباط با تابع هوش مصنوعی برقرار نشد (مرحله‌ی ساخت سؤال‌ها). جزئیات: " + (e && e.message ? e.message : "نامشخص"));
+          throw new Error(e && e.name === "AbortError" ? "ساخت آزمون بیش از حد طول کشید. دوباره تلاش کنید." : "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.");
         }
         let d = null;
         try { d = await res.json(); } catch (e) { /* ignore */ }
         if (!res.ok) {
-          if (d && d.detail) console.error("AI detail:", d.detail);
-          const base = (d && d.error) || (res.status === 404 ? "بخش هوش مصنوعی هنوز روی سرور راه‌اندازی نشده است." : "خطایی رخ داد (" + res.status + ").");
-          throw new Error(base + (d && d.detail ? " (جزئیات فنی: " + d.detail + ")" : ""));
+          if (res.status === 402) {
+            if (d && typeof d.tokens === "number") tkSet(d.tokens);
+            const e402 = new Error("توکن شما کافی نیست؛ موجودی شما " + faNum((d && d.tokens) || 0) + " توکن است و این آزمون " + faNum((d && d.need) || st.count) + " توکن می‌خواهد. تعداد سؤال را کمتر کنید یا توکن بخرید.");
+            e402.buy = true;
+            throw e402;
+          }
+          throw new Error((d && d.error) || (res.status === 404 ? "بخش هوش مصنوعی هنوز روی سرور راه‌اندازی نشده است." : "خطایی رخ داد (" + res.status + ")."));
         }
         const questions = normalizeAI(d);
         if (!questions.length) throw new Error("آزمون معتبری ساخته نشد. دوباره تلاش کنید.");
-        const secret = randomSecret();
-        const title = String((d && d.title) || "").trim().slice(0, LIMITS.title) || "آزمون";
-        let id;
-        try {
-          id = await rpc("create_quiz", {
-          p_title: title,
-          p_description: String((d && d.description) || "").trim().slice(0, LIMITS.desc),
-          p_questions: questions,
-          p_secret: secret,
-          p_token: tokenOf(),
-          p_group: createGroup || null,
-          });
-        } catch (e2) {
-          throw new Error("سؤال‌ها ساخته شد ولی ذخیره‌ی آزمون در پایگاه‌داده نشد: " + e2.message);
-        }
-        await keepQuiz({ id: id, secret: secret, title: title });
-        setGenLock(false);
-        location.hash = "#/m/" + encodeURIComponent(id) + "/" + secret + "?new=1";
+        if (d && typeof d.tokens === "number") tkSet(d.tokens);
+        made = {
+          questions: questions,
+          title: String((d && d.title) || "").trim().slice(0, LIMITS.title) || "آزمون",
+          desc: String((d && d.description) || "").trim().slice(0, LIMITS.desc),
+          used: (d && d.used) || questions.length,
+          bal: d && typeof d.tokens === "number" ? d.tokens : null,
+        };
       } catch (e) {
-        setGenLock(false);
-        if (ctl && ctl.signal.aborted && !busy) return;
-        fail(e.message);
-        busy = false;
-        go.disabled = false;
-        go.classList.remove("loading");
-        $("wait").hidden = true;
+        if (gone) return;
+        lockUi(false);
+        tkSync(true);   /* اگر توکن برگردانده شده باشد موجودی همین حالا درست دیده می‌شود */
+        fail(e.message, e.buy ? buyLink : "");
+        return;
       } finally {
         clearTimeout(timer);
       }
+      await saveQuiz(made);
     });
 
     return function cleanup() {
+      gone = true;
       busy = false;
       setGenLock(false);
+      window.removeEventListener("tkchange", onTk);
       if (ctl) ctl.abort();
     };
+  }
+
+  /* ---------- صفحه‌ی خرید توکن ---------- */
+  function viewTokens(token) {
+    setTitle("خرید توکن");
+    tkSync(true);
+    const PRESETS = [50, 100, 250, 500, 1000, 2000];
+    let n = 100;
+    const quizzes = (v) => Math.floor(v / 10);
+    const quizTxt = (v) => (quizzes(v) >= 1 ? "حدود " + faNum(quizzes(v)) + " آزمون ۱۰ سؤاله" : "کمتر از یک آزمون ۱۰ سؤاله");
+
+    app.innerHTML =
+      '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
+      '<div class="page-head"><h1>خرید توکن</h1></div>' +
+      '<p class="muted tkp-lead">با توکن، آزمون هوش مصنوعی می‌سازید: <b>هر سؤال = ۱ توکن</b>. ساخت دستی آزمون همیشه رایگان است.</p>' +
+      '<div class="card tkp-hero"><div class="tkp-coin" aria-hidden="true">' + COIN + "</div>" +
+      '<div class="tkp-hero-t"><span class="tkp-lbl">موجودی شما</span><div class="tkp-bal"><b data-tk>' + tkTxt() + "</b> <span>توکن</span></div>" +
+      '<span class="hint" id="tkpHave"></span></div></div>' +
+
+      '<div class="card tkp-buy"><h2 class="tkp-h">چند توکن می‌خواهید؟</h2>' +
+      '<div class="tkp-packs" role="group" aria-label="بسته‌های آماده">' +
+      PRESETS.map((p) =>
+        '<button type="button" class="tkp-pack" data-n="' + p + '" aria-pressed="false">' +
+        '<span class="tkp-pn"><b>' + fmtN(p) + "</b> توکن</span>" +
+        '<span class="tkp-pp">' + fmtN(tkPrice(p)) + " <small>تومان</small></span>" +
+        '<span class="tkp-pe">' + quizTxt(p) + "</span>" +
+        (tkOffPct(p) > 0 ? '<span class="tkp-off">' + faNum(tkOffPct(p)) + "٪ ارزان‌تر</span>" : "") +
+        "</button>").join("") + "</div>" +
+
+      '<div class="tkp-or"><span>یا عدد دلخواه</span></div>' +
+      '<div class="tkp-step"><button type="button" class="tkp-sb" id="tkM" aria-label="۱۰ توکن کمتر">−</button>' +
+      '<label class="tkp-num"><input id="tkN" type="text" inputmode="numeric" autocomplete="off" aria-label="تعداد توکن"><span>توکن</span></label>' +
+      '<button type="button" class="tkp-sb" id="tkP" aria-label="۱۰ توکن بیشتر">+</button></div>' +
+
+      '<div class="tkp-sum" aria-live="polite">' +
+      '<div class="tkp-line"><span>قیمت هر توکن</span><span><b id="tkRate"></b> <em class="tkp-badge" id="tkOff" hidden></em></span></div>' +
+      '<div class="tkp-line"><span>معادل</span><b id="tkEq"></b></div>' +
+      '<div class="tkp-line tot"><span>مبلغ قابل پرداخت</span><span class="tkp-tot"><b id="tkTot"></b> <small>تومان</small></span></div></div>' +
+      '<button class="btn wide tkp-pay" id="tkPay" type="button"></button></div>' +
+
+      '<details class="card tkp-tbl"><summary>جدول قیمت <small>(هر چه بیشتر بخرید، ارزان‌تر)</small></summary><div class="tkp-rows">' +
+      TK_TIERS.map((t, i) => '<div class="tkp-row" data-i="' + i + '"><span>' + TK_TIER_LBL[i] + "</span><b>" + fmtN(t[1]) + " <small>تومان برای هر توکن</small></b></div>").join("") + "</div></details>";
+
+    const $ = (id) => document.getElementById(id);
+    const inp = $("tkN"), mBtn = $("tkM"), pBtn = $("tkP");
+    const packs = Array.prototype.slice.call(app.querySelectorAll(".tkp-pack"));
+    const en = (v) => String(v).replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+    const anims = {};
+    /* عدد با حرکت نرم عوض می‌شود (در حالت «کاهش حرکت» یکباره) */
+    const tween = (id, to, fmt) => {
+      const e = $(id);
+      if (!e) return;
+      const from = anims[id] ? anims[id].v : null;
+      if (anims[id]) cancelAnimationFrame(anims[id].raf);
+      if (from == null || from === to || reduceMotion()) { e.textContent = fmt(to); anims[id] = { v: to, raf: 0 }; return; }
+      const t0 = performance.now(), D = 320;
+      const rec = { v: from, raf: 0 };
+      anims[id] = rec;
+      const step = (t) => {
+        const k = Math.min(1, (t - t0) / D), v = from + (to - from) * (1 - Math.pow(1 - k, 3));
+        rec.v = v; e.textContent = fmt(v);
+        if (k < 1) rec.raf = requestAnimationFrame(step); else { rec.v = to; e.textContent = fmt(to); }
+      };
+      rec.raf = requestAnimationFrame(step);
+    };
+
+    const paint = (fromInput) => {
+      const rate = tkRate(n), off = tkOffPct(n);
+      if (!fromInput) inp.value = faNum(n);
+      packs.forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.n === n)));
+      mBtn.disabled = n <= TK_MIN_STEP;
+      pBtn.disabled = n >= TK_MAX_BUY;
+      $("tkRate").textContent = fmtN(rate) + " تومان";
+      const o = $("tkOff"); o.hidden = off <= 0; o.textContent = faNum(off) + "٪ تخفیف";
+      $("tkEq").textContent = quizTxt(n);
+      tween("tkTot", tkPrice(n), fmtN);
+      $("tkPay").innerHTML = ICONS.spark + " پرداخت " + fmtN(tkPrice(n)) + " تومان";
+      app.querySelectorAll(".tkp-row").forEach((r) => r.classList.toggle("on", +r.dataset.i === tkTier(n)));
+    };
+    const setN = (v, fromInput) => {
+      v = Math.floor(+v);
+      if (!isFinite(v) || v < 1) v = 1;
+      if (v > TK_MAX_BUY) v = TK_MAX_BUY;
+      n = v;
+      paint(fromInput);
+    };
+    const stepBy = (dir, mult) => {
+      const k = TK_MIN_STEP;
+      const t = dir > 0 ? (Math.floor(n / k) + mult) * k : (Math.ceil(n / k) - mult) * k;
+      setN(Math.max(k, t));
+    };
+
+    packs.forEach((b) => b.addEventListener("click", () => setN(+b.dataset.n)));
+    inp.addEventListener("input", () => {
+      const t = en(inp.value).replace(/\D/g, "");
+      if (!t) return;
+      const p = parseInt(t.slice(0, 6), 10);
+      setN(p, true);
+      if (n !== p) inp.value = faNum(n);
+    });
+    inp.addEventListener("blur", () => setN(n));
+    inp.addEventListener("focus", () => { try { inp.select(); } catch (e) { /* ignore */ } });
+
+    /* نگه‌داشتن + و − پشت‌سرهم و تندتر عوض می‌کند */
+    const hold = (btn, dir) => {
+      let t0 = 0, t1 = 0, cnt = 0, lastDown = 0;
+      const stop = () => { clearTimeout(t0); clearInterval(t1); t0 = t1 = 0; };
+      const tick = () => { cnt++; stepBy(dir, cnt < 10 ? 1 : cnt < 25 ? 5 : 10); if (btn.disabled) stop(); };
+      btn.addEventListener("pointerdown", (e) => {
+        if (e.button != null && e.button > 0) return;
+        if (btn.disabled) return;
+        lastDown = Date.now(); cnt = 0; stop();
+        stepBy(dir, 1);
+        t0 = setTimeout(() => { t1 = setInterval(tick, 90); }, 420);
+      });
+      ["pointerup", "pointerleave", "pointercancel", "blur"].forEach((ev) => btn.addEventListener(ev, stop));
+      btn.addEventListener("contextmenu", (e) => e.preventDefault());
+      /* کلیک با صفحه‌کلید (Enter/Space): با ماوس و لمس در pointerdown انجام شده است */
+      btn.addEventListener("click", (e) => { if (e.detail === 0 && Date.now() - lastDown > 600) stepBy(dir, 1); });
+    };
+    hold(mBtn, -1);
+    hold(pBtn, 1);
+
+    $("tkPay").addEventListener("click", () => payInfo(n, tkPrice(n)));
+
+    const have = $("tkpHave");
+    const onTk = () => { have.textContent = tk.bal == null ? "" : tk.bal > 0 ? "برای " + quizTxt(tk.bal) + " کافی است." : "برای ساخت آزمون با هوش مصنوعی توکن لازم دارید."; };
+    window.addEventListener("tkchange", onTk);
+    onTk();
+    setN(n);
+    return function cleanup() {
+      window.removeEventListener("tkchange", onTk);
+      Object.keys(anims).forEach((k) => cancelAnimationFrame(anims[k].raf));
+    };
+  }
+
+  /* پنجره‌ی پرداخت: تا وصل شدن درگاه، فقط توضیح می‌دهد (جای وصل‌کردن درگاه همین‌جاست) */
+  function payInfo(count, total) {
+    const prev = document.activeElement;
+    const ov = document.createElement("div");
+    ov.className = "modal confirm";
+    ov.innerHTML =
+      '<div class="modal-box confirm-box pay-box" role="dialog" aria-modal="true" aria-labelledby="pyT" aria-describedby="pyD">' +
+      '<div class="pay-ic">' + COIN + "</div>" +
+      '<h2 id="pyT">پرداخت آنلاین به‌زودی فعال می‌شود</h2>' +
+      '<p id="pyD">درگاه پرداخت هنوز راه‌اندازی نشده است. برای خرید <b>' + fmtN(count) + " توکن (" + fmtN(total) + ' تومان)</b> می‌توانید همین حالا با ما تماس بگیرید.</p>' +
+      '<a class="pay-tel" href="tel:+982126378190">۰۲۱-۲۶۳۷۸۱۹۰</a>' +
+      '<div class="actions"><button class="btn" type="button" id="pyOk">باشه</button></div></div>';
+    document.body.appendChild(ov);
+    const prevOv = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    let done = false;
+    const close = () => {
+      if (done) return;
+      done = true;
+      document.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("hashchange", close);
+      document.body.style.overflow = prevOv;
+      ov.remove();
+      if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+      else if (e.key === "Tab") {
+        const f = Array.prototype.slice.call(ov.querySelectorAll("a[href],button"));
+        const i = f.indexOf(document.activeElement);
+        e.preventDefault();
+        f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    window.addEventListener("hashchange", close);
+    ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+    ov.querySelector("#pyOk").addEventListener("click", close);
+    ov.querySelector("#pyOk").focus();
   }
 
   /* ---------- شرکت در آزمون ---------- */
@@ -1434,10 +1617,13 @@
         '</span><span class="badge">' + esc(QTYPES[typeOf(q.type)].short) + '</span><span class="qs-p">' + faNum(p) + '٪</span></div><div class="bar" role="img" aria-label="' + faNum(p) + ' درصد درست"><i style="--w:' + (p / 100) + '"></i></div></div>';
     }).join("");
 
+    /* آزمونِ تازه‌ساخته با هوش مصنوعی: مصرف توکن را یک‌بار و آرام نشان می‌دهد */
+    const tkNote = isNew && tkLast ? '<div class="tk-used">' + COIN + "<span>" + faNum(tkLast.used) + " توکن مصرف شد" + (tkLast.bal != null ? " · " + faNum(tkLast.bal) + " توکن باقی مانده" : "") + "</span></div>" : "";
+    tkLast = null;
     app.innerHTML =
       "<h1>" + esc(d.title) + "</h1>" +
       (d.group_name ? groupChip(d.group_name) + '<p class="hint" style="margin-top:-6px">این آزمون فقط برای اعضای گروه باز می‌شود.</p>' : "") +
-      (isNew ? '<div class="card created"><strong>آزمون ساخته شد 🎉</strong><div class="hint">اگر سؤالی یا پاسخ درستی اشتباه است، با دکمه‌ی «ویرایش آزمون» در همین صفحه اصلاحش کنید.</div></div>' : "") +
+      (isNew ? '<div class="card created"><strong>آزمون ساخته شد 🎉</strong><div class="hint">اگر سؤالی یا پاسخ درستی اشتباه است، با دکمه‌ی «ویرایش آزمون» در همین صفحه اصلاحش کنید.</div>' + tkNote + "</div>" : "") +
       (flags.updated ? '<div class="card created"><strong>تغییرات ذخیره شد ✅</strong>' + (flags.cleared ? '<div class="hint">' + faNum(flags.cleared) + " نتیجه‌ی قبلی پاک شد.</div>" : "") + "</div>" : "") +
       '<div class="card"><h2>لینک آزمون</h2>' +
       '<div class="linkbox"><input id="l1" type="text" readonly value="' + esc(take) + '" aria-label="لینک آزمون"><button class="btn small" type="button" data-copy="#l1">کپی</button></div>' +
@@ -1628,6 +1814,7 @@
       '<button class="prof-av" id="profAv" type="button" aria-label="تغییر پروفایل"' + avSt + ">" + av + '<span class="prof-av-edit">' + PENCIL + "</span></button>" +
       '<div class="prof-namerow"><div class="prof-name">' + (nm ? esc(nm) : "کاربر پازمونک") + '</div><button class="prof-edit" id="profEdit" type="button" aria-label="تغییر پروفایل" title="تغییر پروفایل">' + PENCIL + "</button></div>" +
       '<div class="prof-phone" dir="ltr"' + (s.email && !s.phone ? " data-em" : "") + ">" + esc(showPhone(s.phone || s.email)) + "</div>" +
+      '<a class="prof-tk" id="profTk" href="#/tokens">' + COIN + '<span>توکن‌های من</span><b data-tk>' + tkTxt() + "</b></a>" +
       '<button class="btn ghost small wide" id="profOut" type="button">خروج از حساب</button></div>';
     document.getElementById("profBtn").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1636,6 +1823,7 @@
     });
     document.getElementById("profPop").addEventListener("click", (e) => e.stopPropagation());
     document.getElementById("profOut").addEventListener("click", (e) => { closeProfile(); doLogout(e.currentTarget); });
+    document.getElementById("profTk").addEventListener("click", () => closeProfile());
     const edit = () => { closeProfile(); openProfileEdit(); };
     document.getElementById("profEdit").addEventListener("click", edit);
     document.getElementById("profAv").addEventListener("click", edit);
@@ -2085,12 +2273,13 @@
         "<h1>" + (created ? "ثبت‌نام شما انجام شد 🎉" : "خوش آمدید 👋") + "</h1>" +
         (fullName ? '<p class="auth-hello">' + esc(fullName) + "</p>" : "") +
         '<p class="sub">' + (created ? "به پازمونک خوش آمدید." : "با موفقیت وارد شدید.") + " در حال انتقال به " + (/^q\//.test(signupNext) ? "آزمون…" : /^(groups|g\/)/.test(signupNext) ? "گروه‌ها…" : signupNext === "tutor" ? "معلم هوشمند…" : signupNext ? "صفحه‌ی ساخت آزمون…" : "صفحه‌ی اصلی…") + "</p>" +
+        (created ? '<div class="tk-gift">' + COIN + "<span><b>" + faNum(TK_FREE) + " توکن</b> هدیه‌ی ثبت‌نام برای ساخت آزمون با هوش مصنوعی</span></div>" : "") +
         '<a class="btn wide" href="' + nextHash + '">' + (/^q\//.test(signupNext) ? "ادامه و شرکت در آزمون" : /^(groups|g\/)/.test(signupNext) || signupNext === "tutor" ? "ادامه" : signupNext ? "ادامه و ساخت آزمون" : "ورود به سایت") + "</a></div>"
       );
       const prog = document.getElementById("ringProg");
       prog.style.strokeDashoffset = "100";
       requestAnimationFrame(() => requestAnimationFrame(() => { prog.style.strokeDashoffset = "0"; }));
-      navTimer = setTimeout(() => { if (alive) location.hash = nextHash; }, 1700);
+      navTimer = setTimeout(() => { if (alive) location.hash = nextHash; }, created ? 3000 : 1700);
     }
 
     stepStart();
@@ -2180,14 +2369,18 @@
         '<td data-l="نام"><div class="adm-n"><span class="av-s" aria-hidden="true">' + esc(nm ? initialOf(nm) : "؟") + "</span><span>" + (nm ? esc(nm) : '<em class="muted">بدون نام</em>') + "</span></div></td>" +
         '<td data-l="موبایل">' + (u.phone ? "<span class=\"adm-ltr\">" + esc(showPhone(u.phone)) + "</span>" : '<span class="muted">—</span>') + "</td>" +
         '<td data-l="ایمیل">' + (u.email ? '<span class="adm-ltr adm-em" dir="ltr">' + esc(u.email) + "</span>" : '<span class="muted">—</span>') + "</td>" +
+        '<td data-l="توکن"><span class="adm-tk">' + COIN + "<b>" + fmtN(u.tokens || 0) + '</b></span><button class="adm-tkb" type="button" data-id="' + esc(u.id) + '" aria-label="تغییر توکن' + (nm ? "؛ " + esc(nm) : "") + '" title="تغییر توکن">' + PENCIL + "</button></td>" +
         '<td data-l="تاریخ ثبت‌نام"><span>' + esc(d[0]) + '</span> <small class="muted">' + esc(d[1]) + "</small></td></tr>";
     };
+    let rowsById = {};
     const drawList = (r) => {
       const rows = r.rows || [];
+      rowsById = {};
+      rows.forEach((u) => { if (u && u.id) rowsById[u.id] = u; });
       total = r.total || 0;
       const pages = Math.max(1, Math.ceil(total / PER));
       $("admList").innerHTML = rows.length
-        ? '<div class="adm-tw"><table class="adm-t"><thead><tr><th>ردیف</th><th>نام</th><th>موبایل</th><th>ایمیل</th><th>تاریخ ثبت‌نام</th></tr></thead><tbody>' + rows.map(rowHtml).join("") + "</tbody></table></div>"
+        ? '<div class="adm-tw"><table class="adm-t"><thead><tr><th>ردیف</th><th>نام</th><th>موبایل</th><th>ایمیل</th><th>توکن</th><th>تاریخ ثبت‌نام</th></tr></thead><tbody>' + rows.map(rowHtml).join("") + "</tbody></table></div>"
         : '<p class="muted adm-empty">' + (q ? "نتیجه‌ای پیدا نشد." : "هنوز کسی ثبت‌نام نکرده است.") + "</p>";
       const pg = $("admPager");
       pg.hidden = total <= PER;
@@ -2200,6 +2393,81 @@
       if (pv) pv.addEventListener("click", () => go(page - 1));
       if (nx) nx.addEventListener("click", () => go(page + 1));
     };
+
+    /* تغییر دستی توکن یک کاربر: افزودن، کم‌کردن یا تنظیم روی یک عدد */
+    const openTok = (u) => {
+      const prev = document.activeElement;
+      let mode = "add";
+      const cur = u.tokens || 0;
+      const who = cleanName(u.name) || showPhone(u.phone || u.email || "");
+      const ov = document.createElement("div");
+      ov.className = "modal tk-modal";
+      ov.innerHTML =
+        '<div class="modal-box tk-box" role="dialog" aria-modal="true" aria-labelledby="tkmT">' +
+        '<div class="modal-head"><h2 id="tkmT">توکن‌های <span id="tkmN"></span></h2></div>' +
+        '<form class="modal-body" id="tkmF" novalidate>' +
+        '<div class="tkm-cur">موجودی فعلی: <b>' + fmtN(cur) + "</b> توکن</div>" +
+        '<div class="seg" role="group" aria-label="نوع تغییر"><button type="button" data-m="add" aria-pressed="true">افزودن</button><button type="button" data-m="sub" aria-pressed="false">کم کردن</button><button type="button" data-m="set" aria-pressed="false">تنظیم روی عدد</button></div>' +
+        '<label for="tkmA">مقدار</label><input id="tkmA" type="text" inputmode="numeric" autocomplete="off" maxlength="7">' +
+        '<div class="tkm-new" id="tkmNew" aria-live="polite"></div>' +
+        '<div class="auth-msg" id="tkmMsg" role="alert"></div>' +
+        '<div class="actions"><button class="btn ghost" type="button" id="tkmNo">انصراف</button><button class="btn" type="submit" id="tkmYes">ثبت</button></div></form></div>';
+      document.body.appendChild(ov);
+      ov.querySelector("#tkmN").textContent = who;
+      const prevOv = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const A = ov.querySelector("#tkmA"), nw = ov.querySelector("#tkmNew"), mg = ov.querySelector("#tkmMsg"), yes = ov.querySelector("#tkmYes");
+      const val = () => { const t = en(A.value).replace(/\D/g, ""); return t ? Math.min(parseInt(t.slice(0, 7), 10), 1000000) : null; };
+      const paint = () => {
+        const v = val();
+        if (v == null) { nw.textContent = ""; return; }
+        const nx = mode === "add" ? cur + v : mode === "sub" ? Math.max(cur - v, 0) : v;
+        nw.innerHTML = "موجودی جدید: <b>" + fmtN(nx) + "</b> توکن";
+      };
+      let done = false;
+      const close = () => {
+        if (done) return;
+        done = true;
+        document.removeEventListener("keydown", onKey, true);
+        window.removeEventListener("hashchange", close);
+        document.body.style.overflow = prevOv;
+        ov.remove();
+        if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+      };
+      const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
+      document.addEventListener("keydown", onKey, true);
+      window.addEventListener("hashchange", close);
+      ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+      ov.querySelector("#tkmNo").addEventListener("click", close);
+      ov.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
+        mode = b.dataset.m;
+        ov.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        mg.textContent = ""; paint(); A.focus();
+      }));
+      A.addEventListener("input", () => { A.classList.remove("bad"); mg.textContent = ""; paint(); });
+      ov.querySelector("#tkmF").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const v = val();
+        if (v == null) { A.classList.add("bad"); mg.className = "auth-msg m-err"; mg.textContent = "مقدار را وارد کنید."; A.focus(); return; }
+        yes.disabled = true; yes.classList.add("loading"); mg.textContent = "";
+        let r = null, err = "";
+        try { r = await rpc("admin_tokens", { p_token: tokenOf(), p_id: u.id, p_mode: mode, p_amount: v }); } catch (e2) { err = e2.message || "ذخیره نشد."; }
+        if (done) return;
+        yes.disabled = false; yes.classList.remove("loading");
+        if (!r || r.ok !== true) { mg.className = "auth-msg m-err"; mg.textContent = err || "ذخیره نشد. دوباره تلاش کنید."; return; }
+        close();
+        if (window.__pzToast) window.__pzToast("موجودی شد " + faNum(r.tokens) + " توکن");
+        tkSync(true);
+        if (ok()) load();
+      });
+      setTimeout(() => { if (!done) { try { A.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } }, 60);
+    };
+    $("admList").addEventListener("click", (e) => {
+      const b = e.target.closest(".adm-tkb");
+      if (!b) return;
+      const u = rowsById[b.dataset.id];
+      if (u) openTok(u);
+    });
 
     const load = async () => {
       const my = ++seq;
@@ -2341,6 +2609,7 @@
     const g = document.getElementById("grpBtn");
     if (g) g.hidden = !auth.get();
     adminSync();
+    tkSync(true);
     if (!auth.get()) { setInviteBadge(0); groupsCache = null; return; }
     pollInvites();
     inv.timer = setInterval(pollInvites, 45000);
@@ -3227,7 +3496,8 @@
     const take = /^q\//.test(target);
     const grp = /^(groups|g\/)/.test(target);
     const tut = target === "tutor";
-    setTitle(tut ? "ورود برای معلم هوشمند" : grp ? "ورود برای گروه‌ها" : take ? "ورود برای شرکت در آزمون" : "ورود برای ساخت آزمون");
+    const tok = target === "tokens";
+    setTitle(tut ? "ورود برای معلم هوشمند" : tok ? "ورود برای خرید توکن" : grp ? "ورود برای گروه‌ها" : take ? "ورود برای شرکت در آزمون" : "ورود برای ساخت آزمون");
     viewHome();                               /* پس‌زمینه‌ی تار: صفحه‌ی اصلی */
     gateOn = true;
     document.documentElement.classList.add("gate-on");
@@ -3239,8 +3509,8 @@
     g.innerHTML =
       '<div class="gate-box" role="dialog" aria-modal="true" aria-labelledby="gateT" aria-describedby="gateD">' +
       '<div class="gate-ic">' + LOCK_ICON + "</div>" +
-      '<h2 id="gateT">' + (tut ? "برای استفاده از معلم هوشمند وارد شوید" : grp ? "برای دیدن گروه‌ها وارد شوید" : take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
-      '<p id="gateD">' + (tut ? "معلم هوشمند" : grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل یا ایمیل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : "") + "</p>" +
+      '<h2 id="gateT">' + (tut ? "برای استفاده از معلم هوشمند وارد شوید" : tok ? "برای خرید توکن وارد شوید" : grp ? "برای دیدن گروه‌ها وارد شوید" : take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
+      '<p id="gateD">' + (tut ? "معلم هوشمند" : tok ? "خرید توکن" : grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل یا ایمیل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : "") + "</p>" +
       '<a class="btn wide" id="gateGo" href="#/signup' + (/^create/.test(target) ? "" : "?next=" + target) + '">ثبت‌نام / ورود</a>' +
       '<a class="gate-back" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
     document.body.appendChild(g);
@@ -3250,6 +3520,8 @@
   }
 
   /* ---------- معلم هوشمند ---------- */
+  /* فعلاً از سایت پنهان است (کدش سر جایش مانده). برای روشن‌کردن دوباره: این مقدار true، دکمه‌ی ttBtn در index.html بدون hidden، و TUTOR_ENABLED=1 روی سرور */
+  const TUTOR_ON = false;
   const TT_GRADES = ["هفتم", "هشتم", "نهم", "دهم", "یازدهم", "دوازدهم", "دانشگاه", "عمومی"];
   const TT_JR = ["ریاضی", "علوم تجربی", "فارسی", "عربی", "زبان انگلیسی", "مطالعات اجتماعی", "هدیه‌های آسمان"];
   const TT_SUBJECTS = {
@@ -3909,6 +4181,8 @@
     }
 
     if (!initial) window.scrollTo(0, 0);
+    const tb = document.getElementById("tkBtn");
+    if (tb) { if (parts[0] === "tokens") tb.setAttribute("aria-current", "page"); else tb.removeAttribute("aria-current"); }
     const hb = document.getElementById("homeBtn");
     if (hb) { if (parts.length === 0) hb.setAttribute("aria-current", "page"); else hb.removeAttribute("aria-current"); }
 
@@ -3933,7 +4207,10 @@
       signupNext = /^q\/[A-Za-z0-9_-]{1,64}$/.test(nx) ? nx : "";
       cleanup = viewSignup();
     } else if (parts[0] === "tutor") {
-      cleanup = auth.get() ? viewTutor(token) : viewGate("tutor", token);
+      if (!TUTOR_ON) location.replace("#/");
+      else cleanup = auth.get() ? viewTutor(token) : viewGate("tutor", token);
+    } else if (parts[0] === "tokens") {
+      cleanup = auth.get() ? viewTokens(token) : viewGate("tokens", token);
     } else if (parts[0] === "admin") {
       cleanup = viewAdmin(token);
     } else if (parts[0] === "account") {
