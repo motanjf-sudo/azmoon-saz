@@ -868,6 +868,44 @@
   /* گروه‌ها */
   .grp-btn{position:relative;text-decoration:none;color:var(--accent)}
   .grp-btn .gb{position:absolute;top:-5px;inset-inline-start:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:#C0392B;color:#fff;font-size:.74rem;font-weight:800;line-height:20px;text-align:center;box-shadow:0 0 0 2px var(--bg)}
+  .adm-btn{text-decoration:none;color:var(--accent);font-family:inherit;font-weight:800;font-size:1.05rem;line-height:1}
+  .adm-st{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0 0}
+  .adm-st>div{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 16px;box-shadow:var(--shadow)}
+  .adm-st b{display:block;font-size:1.65rem;font-weight:800;color:var(--accent);line-height:1.25}
+  .adm-st span{font-size:.86rem;color:var(--muted)}
+  .adm-card{padding:16px}
+  .adm-search{margin-bottom:12px}
+  #admList.busy{opacity:.55;transition:opacity .2s}
+  .adm-tw{overflow-x:auto}
+  .adm-t{width:100%;border-collapse:collapse}
+  .adm-t th{text-align:start;font-size:.82rem;color:var(--muted);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .adm-t td{padding:12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .adm-t tbody tr:last-child td{border-bottom:0}
+  .adm-t tbody tr:hover td{background:var(--chip)}
+  .adm-i{color:var(--muted);font-size:.86rem;width:1%}
+  .adm-n{display:flex;align-items:center;gap:10px;font-weight:700}
+  .adm-ltr{display:inline-block;direction:ltr;unicode-bidi:isolate}
+  .adm-em{max-width:240px;overflow-wrap:anywhere;word-break:break-all;text-align:left}
+  .adm-t td:last-child{white-space:nowrap}
+  .adm-t td:nth-child(3){white-space:nowrap}
+  .adm-empty{text-align:center;padding:26px 0}
+  .adm-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;font-size:.9rem;color:var(--muted)}
+  @media (max-width:860px){.adm-st{grid-template-columns:repeat(3,minmax(0,1fr))}.adm-t th,.adm-t td{padding-inline:7px}.adm-em{max-width:190px}}
+  @media (max-width:640px){
+    .adm-st{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .adm-st>div{padding:12px 14px}.adm-st b{font-size:1.4rem}
+    .adm-t thead{display:none}
+    .adm-t,.adm-t tbody,.adm-t tr,.adm-t td{display:block;width:auto}
+    .adm-t tr{border:1px solid var(--line);border-radius:16px;padding:6px 12px;margin-bottom:10px;background:var(--field)}
+    .adm-t td{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)}
+    .adm-t td:last-child{border-bottom:0}
+    .adm-t td::before{content:attr(data-l);color:var(--muted);font-size:.8rem;font-weight:700;flex:none}
+    .adm-t td.adm-i{display:none}
+    .adm-t td>span,.adm-t td>div{min-width:0}
+    .adm-em{max-width:100%}
+    .adm-t td:last-child,.adm-t td:nth-child(3){white-space:normal}
+    .adm-t tbody tr:hover td{background:none}
+  }
   .page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
   .page-head h1{margin:0}
   .grp-head{justify-content:flex-start;gap:10px}
@@ -910,6 +948,8 @@
   .inv-toast button svg{width:14px;height:14px}
   @media (max-width:440px){.top-in{padding:8px 10px}.tools{gap:5px}.tools .icon-btn,.tools .prof-btn{width:38px;height:38px}.tools .home-btn{padding:.55rem .62rem}}
   @media (max-width:350px){.top-in{padding:8px 8px}.tools{gap:3px}.tools .icon-btn,.tools .prof-btn{width:34px;height:34px;border-radius:11px}.tools .home-btn{padding:.5rem .55rem}.brand{font-size:1rem;gap:6px}}
+  @media (max-width:440px){.has-adm .tools{gap:3px}.has-adm .tools .icon-btn,.has-adm .tools .prof-btn{width:34px;height:34px;border-radius:11px}.has-adm .tools .home-btn{padding:.5rem .5rem}}
+  @media (max-width:350px){.has-adm .tools .icon-btn,.has-adm .tools .prof-btn{width:31px;height:31px}.has-adm .tools .home-btn{padding:.45rem .45rem}.has-adm .brand{font-size:.92rem;gap:5px}.has-adm .top-in{padding:8px 6px}}
   @media (max-width:330px){.top-in{padding:8px 6px}.tools .icon-btn,.tools .prof-btn{width:31px;height:31px}.tools .home-btn{padding:.42rem .45rem}.brand{font-size:.95rem;gap:5px}}
   @media (max-width:360px){.tools{gap:4px}.tools .icon-btn,.tools .prof-btn{width:36px;height:36px}.tools .prof-btn{font-size:1rem}.brand{font-size:1.05rem;gap:8px}}
   @media (max-width:560px){.grp-row{flex-wrap:wrap}.grp-a{width:100%}.grp-a .btn{flex:1 1 0}.grp-add .btn{flex:1 1 100%}}
@@ -1039,6 +1079,7 @@
         <a class="icon-btn tt-btn" id="ttBtn" href="#/tutor" aria-label="معلم هوشمند" title="معلم هوشمند">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9.5 12 5l10 4.5-10 4.5z"/><path d="M6 11.6v4.4c0 1.4 2.7 3 6 3s6-1.6 6-3v-4.4"/><path d="M22 9.5V15"/></svg>
         </a>
+        <a class="icon-btn adm-btn" id="admBtn" href="#/admin" hidden aria-label="پنل مدیریت" title="پنل مدیریت">A</a>
         <a class="icon-btn grp-btn" id="grpBtn" href="#/groups" hidden aria-label="گروه‌ها" title="گروه‌ها">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.2 19.5c.5-3.1 2.8-5 5.8-5s5.3 1.9 5.8 5"/><path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M17.6 14.8c1.9.5 3.2 2.2 3.5 4.7"/></svg>
           <span class="gb" id="grpBadge" hidden>0</span>
