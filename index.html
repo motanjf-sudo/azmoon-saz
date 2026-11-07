@@ -398,6 +398,14 @@
   .mine-clear{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:0;background:var(--chip);color:var(--muted);font-size:1.2rem;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0;font-family:inherit}
   .mine-clear:hover{color:var(--text)}
   .mine-none{text-align:center;padding:18px 0 6px;margin:0}
+  .mine-list:focus{outline:none}
+  .mine-del{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer;background:var(--bad-bg);color:var(--bad);border:1.5px solid var(--bad);transition:background .2s,color .2s,transform .2s}
+  .mine-del svg{width:16px;height:16px}
+  .mine-del:hover{background:var(--bad);color:#fff;transform:scale(1.08)}
+  .mine-del:active{transform:scale(.92)}
+  .mine-del:focus-visible{outline:3px solid var(--bad);outline-offset:2px}
+  .mine-del:disabled{opacity:.5;cursor:default;transform:none}
+  .mine-card .err,#mineErr{margin:10px 0}
   @media (max-width:700px){.mine-search input{font-size:16px}}
   .draft{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-color:var(--accent)}
   .draft-actions{display:flex;gap:8px}
@@ -841,7 +849,7 @@
     .seg{order:3;width:100%;flex-wrap:nowrap}
     .seg button{flex:1 1 auto;padding:6px 4px;font-size:.8rem;white-space:nowrap}
     .ap{top:66px}
-    .mine-row{gap:8px}.mine-t{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.55}.mine-row .btn.small{padding:.45rem .7rem;font-size:.84rem;flex:none}
+    .mine-row{gap:8px}.mine-t{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.55}.mine-row .btn.small{padding:.45rem .7rem;font-size:.84rem;flex:none}.mine-del{width:34px;height:34px}
     .linkbox{flex-direction:column;align-items:stretch}
     .actions .btn{flex:1 1 100%}
     .ring-wrap{width:172px;height:172px}
