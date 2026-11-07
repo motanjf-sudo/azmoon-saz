@@ -326,6 +326,32 @@
   let homeTok = null;
   const isHomeHash = () => !location.hash || location.hash === "#" || location.hash === "#/";
 
+  /* فهرست آزمون‌های من: ۵ آزمونِ تازه دیده می‌شود و بقیه با اسکرول داخل همان کادر؛ جستجو بر اساس نام */
+  const MINE_VIS = 5;
+  const nrm = (v) => String(v == null ? "" : v).toLowerCase()
+    .replace(/[\u064A\u0649]/g, "ی").replace(/\u0643/g, "ک").replace(/[\u0622\u0623\u0625]/g, "ا").replace(/\u0629/g, "ه")
+    .replace(/[\u200c\u200d\u064B-\u065F\u0640]/g, "")
+    .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
+    .replace(/\s+/g, " ").trim();
+  const mineRow = (m) =>
+    '<div class="mine-row"><span class="mine-t">' + esc(m.title) +
+    (m.participants != null ? '<small class="mine-n">' + faNum(m.participants) + " شرکت‌کننده</small>" : "") + "</span>" +
+    '<a class="btn small ghost" href="#/q/' + encodeURIComponent(m.id) + '">باز کردن</a>' +
+    '<a class="btn small" href="#/m/' + encodeURIComponent(m.id) + "/" + encodeURIComponent(m.secret) + '">نتایج</a></div>';
+  function mineMore(l) { l.classList.toggle("more", l.scrollHeight - l.scrollTop - l.clientHeight > 3 && !!l.style.maxHeight); }
+  function mineFit() {
+    const l = document.getElementById("mineList");
+    if (!l) return;
+    l.style.maxHeight = "";
+    const r = l.children;
+    if (r.length > MINE_VIS) {
+      const a = r[0], b = r[MINE_VIS - 1];
+      l.style.maxHeight = (b.offsetTop - a.offsetTop + b.offsetHeight + 22) + "px";
+    }
+    mineMore(l);
+  }
+  window.addEventListener("resize", mineFit);
+
   function viewHome() {
     setTitle();
     const sess = auth.get();
@@ -341,18 +367,40 @@
           '<div class="actions" style="justify-content:center"><a class="btn" href="#/create">ساخت اولین آزمون</a>' + (sess ? '<a class="btn ghost" href="#/groups">گروه‌ها</a>' : "") + "</div></div>";
         return;
       }
+      const rows = items.map((m) => ({ m: m, n: nrm(m.title) }));
       app.innerHTML =
         (note || "") +
-        '<div class="card"><h2>' + (sess ? "آزمون‌های شما" : "آزمون‌هایی که روی این دستگاه ساخته‌اید") + "</h2>" +
-        items.map((m) =>
-          '<div class="mine-row"><span class="mine-t">' + esc(m.title) +
-          (m.participants != null ? '<small class="mine-n">' + faNum(m.participants) + " شرکت‌کننده</small>" : "") + "</span>" +
-          '<a class="btn small ghost" href="#/q/' + encodeURIComponent(m.id) + '">باز کردن</a>' +
-          '<a class="btn small" href="#/m/' + encodeURIComponent(m.id) + "/" + encodeURIComponent(m.secret) + '">نتایج</a></div>'
-        ).join("") +
+        '<div class="card"><div class="sec-t"><h2>' + (sess ? "آزمون‌های شما" : "آزمون‌هایی که روی این دستگاه ساخته‌اید") + '</h2><span class="badge" id="mineCnt" aria-live="polite">' + faNum(items.length) + "</span></div>" +
+        (items.length > MINE_VIS
+          ? '<div class="mine-search"><input type="text" id="mineQ" inputmode="search" enterkeyhint="search" autocomplete="off" spellcheck="false" maxlength="80" placeholder="جستجوی نام آزمون…" aria-label="جستجوی نام آزمون" aria-controls="mineList">' +
+            '<button class="mine-clear" id="mineClr" type="button" aria-label="پاک کردن جستجو" hidden>×</button></div>'
+          : "") +
+        '<div class="mine-list" id="mineList">' + items.map(mineRow).join("") + "</div>" +
+        '<p class="muted mine-none" id="mineNone" role="status" hidden>آزمونی با این نام پیدا نشد.</p>' +
         (sess ? "" : '<p class="hint">این آزمون‌ها فقط روی همین دستگاه هستند. برای اینکه روی حسابتان بمانند و از هر دستگاهی ببینیدشان، <a href="#/signup">وارد شوید یا ثبت‌نام کنید</a>.</p>') +
         "</div>" +
         '<div class="actions"><a class="btn" href="#/create">ساخت آزمون جدید</a>' + (sess ? '<a class="btn ghost" href="#/groups">گروه‌ها</a>' : "") + "</div>";
+      const list = document.getElementById("mineList"), inp = document.getElementById("mineQ"), clr = document.getElementById("mineClr");
+      const none = document.getElementById("mineNone"), cnt = document.getElementById("mineCnt");
+      list.addEventListener("scroll", () => mineMore(list), { passive: true });
+      if (inp) {
+        const apply = () => {
+          const words = nrm(inp.value).split(" ").filter(Boolean);
+          const vis = words.length ? rows.filter((r) => words.every((w) => r.n.indexOf(w) >= 0)) : rows;
+          list.innerHTML = vis.map((r) => mineRow(r.m)).join("");
+          list.scrollTop = 0;
+          list.hidden = !vis.length;
+          none.hidden = vis.length > 0;
+          cnt.textContent = words.length ? faNum(vis.length) + " از " + faNum(items.length) : faNum(items.length);
+          clr.hidden = !inp.value;
+          mineFit();
+        };
+        inp.addEventListener("input", apply);
+        inp.addEventListener("keydown", (e) => { if (e.key === "Escape" && inp.value) { e.preventDefault(); inp.value = ""; apply(); } });
+        clr.addEventListener("click", () => { inp.value = ""; apply(); inp.focus(); });
+      }
+      mineFit();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(mineFit).catch(() => {});
     };
 
     if (!sess) { draw(store.localQuizzes(), ""); return; }
@@ -366,7 +414,7 @@
       let note = "";
       if (res.error) note = '<div class="card warn-card"><strong>فهرست حساب‌تان الان بارگذاری نشد.</strong><div class="hint">اتصال اینترنت را بررسی کنید و صفحه را دوباره باز کنید. آزمون‌هایتان گم نشده‌اند.</div></div>';
       else if (left.length) note = '<div class="hint">بعضی آزمون‌ها هنوز فقط روی این دستگاه هستند و بعداً به حساب منتقل می‌شوند.</div>';
-      draw(res.items.concat(left), note);
+      draw(left.concat(res.items), note);
     });
   }
 
