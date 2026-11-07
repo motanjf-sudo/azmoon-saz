@@ -389,6 +389,16 @@
   .mine-row:last-child{border-bottom:0}
   .mine-t{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mine-n{display:block;font-size:.8rem;color:var(--muted);font-weight:500;margin-top:2px}
+  .mine-list{position:relative;overflow-y:auto;overflow-x:hidden;padding:0 6px;margin:0 -6px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;-webkit-overflow-scrolling:touch}
+  .mine-list.more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent)}
+  .mine-list::-webkit-scrollbar{width:6px}
+  .mine-list::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:99px}
+  .mine-search{position:relative;margin:10px 0 6px}
+  .mine-search input{padding-inline-end:44px}
+  .mine-clear{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:0;background:var(--chip);color:var(--muted);font-size:1.2rem;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0;font-family:inherit}
+  .mine-clear:hover{color:var(--text)}
+  .mine-none{text-align:center;padding:18px 0 6px;margin:0}
+  @media (max-width:700px){.mine-search input{font-size:16px}}
   .draft{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-color:var(--accent)}
   .draft-actions{display:flex;gap:8px}
   .det-cell{text-align:left;width:1%}
@@ -831,7 +841,7 @@
     .seg{order:3;width:100%;flex-wrap:nowrap}
     .seg button{flex:1 1 auto;padding:6px 4px;font-size:.8rem;white-space:nowrap}
     .ap{top:66px}
-    .mine-row{flex-wrap:wrap}.mine-t{flex:1 1 100%}
+    .mine-row{gap:8px}.mine-t{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.55}.mine-row .btn.small{padding:.45rem .7rem;font-size:.84rem;flex:none}
     .linkbox{flex-direction:column;align-items:stretch}
     .actions .btn{flex:1 1 100%}
     .ring-wrap{width:172px;height:172px}
