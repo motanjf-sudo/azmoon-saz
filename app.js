@@ -1012,7 +1012,7 @@
   const tkPrice = (n) => n * tkRate(n);
   const tkOffPct = (n) => Math.round((1000 - tkRate(n)) / 10);
   const fmtN = (n) => faNum(String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "٬"));
-  const COIN = '<span class="coin" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4.2l2.1 5.7 5.7 2.1-5.7 2.1L12 19.8l-2.1-5.7L4.2 12l5.7-2.1z"/></svg></span>';
+  const COIN = '<span class="coin" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#pz-p"/></svg></span>';
 
   const tk = { bal: null, at: 0, tok: "" };
   let tkBusy = null, tkAnim = 0;
@@ -1256,6 +1256,24 @@
     };
   }
 
+  /* ---------- پرداخت توکن (درگاه زیبال) ---------- */
+  const payFlag = {
+    get() { try { return localStorage.getItem("pz.pay") || ""; } catch (e) { return ""; } },
+    set(v) { try { localStorage.setItem("pz.pay", v); } catch (e) { /* ignore */ } },
+    clear() { try { localStorage.removeItem("pz.pay"); } catch (e) { /* ignore */ } },
+  };
+  async function payCall(body) {
+    const res = await fetch(cfg.SUPABASE_URL + "/functions/v1/pay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+      body: JSON.stringify(Object.assign({ token: tokenOf() }, body)),
+    });
+    let d = null;
+    try { d = await res.json(); } catch (e) { /* ignore */ }
+    return { ok: res.ok, status: res.status, d: d };
+  }
+  const WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.4v.1"/></svg>';
+
   /* ---------- صفحه‌ی خرید توکن ---------- */
   function viewTokens(token) {
     setTitle("خرید توکن");
@@ -1268,11 +1286,8 @@
     app.innerHTML =
       '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
       '<div class="page-head"><h1>خرید توکن</h1></div>' +
-      '<p class="muted tkp-lead">با توکن، آزمون هوش مصنوعی می‌سازید: <b>هر سؤال = ۱ توکن</b>. ساخت دستی آزمون همیشه رایگان است.</p>' +
-      '<div class="card tkp-hero"><div class="tkp-coin" aria-hidden="true">' + COIN + "</div>" +
-      '<div class="tkp-hero-t"><span class="tkp-lbl">موجودی شما</span><div class="tkp-bal"><b data-tk>' + tkTxt() + "</b> <span>توکن</span></div>" +
-      '<span class="hint" id="tkpHave"></span></div></div>' +
-
+      '<p class="tkp-lead"><b>۱ توکن = ۱ سؤال</b></p>' +
+      '<div class="card tkp-res" id="tkRes" role="status" aria-live="polite" hidden></div>' +
       '<div class="card tkp-buy"><h2 class="tkp-h">چند توکن می‌خواهید؟</h2>' +
       '<div class="tkp-packs" role="group" aria-label="بسته‌های آماده">' +
       PRESETS.map((p) =>
@@ -1292,12 +1307,14 @@
       '<div class="tkp-line"><span>قیمت هر توکن</span><span><b id="tkRate"></b> <em class="tkp-badge" id="tkOff" hidden></em></span></div>' +
       '<div class="tkp-line"><span>معادل</span><b id="tkEq"></b></div>' +
       '<div class="tkp-line tot"><span>مبلغ قابل پرداخت</span><span class="tkp-tot"><b id="tkTot"></b> <small>تومان</small></span></div></div>' +
+      '<div class="err tkp-err" id="tkErr" role="alert" hidden></div>' +
       '<button class="btn wide tkp-pay" id="tkPay" type="button"></button></div>' +
 
       '<details class="card tkp-tbl"><summary>جدول قیمت <small>(هر چه بیشتر بخرید، ارزان‌تر)</small></summary><div class="tkp-rows">' +
       TK_TIERS.map((t, i) => '<div class="tkp-row" data-i="' + i + '"><span>' + TK_TIER_LBL[i] + "</span><b>" + fmtN(t[1]) + " <small>تومان برای هر توکن</small></b></div>").join("") + "</div></details>";
 
     const $ = (id) => document.getElementById(id);
+    let paying = false, alive = true;
     const inp = $("tkN"), mBtn = $("tkM"), pBtn = $("tkP");
     const packs = Array.prototype.slice.call(app.querySelectorAll(".tkp-pack"));
     const en = (v) => String(v).replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
@@ -1330,7 +1347,11 @@
       const o = $("tkOff"); o.hidden = off <= 0; o.textContent = faNum(off) + "٪ تخفیف";
       $("tkEq").textContent = quizTxt(n);
       tween("tkTot", tkPrice(n), fmtN);
-      $("tkPay").innerHTML = ICONS.spark + " پرداخت " + fmtN(tkPrice(n)) + " تومان";
+      if (!paying) {
+        const pb = $("tkPay");
+        pb.disabled = n < TK_MIN_STEP;
+        pb.innerHTML = n < TK_MIN_STEP ? "حداقل خرید " + faNum(TK_MIN_STEP) + " توکن است" : ICONS.spark + " پرداخت " + fmtN(tkPrice(n)) + " تومان";
+      }
       app.querySelectorAll(".tkp-row").forEach((r) => r.classList.toggle("on", +r.dataset.i === tkTier(n)));
     };
     const setN = (v, fromInput) => {
@@ -1377,15 +1398,114 @@
     hold(mBtn, -1);
     hold(pBtn, 1);
 
-    $("tkPay").addEventListener("click", () => payInfo(n, tkPrice(n)));
+    /* ---- پرداخت ---- */
+    const showErr = (m) => { const e = $("tkErr"); if (!e) return; e.hidden = !m; e.textContent = m || ""; };
+    const busy = (on) => {
+      app.querySelector(".tkp-buy").classList.toggle("busy", on);
+      [inp, mBtn, pBtn].forEach((x) => { x.disabled = on || (x === mBtn && n <= TK_MIN_STEP) || (x === pBtn && n >= TK_MAX_BUY); });
+      packs.forEach((b) => { b.disabled = on; });
+    };
+    const idle = () => {
+      paying = false;
+      busy(false);
+      const pb = $("tkPay");
+      if (pb) pb.removeAttribute("aria-busy");
+      paint();
+    };
+    let goTimer = 0;
+    $("tkPay").addEventListener("click", async () => {
+      if (paying || n < TK_MIN_STEP) return;
+      const count = n, total = tkPrice(n);
+      paying = true;
+      showErr("");
+      busy(true);
+      const pb = $("tkPay");
+      pb.disabled = true;
+      pb.setAttribute("aria-busy", "true");
+      pb.innerHTML = '<span class="spin-s" aria-hidden="true"></span> در حال انتقال به درگاه…';
+      const fail = (m) => { if (!alive) return; idle(); showErr(m); };
+      let r = null;
+      try { r = await payCall({ action: "start", tokens: count, expect: total }); } catch (e) { r = null; }
+      if (!alive) return;
+      if (!r) return fail("ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.");
+      const d = r.d || {};
+      if (r.ok && d.ok && /^https?:\/\//i.test(String(d.url || ""))) {
+        payFlag.set(String(d.order || ""));
+        goTimer = setTimeout(() => { if (alive) { idle(); showErr("انتقال به درگاه انجام نشد. دوباره دکمه‌ی پرداخت را بزنید."); } }, 20000);
+        location.assign(d.url);
+        return;
+      }
+      if (r.status === 503 && d.error === "not_configured") { idle(); payInfo(count, total); return; }
+      if (r.status === 409 && d.error === "price_changed") return fail("قیمت‌ها به‌روز شده است. صفحه را دوباره باز کنید و خرید را تکرار کنید.");
+      if (r.status === 401) return fail("نشست شما تمام شده است. دوباره وارد حساب شوید.");
+      fail(d.error || "خطایی رخ داد. دوباره تلاش کنید.");
+    });
+    /* برگشت با دکمه‌ی «بازگشت» مرورگر از صفحه‌ی بانک: دکمه دوباره فعال شود */
+    const onShow = (e) => { if (e.persisted && paying) { clearTimeout(goTimer); idle(); } };
+    window.addEventListener("pageshow", onShow);
 
-    const have = $("tkpHave");
-    const onTk = () => { have.textContent = tk.bal == null ? "" : tk.bal > 0 ? "برای " + quizTxt(tk.bal) + " کافی است." : "برای ساخت آزمون با هوش مصنوعی توکن لازم دارید."; };
-    window.addEventListener("tkchange", onTk);
-    onTk();
+    /* ---- نتیجه‌ی پرداخت (بعد از برگشت از بانک) ---- */
+    const res = $("tkRes");
+    const SPIN = '<span class="spin-s" aria-hidden="true"></span>';
+    const showRes = (kind, icon, title, body, extra) => {
+      res.hidden = false;
+      res.className = "card tkp-res " + kind;
+      res.innerHTML = '<div class="tkp-res-i" aria-hidden="true">' + icon + '</div><div class="tkp-res-t"><b>' + title + "</b>" + (body ? "<p>" + body + "</p>" : "") + (extra || "") + "</div>";
+    };
+    const TEL = '<a class="pay-tel sm" href="tel:+982126378190">۰۲۱-۲۶۳۷۸۱۹۰</a>';
+    const sleep = (ms) => new Promise((ok) => { const t = setTimeout(ok, ms); timers.push(t); });
+    const timers = [];
+    const resolveOrder = async (order, fromBank) => {
+      if (fromBank) showRes("wait", SPIN, "در حال تأیید پرداخت…");
+      for (let i = 0; i < 4 && alive; i++) {
+        let r = null;
+        try { r = await payCall({ action: "status", order: order }); } catch (e) { r = null; }
+        if (!alive) return;
+        if (!r || !r.ok) {
+          if (r && r.status === 404) { payFlag.clear(); if (fromBank) showRes("bad", WARN, "سفارش پیدا نشد", "اگر پرداخت کرده‌اید، تماس بگیرید:", TEL); return; }
+        } else {
+          const d = r.d || {};
+          if (d.status === "paid") {
+            payFlag.clear();
+            if (typeof d.balance === "number") tkSet(d.balance);
+            showRes("ok", ICONS.tick, "پرداخت موفق بود", faNum(d.tokens) + " توکن به حساب شما اضافه شد." + (d.ref ? '<span class="tkp-ref">کد پیگیری: <bdi dir="ltr">' + esc(d.ref) + "</bdi></span>" : ""));
+            return;
+          }
+          if (d.status === "failed") {
+            payFlag.clear();
+            if (fromBank) showRes("bad", WARN, "پرداخت انجام نشد", "اگر پولی کم شده، بانک تا ۷۲ ساعت آن را برمی‌گرداند.");
+            return;
+          }
+          if (d.status === "review") { showRes("warn", WARN, "پرداخت در حال بررسی است", "برای اضافه شدن توکن تماس بگیرید:", TEL); return; }
+        }
+        if (!fromBank) return;
+        await sleep(2500);
+      }
+      if (alive && fromBank) {
+        showRes("wait", WARN, "پرداخت هنوز تأیید نشده است", "اگر پول کم شده، توکن‌ها تا چند دقیقه‌ی دیگر خودکار اضافه می‌شود.", '<button class="btn small ghost tkp-go" type="button" id="tkAgain">بررسی دوباره</button>');
+        const again = $("tkAgain");
+        if (again) again.addEventListener("click", () => resolveOrder(order, true));
+      }
+    };
+    const qs = new URLSearchParams(location.search);
+    const pm = qs.get("pay");
+    if (pm !== null) {
+      try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) { /* ignore */ }
+      const o = String(qs.get("o") || "").toLowerCase();
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(o)) resolveOrder(o, true);
+      else showRes("bad", WARN, "پرداخت انجام نشد", "اگر پولی کم شده، بانک تا ۷۲ ساعت آن را برمی‌گرداند.");
+    } else {
+      /* کاربر بعد از پرداخت از راه دیگری برگشته (مثلاً صفحه‌ی بانک را بسته) */
+      const f = payFlag.get();
+      if (f) resolveOrder(f, false);
+    }
+
     setN(n);
     return function cleanup() {
-      window.removeEventListener("tkchange", onTk);
+      alive = false;
+      clearTimeout(goTimer);
+      timers.forEach(clearTimeout);
+      window.removeEventListener("pageshow", onShow);
       Object.keys(anims).forEach((k) => cancelAnimationFrame(anims[k].raf));
     };
   }
@@ -2354,7 +2474,8 @@
       '<div class="card adm-card"><div class="adm-search"><input type="text" id="admQ" inputmode="search" autocomplete="off" spellcheck="false" maxlength="80" placeholder="جستجو بر اساس نام، شماره یا ایمیل" aria-label="جستجو"></div>' +
       '<div id="admErr" class="err" role="alert" hidden></div>' +
       '<div id="admList" aria-live="polite"><p class="muted">در حال بارگذاری…</p></div>' +
-      '<div class="adm-pager" id="admPager" hidden></div></div>';
+      '<div class="adm-pager" id="admPager" hidden></div></div>' +
+      '<div class="card adm-card" id="apCard"><h2 class="apay-h">پرداخت‌ها</h2><div class="adm-st apay-st" id="apSt"></div><div id="apList" aria-live="polite"><p class="muted">در حال بارگذاری…</p></div></div>';
     const $ = (id) => document.getElementById(id);
     const en = (v) => String(v).replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
 
@@ -2469,6 +2590,25 @@
       if (u) openTok(u);
     });
 
+
+    const PAY_ST = { paid: "موفق", pending: "در انتظار", failed: "ناموفق", review: "نیازمند بررسی" };
+    const loadPay = async () => {
+      let r;
+      try { r = await rpc("admin_payments", { p_token: tokenOf(), p_limit: 30 }); } catch (e) { if (ok() && $("apList")) $("apList").innerHTML = '<p class="muted">بارگذاری پرداخت‌ها ممکن نشد.</p>'; return; }
+      if (!ok() || !r || r.ok !== true || !$("apList")) return;
+      const st = r.stats || {};
+      $("apSt").innerHTML = [["پرداخت موفق", faNum(st.paid || 0)], ["مجموع فروش (تومان)", fmtN(st.sum || 0)], ["در انتظار", faNum(st.pending || 0)], ["نیازمند بررسی", faNum(st.review || 0)]]
+        .map((x) => "<div><b>" + x[1] + "</b><span>" + x[0] + "</span></div>").join("");
+      const rows = r.rows || [];
+      $("apList").innerHTML = rows.length ? rows.map((p) => {
+        const d = fmtD(p.created_at), nm = cleanName(p.name);
+        const who = nm || (p.phone ? showPhone(p.phone) : p.email || "—");
+        return '<div class="apay-row"><div class="apay-u">' + esc(who) + "<small>" + esc(p.phone ? showPhone(p.phone) : p.email || "") + "</small></div>" +
+          '<div class="apay-m">' + fmtN(p.tokens) + " توکن <small>· " + fmtN(p.amount) + " تومان</small><span class=\"apay-d\">" + d[0] + " · " + d[1] + (p.ref ? " · " + esc(p.ref) : "") + "</span></div>" +
+          '<span class="apay-s ' + esc(p.status) + '">' + (PAY_ST[p.status] || esc(p.status)) + "</span></div>";
+      }).join("") : '<p class="muted">هنوز پرداختی ثبت نشده است.</p>';
+    };
+
     const load = async () => {
       const my = ++seq;
       const list = $("admList");
@@ -2500,8 +2640,9 @@
       const v = cleanName(en(e.target.value));
       timer = setTimeout(() => { if (v === q) return; q = v; page = 0; load(); }, 300);
     });
-    $("admRef").addEventListener("click", () => load());
+    $("admRef").addEventListener("click", () => { load(); loadPay(); });
     load();
+    loadPay();
     return () => { clearTimeout(timer); seq++; };
   }
 
