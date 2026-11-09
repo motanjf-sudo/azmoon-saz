@@ -1317,7 +1317,7 @@
 
     app.innerHTML =
       '<a class="back" href="/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
-      '<div class="page-head"><h1>خرید پولک</h1></div>' +
+      '<div class="page-head"><h1>خرید پولک</h1><a class="btn small ghost" href="/wallet">' + MENU_IC.wallet + " بخش مالی</a></div>" +
       '<p class="tkp-lead"><b>۱ پولک = ۱ سؤال</b></p>' +
       '<div class="card tkp-res" id="tkRes" role="status" aria-live="polite" hidden></div>' +
       '<div class="card tkp-buy"><h2 class="tkp-h">چند پولک می‌خواهید؟</h2>' +
@@ -1969,6 +1969,7 @@
       (s.phone && s.email ? '<div class="prof-phone prof-2" dir="ltr" data-em>' + esc(showPhone(s.email)) + "</div>"
         : '<button class="prof-add" id="profAdd" type="button">+ ' + (s.phone ? "افزودن ایمیل" : "افزودن شماره‌ی موبایل") + "</button>") +
       '<a class="prof-tk" id="profTk" href="/tokens">' + COIN + '<span>پولک‌های من</span><b data-tk>' + tkTxt() + "</b></a>" +
+      '<a class="prof-tk" id="profWl" href="/wallet">' + MENU_IC.wallet + "<span>بخش مالی</span></a>" +
       '<button class="btn ghost small wide" id="profOut" type="button">خروج از حساب</button></div>';
     document.getElementById("profBtn").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1978,6 +1979,7 @@
     document.getElementById("profPop").addEventListener("click", (e) => e.stopPropagation());
     document.getElementById("profOut").addEventListener("click", (e) => { closeProfile(); doLogout(e.currentTarget); });
     document.getElementById("profTk").addEventListener("click", () => closeProfile());
+    document.getElementById("profWl").addEventListener("click", () => closeProfile());
     const pa = document.getElementById("profAdd");
     if (pa) pa.addEventListener("click", () => { closeProfile(); openLinkModal(s.phone ? "email" : "phone"); });
     const edit = () => { closeProfile(); openProfileEdit(); };
@@ -2153,21 +2155,18 @@
     if (mb) mb.setAttribute("aria-expanded", "true");
     requestAnimationFrame(() => requestAnimationFrame(() => { ov.classList.add("on"); dr.classList.add("on"); }));
     let done = false;
-    const mq = window.matchMedia("(min-width:721px)");
     const close = (noFocus) => {
       if (done) return;
       done = true;
       menuClose = null;
       document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("pz:nav", close);
-      if (mq.removeEventListener) mq.removeEventListener("change", onMq);
       document.body.style.overflow = prevOv;
       if (mb) mb.setAttribute("aria-expanded", "false");
       ov.classList.remove("on"); dr.classList.remove("on");
       setTimeout(() => { ov.remove(); dr.remove(); }, reduceMotion() ? 0 : 260);
       if (noFocus !== true && prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     };
-    const onMq = (e) => { if (e.matches) close(true); };
     const onKey = (e) => {
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
       else if (e.key === "Tab") {
@@ -2181,7 +2180,6 @@
     menuClose = close;
     document.addEventListener("keydown", onKey, true);
     window.addEventListener("pz:nav", close);
-    if (mq.addEventListener) mq.addEventListener("change", onMq);
     ov.addEventListener("click", () => close());
     dr.addEventListener("click", (e) => { if (e.target.closest("a[href]")) close(true); });
     const $ = (id) => dr.querySelector("#" + id);
@@ -2189,7 +2187,7 @@
     const on = (id, fn) => { const b = $(id); if (b) b.addEventListener("click", fn); };
     on("drEdit", () => { close(true); openProfileEdit(); });
     on("drAdd", () => { close(true); openLinkModal(s.phone ? "email" : "phone"); });
-    on("drTheme", () => { const t = document.getElementById("themeBtn"); if (t) t.click(); });
+    on("drTheme", (e) => { const t = document.getElementById("themeBtn"); if (t) { window.__pzThemeSrc = e.currentTarget; t.click(); } });
     on("drOut", (e) => { close(true); doLogout(e.currentTarget); });
     setTimeout(() => { if (!done) { const f = dr.querySelector(".dr-item"); if (f) f.focus({ preventScroll: true }); } }, 60);
   }
@@ -3047,6 +3045,8 @@
     if (!b) return;
     b.hidden = !(n > 0);
     b.textContent = n > 99 ? "۹۹+" : faNum(n);
+    const mb = document.getElementById("menuBtn");
+    if (mb) { mb.classList.toggle("dot", n > 0); mb.setAttribute("aria-label", n > 0 ? "منو؛ " + faNum(n) + " دعوت جدید به گروه" : "منو"); }
     const g = document.getElementById("grpBtn");
     if (g) g.setAttribute("aria-label", n > 0 ? "گروه‌ها؛ " + faNum(n) + " دعوت جدید" : "گروه‌ها");
   }
