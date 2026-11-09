@@ -1,10 +1,10 @@
 /* پازمونک: منطق برنامه
  * مسیرها:
- *   #/                          صفحه‌ی اصلی
- *   #/create                    انتخاب مدل آزمون
- *   #/create/<tf|mcq|mixed>     ساخت آزمون
- *   #/q/<id>                    شرکت در آزمون
- *   #/m/<id>/<secret>           مدیریت و نتایج
+ *   /                           صفحه‌ی اصلی
+ *   /create                     انتخاب مدل آزمون
+ *   /create/<tf|mcq|mixed>      ساخت آزمون
+ *   /q/<id>                     شرکت در آزمون
+ *   /m/<id>                     مدیریت و نتایج (کلید مدیریت از حساب کاربر خوانده می‌شود، نه از آدرس)
  */
 (function () {
   "use strict";
@@ -75,7 +75,36 @@
   }
 
   function baseUrl() {
-    return location.origin + location.pathname;
+    return location.origin;
+  }
+
+  /* ---------- مسیرها: آدرس‌های تمیز (/q/abc) بدون # ---------- */
+  const curPath = () => location.pathname + location.search;
+  const isHomePath = () => location.pathname === "/" || location.pathname === "";
+  /* کلید مدیریتِ آزمون‌هایی که همین لحظه ساخته یا با لینک قدیمی باز شده‌اند (فقط در حافظه‌ی همین صفحه) */
+  const memSecrets = {};
+  /* لینک‌های قدیمی (#/q/abc، #/m/abc/کلید) به آدرس تمیز تبدیل می‌شوند */
+  function upgradeLegacy() {
+    const h = location.hash;
+    if (!/^#\//.test(h)) return;
+    const hp = h.slice(1).split("?");
+    const parts = hp[0].split("/").filter(Boolean);
+    if ((parts[0] === "m" || parts[0] === "edit") && parts[1] && /^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) {
+      memSecrets[safeDecode(parts[1])] = parts[2];
+      parts.length = 2;
+    }
+    const q = hp[1] ? "?" + hp[1] : location.search;
+    try { history.replaceState(null, "", "/" + parts.join("/") + q); } catch (e) { /* ignore */ }
+  }
+  /* رفتن به یک مسیر داخلی بدون بارگذاری دوباره‌ی صفحه */
+  function go(to, replace) {
+    to = String(to || "/");
+    if (to.charAt(0) !== "/") to = "/" + to;
+    if (genLockHash !== null) return;
+    if (to === curPath()) { window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" }); return; }
+    try { history[replace ? "replaceState" : "pushState"](null, "", to); } catch (e) { location.assign(to); return; }
+    window.dispatchEvent(new Event("pz:nav"));
+    route();
   }
 
   function safeDecode(s) {
@@ -133,7 +162,7 @@
       const c = await caches.open("pz-katex");
       let r = await c.match(KV);
       if (!r) {
-        const n = await timed(fetch("katex-bundle.js"), 25000);
+        const n = await timed(fetch("/katex-bundle.js"), 25000);
         if (!n.ok) throw new Error("http");
         try { await c.put(KV, n.clone()); } catch (e) { /* ignore */ }
         r = n;
@@ -144,7 +173,7 @@
       try { await addScript(u); } finally { URL.revokeObjectURL(u); }
     };
     katexP = bundleCached()
-      .catch(() => addScript("katex-bundle.js"))
+      .catch(() => addScript("/katex-bundle.js"))
       .catch(() => timed(addCss(KATEX + "katex.min.css").then(() => addScript(KATEX + "katex.min.js")).then(() => addScript(KATEX + "contrib/auto-render.min.js")), 10000))
       .then(() => !!window.renderMathInElement)
       .catch(() => false)
@@ -311,7 +340,7 @@
       '<div class="err" role="alert">' + esc(text) + "</div>" +
       '<div class="actions">' +
       (retry ? '<button class="btn" type="button" id="retry">تلاش دوباره</button>' : "") +
-      '<a class="btn ghost" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
+      '<a class="btn ghost" href="/">بازگشت به صفحه‌ی اصلی</a></div>';
     if (retry) document.getElementById("retry").addEventListener("click", retry);
   }
 
@@ -324,7 +353,7 @@
 
   /* ---------- صفحه‌ی اصلی ---------- */
   let homeTok = null;
-  const isHomeHash = () => !location.hash || location.hash === "#" || location.hash === "#/";
+  const isHomeHash = isHomePath;
 
   /* فهرست آزمون‌های من: ۵ آزمونِ تازه دیده می‌شود و بقیه با اسکرول داخل همان کادر؛ جستجو بر اساس نام */
   const MINE_VIS = 5;
@@ -337,8 +366,8 @@
   const mineRow = (m) =>
     '<div class="mine-row"><span class="mine-t">' + esc(m.title) +
     (m.participants != null ? '<small class="mine-n">' + faNum(m.participants) + " شرکت‌کننده</small>" : "") + "</span>" +
-    '<a class="btn small ghost" href="#/q/' + encodeURIComponent(m.id) + '">باز کردن</a>' +
-    '<a class="btn small" href="#/m/' + encodeURIComponent(m.id) + "/" + encodeURIComponent(m.secret) + '">نتایج</a>' +
+    '<a class="btn small ghost" href="/q/' + encodeURIComponent(m.id) + '">باز کردن</a>' +
+    '<a class="btn small" href="/m/' + encodeURIComponent(m.id) + '">نتایج</a>' +
     '<button class="mine-del" type="button" data-id="' + esc(m.id) + '" aria-label="پاک کردن آزمون «' + esc(m.title) + '»" title="پاک کردن آزمون">' + CROSS + "</button></div>";
   function mineMore(l) { l.classList.toggle("more", l.scrollHeight - l.scrollTop - l.clientHeight > 3 && !!l.style.maxHeight); }
   function mineFit() {
@@ -366,7 +395,7 @@
           '<div class="card empty">' + ICONS.doc +
           "<h2>هنوز آزمونی نساخته‌اید</h2>" +
           '<p class="muted">با چند کلیک اولین آزمون خود را بسازید و لینکش را برای دیگران بفرستید.</p>' +
-          '<div class="actions" style="justify-content:center"><a class="btn" href="#/create">ساخت اولین آزمون</a>' + (sess ? '<a class="btn ghost" href="#/groups">گروه‌ها</a>' : "") + "</div></div>";
+          '<div class="actions" style="justify-content:center"><a class="btn" href="/create">ساخت اولین آزمون</a>' + (sess ? '<a class="btn ghost" href="/groups">گروه‌ها</a>' : "") + "</div></div>";
         return;
       }
       items = items.slice();
@@ -381,9 +410,9 @@
         '<div class="err" id="mineErr" role="alert" hidden></div>' +
         '<div class="mine-list" id="mineList" tabindex="-1">' + items.map(mineRow).join("") + "</div>" +
         '<p class="muted mine-none" id="mineNone" role="status" hidden>آزمونی با این نام پیدا نشد.</p>' +
-        (sess ? "" : '<p class="hint">این آزمون‌ها فقط روی همین دستگاه هستند. برای اینکه روی حسابتان بمانند و از هر دستگاهی ببینیدشان، <a href="#/signup">وارد شوید یا ثبت‌نام کنید</a>.</p>') +
+        (sess ? "" : '<p class="hint">این آزمون‌ها فقط روی همین دستگاه هستند. برای اینکه روی حسابتان بمانند و از هر دستگاهی ببینیدشان، <a href="/signup">وارد شوید یا ثبت‌نام کنید</a>.</p>') +
         "</div>" +
-        '<div class="actions"><a class="btn" href="#/create">ساخت آزمون جدید</a>' + (sess ? '<a class="btn ghost" href="#/groups">گروه‌ها</a>' : "") + "</div>";
+        '<div class="actions"><a class="btn" href="/create">ساخت آزمون جدید</a>' + (sess ? '<a class="btn ghost" href="/groups">گروه‌ها</a>' : "") + "</div>";
       const list = document.getElementById("mineList"), inp = document.getElementById("mineQ"), clr = document.getElementById("mineClr");
       const none = document.getElementById("mineNone"), cnt = document.getElementById("mineCnt");
       list.addEventListener("scroll", () => mineMore(list), { passive: true });
@@ -466,7 +495,7 @@
   window.addEventListener("authchange", () => {
     const cur = (auth.get() || {}).token || "";
     if (isHomeHash() && cur !== homeTok && cfg.SUPABASE_URL) viewHome();
-    else if (!cur && /^#\/(create|q\/|groups|g\/)/.test(location.hash) && !gateOn && genLockHash === null && cfg.SUPABASE_URL) route();
+    else if (!cur && /^\/(create|q\/|groups|g\/)/.test(location.pathname) && !gateOn && genLockHash === null && cfg.SUPABASE_URL) route();
   });
 
   /* ---------- انتخاب مدل آزمون ---------- */
@@ -491,27 +520,27 @@
       const inner = '<span class="ti">' + ICONS[M.icon] + "</span><h3>" + esc(M.label) + (M.soon ? ' <span class="soon-badge">به‌زودی</span>' : "") + "</h3><p>" + esc(M.desc) + "</p>" + demo[m];
       return M.soon
         ? '<div class="card type-card soon" aria-disabled="true">' + inner + "</div>"
-        : '<a class="card type-card" href="' + withG("#/create/" + m) + '" data-base="#/create/' + m + '">' + inner + "</a>";
+        : '<a class="card type-card" href="' + withG("/create/" + m) + '" data-base="/create/' + m + '">' + inner + "</a>";
     };
     app.innerHTML =
-      '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
+      '<a class="back" href="/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
       "<h1>چه مدل آزمونی می‌خواهید؟</h1>" +
       '<p class="muted">یکی از مدل‌ها را انتخاب کنید. در مرحله‌ی بعد سؤال‌ها را می‌نویسید.</p>' +
       (draft
         ? '<div class="card draft"><div><strong>پیش‌نویس ذخیره‌شده دارید</strong><div class="hint">' + (draft.title ? esc(draft.title) + " — " : "") + faNum(draft.questions.length) + ' سؤال</div></div>' +
-          '<div class="draft-actions"><a class="btn small" href="' + withG("#/create/" + draft.type + "?draft=1") + '" data-base="#/create/' + draft.type + '?draft=1">ادامه‌ی پیش‌نویس</a>' +
+          '<div class="draft-actions"><a class="btn small" href="' + withG("/create/" + draft.type + "?draft=1") + '" data-base="/create/' + draft.type + '?draft=1">ادامه‌ی پیش‌نویس</a>' +
           '<button class="btn small danger" type="button" id="dropDraft">حذف</button></div></div>'
         : "") +
       '<div class="card aud"><strong>این آزمون برای چه کسانی است؟</strong>' +
       '<div class="seg" role="group" aria-label="مخاطب آزمون"><button type="button" data-aud="pub" aria-pressed="' + (!createGroup) + '">همه (عمومی)</button><button type="button" data-aud="grp" aria-pressed="' + (!!createGroup) + '">فقط یک گروه</button></div>' +
       '<p class="hint" id="audHint" style="margin:6px 0 0"></p><div id="audSel" hidden></div></div>' +
-      '<div class="types" id="typesBox"><a class="card type-card ai-card" href="' + withG("#/create/ai") + '" data-base="#/create/ai"><span class="ti">' + ICONS.spark + '</span><h3>ساخت با هوش مصنوعی <span class="soon-badge ai-badge">جدید</span></h3>' +
+      '<div class="types" id="typesBox"><a class="card type-card ai-card" href="' + withG("/create/ai") + '" data-base="/create/ai"><span class="ti">' + ICONS.spark + '</span><h3>ساخت با هوش مصنوعی <span class="soon-badge ai-badge">جدید</span></h3>' +
       "<p>فقط موضوع را بنویسید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید. هر سؤال ۱ توکن است.</p></a>" +
       ["tf", "mcq", "essay", "mixed"].map(card).join("") + "</div>";
     const dropBtn = document.getElementById("dropDraft");
     if (dropBtn) dropBtn.addEventListener("click", () => { store.del("quizDraft"); viewChoose(); });
 
-    /* انتخاب مخاطب: عمومی یا یکی از گروه‌هایی که مدیرش هستید */
+    /* انتخاب مخاطب: عمومی یا یکی از گروه‌هایی که مالک یا مدیرش هستید */
     const myTok = routeToken;
     const typesBox = document.getElementById("typesBox"), hint = document.getElementById("audHint"), selBox = document.getElementById("audSel");
     let owned = null;           /* null = هنوز بارگذاری نشده */
@@ -533,7 +562,7 @@
       } else if (owned === null) {
         selBox.innerHTML = '<p class="hint">در حال بارگذاری گروه‌ها…</p>';
       } else if (!owned.length) {
-        selBox.innerHTML = '<p class="hint">شما هنوز گروهی نساخته‌اید.</p><a class="btn small" href="#/groups">ساخت گروه</a>';
+        selBox.innerHTML = '<p class="hint">شما هنوز گروهی نساخته‌اید.</p><a class="btn small" href="/groups">ساخت گروه</a>';
       } else {
         selBox.innerHTML = '<label for="audGroup" class="hint">گروه:</label><select id="audGroup">' + owned.map((g) => '<option value="' + esc(g.id) + '"' + (g.id === createGroup ? " selected" : "") + ">" + esc(g.name) + "</option>").join("") + "</select>";
         const sel = document.getElementById("audGroup");
@@ -547,7 +576,7 @@
       try {
         const gs = await ensureGroups(true);
         if (myTok !== routeToken) return;
-        owned = gs.filter((g) => g.role === "owner");
+        owned = gs.filter((g) => g.role === "owner" || g.role === "manager");
         if (createGroup && !owned.some((g) => g.id === createGroup)) { createGroup = ""; if (grpMode && owned.length) createGroup = owned[0].id; }
       } catch (e) { if (myTok !== routeToken) return; loadFailed = true; }
       renderAud();
@@ -569,7 +598,7 @@
     const mixed = allowed.length > 1;
     setTitle(edit ? "ویرایش آزمون" : "ساخت آزمون " + M.label);
     if (!edit) setTimeout(fillGroupChip, 0);
-    const backHref = edit ? "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret : withG("#/create");
+    const backHref = edit ? "/m/" + encodeURIComponent(edit.id) : withG("/create");
     let nSubs = edit ? edit.submissions : 0;
 
     let uid = 0;
@@ -662,7 +691,7 @@
     descEl.addEventListener("input", touch);
 
     const fresh = document.getElementById("freshBtn");
-    if (fresh) fresh.addEventListener("click", () => { finished = true; clearTimeout(draftTimer); store.del("quizDraft"); location.hash = withG("#/create/" + mode); route(); });
+    if (fresh) fresh.addEventListener("click", () => { finished = true; clearTimeout(draftTimer); store.del("quizDraft"); const t = withG("/create/" + mode); if (t === curPath()) route(); else go(t); });
 
     /* شماره‌گذاری و وضعیت دکمه‌ها */
     function refreshChrome() {
@@ -913,7 +942,8 @@
           });
           finished = true;
           await keepQuiz({ id: edit.id, secret: edit.secret, title: titleEl.value.trim() });
-          location.hash = "#/m/" + encodeURIComponent(edit.id) + "/" + edit.secret + "?updated=1" + (r && r.cleared ? "&cleared=" + r.cleared : "");
+          memSecrets[edit.id] = edit.secret;
+          go("/m/" + encodeURIComponent(edit.id) + "?updated=1" + (r && r.cleared ? "&cleared=" + r.cleared : ""));
           return;
         }
         const id = await rpc("create_quiz", {
@@ -928,7 +958,8 @@
         clearTimeout(draftTimer);
         store.del("quizDraft");
         await keepQuiz({ id: id, secret: secret, title: titleEl.value.trim() });
-        location.hash = "#/m/" + encodeURIComponent(id) + "/" + secret + "?new=1";
+        memSecrets[id] = secret;
+        go("/m/" + encodeURIComponent(id) + "?new=1");
       } catch (e) {
         saveBtn.disabled = false;
         saveBtn.classList.remove("loading");
@@ -1079,7 +1110,7 @@
     const els = document.querySelectorAll("header.top, #app");
     els.forEach((el) => { if (on) el.setAttribute("inert", ""); else el.removeAttribute("inert"); });
     document.documentElement.classList.toggle("gen-lock", on);
-    if (on) { genLockHash = location.hash; window.addEventListener("beforeunload", onBeforeUnload); }
+    if (on) { genLockHash = curPath(); window.addEventListener("beforeunload", onBeforeUnload); }
     else { genLockHash = null; window.removeEventListener("beforeunload", onBeforeUnload); }
   }
 
@@ -1098,11 +1129,11 @@
       items.map((i) => '<button type="button" data-v="' + i[0] + '" aria-pressed="' + String(st[name] === i[0]) + '">' + i[1] + "</button>").join("") + "</div>";
 
     app.innerHTML =
-      '<a class="back" href="' + withG("#/create") + '">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
+      '<a class="back" href="' + withG("/create") + '">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
       "<h1>ساخت آزمون با هوش مصنوعی</h1>" + (createGroup ? '<div id="grpChipBox">' + groupChip(groupName(createGroup)) + "</div>" : "") +
       '<p class="muted">موضوع را بنویسید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
       '<div class="card ai-form">' +
-      '<div class="tk-strip">' + COIN + '<span class="tk-strip-t">موجودی شما: <b data-tk>' + tkTxt() + '</b> توکن</span><a class="tk-strip-a" href="#/tokens">خرید توکن</a></div>' +
+      '<div class="tk-strip">' + COIN + '<span class="tk-strip-t">موجودی شما: <b data-tk>' + tkTxt() + '</b> توکن</span><a class="tk-strip-a" href="/tokens">خرید توکن</a></div>' +
       '<label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off">' +
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
       '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
@@ -1111,13 +1142,13 @@
       '<p class="hint tk-model">آزمون با هوش مصنوعی DeepSeek V4.1 ساخته می‌شود.</p>' +
       "</div>" +
       '<div id="msg"></div>' +
-      '<div class="actions"><a class="btn ghost" href="' + withG("#/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' <span id="goT">ساخت آزمون و دریافت لینک</span><span class="go-cost" id="goCost"></span></button></div>' +
+      '<div class="actions"><a class="btn ghost" href="' + withG("/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' <span id="goT">ساخت آزمون و دریافت لینک</span><span class="go-cost" id="goCost"></span></button></div>' +
       '<p class="hint" id="wait" hidden>در حال ساخت آزمون… معمولاً ۱۰ تا ۶۰ ثانیه طول می‌کشد. تا پایان کار، همه‌ی دکمه‌ها قفل است. این صفحه را نبندید و از آن خارج نشوید.</p>';
 
     const $ = (id) => document.getElementById(id);
     const msg = $("msg");
     const fail = (t, extraHtml) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + (extraHtml || "") + "</div>"; };
-    const buyLink = ' <a class="err-a" href="#/tokens">خرید توکن</a>';
+    const buyLink = ' <a class="err-a" href="/tokens">خرید توکن</a>';
 
     app.querySelectorAll(".seg").forEach((g) => {
       g.addEventListener("click", (e) => {
@@ -1135,7 +1166,7 @@
       const low = b != null && b < c;
       cost.className = "tk-cost" + (low ? " low" : "");
       cost.innerHTML = low
-        ? "برای " + faNum(c) + " سؤال، " + faNum(c) + " توکن لازم است و موجودی شما " + faNum(b) + " توکن است. تعداد سؤال را کمتر کنید یا " + '<a href="#/tokens">توکن بخرید</a>.'
+        ? "برای " + faNum(c) + " سؤال، " + faNum(c) + " توکن لازم است و موجودی شما " + faNum(b) + " توکن است. تعداد سؤال را کمتر کنید یا " + '<a href="/tokens">توکن بخرید</a>.'
         : "هر سؤال ۱ توکن است؛ این آزمون <b>" + faNum(c) + " توکن</b> مصرف می‌کند.";
       goCost.textContent = pending ? "" : " · " + faNum(c) + " توکن";
     };
@@ -1177,7 +1208,8 @@
         pending = null;
         tkLast = { used: p.used, bal: p.bal };
         lockUi(false);
-        location.hash = "#/m/" + encodeURIComponent(res.id) + "/" + res.secret + "?new=1";
+        memSecrets[res.id] = res.secret;
+        go("/m/" + encodeURIComponent(res.id) + "?new=1");
         return;
       }
       pending = p;
@@ -1284,7 +1316,7 @@
     const quizTxt = (v) => (quizzes(v) >= 1 ? "حدود " + faNum(quizzes(v)) + " آزمون ۱۰ سؤاله" : "کمتر از یک آزمون ۱۰ سؤاله");
 
     app.innerHTML =
-      '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
+      '<a class="back" href="/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
       '<div class="page-head"><h1>خرید توکن</h1></div>' +
       '<p class="tkp-lead"><b>۱ توکن = ۱ سؤال</b></p>' +
       '<div class="card tkp-res" id="tkRes" role="status" aria-live="polite" hidden></div>' +
@@ -1490,7 +1522,7 @@
     const qs = new URLSearchParams(location.search);
     const pm = qs.get("pay");
     if (pm !== null) {
-      try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) { /* ignore */ }
+      try { history.replaceState(null, "", location.pathname); } catch (e) { /* ignore */ }
       const o = String(qs.get("o") || "").toLowerCase();
       if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(o)) resolveOrder(o, true);
       else showRes("bad", WARN, "پرداخت انجام نشد", "اگر پولی کم شده، بانک تا ۷۲ ساعت آن را برمی‌گرداند.");
@@ -1530,7 +1562,7 @@
       if (done) return;
       done = true;
       document.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("hashchange", close);
+      window.removeEventListener("pz:nav", close);
       document.body.style.overflow = prevOv;
       ov.remove();
       if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
@@ -1545,7 +1577,7 @@
       }
     };
     document.addEventListener("keydown", onKey, true);
-    window.addEventListener("hashchange", close);
+    window.addEventListener("pz:nav", close);
     ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
     ov.querySelector("#pyOk").addEventListener("click", close);
     ov.querySelector("#pyOk").focus();
@@ -1705,7 +1737,7 @@
     app.innerHTML =
       '<div class="card"><p class="muted center">نمره‌ی شما</p><div class="score">' + faNum(r.score) + " از " + faNum(r.total) + '</div><p class="muted center">' + faNum(pct) + "٪</p></div>" +
       "<h2>مرور پاسخ‌ها</h2>" + qs.map(review).join("") +
-      '<div class="actions"><button class="btn" type="button" id="again">شرکت دوباره</button><a class="btn ghost" href="#/create">ساخت آزمون خودم</a></div>';
+      '<div class="actions"><button class="btn" type="button" id="again">شرکت دوباره</button><a class="btn ghost" href="/create">ساخت آزمون خودم</a></div>';
     renderMath(app);
     document.getElementById("again").addEventListener("click", () => { viewTake(quiz.id, token); window.scrollTo(0, 0); });
     window.scrollTo(0, 0);
@@ -1721,7 +1753,7 @@
     if (token !== routeToken) return;
     setTitle("نتایج: " + d.title);
 
-    const take = baseUrl() + "#/q/" + id;
+    const take = baseUrl() + "/q/" + id;
     const subs = Array.isArray(d.submissions) ? d.submissions : [];
     const qs = Array.isArray(d.questions) ? d.questions : [];
     const ratio = (s) => (s.total ? s.score / s.total : 0);
@@ -1747,8 +1779,8 @@
       (flags.updated ? '<div class="card created"><strong>تغییرات ذخیره شد ✅</strong>' + (flags.cleared ? '<div class="hint">' + faNum(flags.cleared) + " نتیجه‌ی قبلی پاک شد.</div>" : "") + "</div>" : "") +
       '<div class="card"><h2>لینک آزمون</h2>' +
       '<div class="linkbox"><input id="l1" type="text" readonly value="' + esc(take) + '" aria-label="لینک آزمون"><button class="btn small" type="button" data-copy="#l1">کپی</button></div>' +
-      '<div class="actions"><a class="btn ghost small" href="#/q/' + encodeURIComponent(id) + '">پیش‌نمایش آزمون</a>' +
-      '<a class="btn small" href="#/edit/' + encodeURIComponent(id) + "/" + secret + '">ویرایش آزمون</a>' +
+      '<div class="actions"><a class="btn ghost small" href="/q/' + encodeURIComponent(id) + '">پیش‌نمایش آزمون</a>' +
+      '<a class="btn small" href="/edit/' + encodeURIComponent(id) + '">ویرایش آزمون</a>' +
       (navigator.share ? '<button class="btn small" type="button" id="shareBtn">اشتراک‌گذاری</button>' : "") + "</div></div>" +
       '<div class="stats"><div class="stat"><b>' + faNum(subs.length) + "</b><span>شرکت‌کننده</span></div>" +
       '<div class="stat"><b>' + faNum(Math.round(avg * 100)) + "٪</b><span>میانگین</span></div>" +
@@ -1761,7 +1793,7 @@
         : '<p class="muted">هنوز کسی شرکت نکرده است. لینک آزمون را برای دیگران بفرستید.</p><button class="btn ghost small" type="button" id="refresh">به‌روزرسانی</button>') +
       "</div>" +
       (subs.length && qs.length ? '<div class="card"><h2>آمار هر سؤال <span class="hint">(درصد پاسخ درست)</span></h2>' + qstat + "</div>" : "") +
-      '<div class="actions"><a class="btn ghost" href="' + (d.group_id && GROUP_ID_RE.test(d.group_id) ? "#/g/" + d.group_id : "#/") + '">' + ICONS.back + (d.group_id ? " بازگشت به گروه" : " بازگشت به صفحه‌ی اصلی") + "</a></div>";
+      '<div class="actions"><a class="btn ghost" href="' + (d.group_id && GROUP_ID_RE.test(d.group_id) ? "/g/" + d.group_id : "/") + '">' + ICONS.back + (d.group_id ? " بازگشت به گروه" : " بازگشت به صفحه‌ی اصلی") + "</a></div>";
 
     /* جزئیات پاسخ هر شرکت‌کننده (فقط در سایت؛ در فایل اکسل نیست) */
     const detailHtml = (s) => {
@@ -1898,7 +1930,7 @@
     /* خروج فوری: نشست روی دستگاه همین حالا پاک می‌شود و ابطال سمت سرور در پس‌زمینه انجام می‌شود */
     if (cur) { try { authCall({ action: "logout", token: cur.token }).catch(() => {}); } catch (e) { /* بی‌اهمیت */ } }
     auth.clear();
-    location.hash = "#/";
+    go("/");
   }
 
   /* دکمه‌ی «ثبت‌نام» بعد از ورود به یک آواتار دایره‌ای (با اسم و شماره) تبدیل می‌شود */
@@ -1934,7 +1966,9 @@
       '<button class="prof-av" id="profAv" type="button" aria-label="تغییر پروفایل"' + avSt + ">" + av + '<span class="prof-av-edit">' + PENCIL + "</span></button>" +
       '<div class="prof-namerow"><div class="prof-name">' + (nm ? esc(nm) : "کاربر پازمونک") + '</div><button class="prof-edit" id="profEdit" type="button" aria-label="تغییر پروفایل" title="تغییر پروفایل">' + PENCIL + "</button></div>" +
       '<div class="prof-phone" dir="ltr"' + (s.email && !s.phone ? " data-em" : "") + ">" + esc(showPhone(s.phone || s.email)) + "</div>" +
-      '<a class="prof-tk" id="profTk" href="#/tokens">' + COIN + '<span>توکن‌های من</span><b data-tk>' + tkTxt() + "</b></a>" +
+      (s.phone && s.email ? '<div class="prof-phone prof-2" dir="ltr" data-em>' + esc(showPhone(s.email)) + "</div>"
+        : '<button class="prof-add" id="profAdd" type="button">+ ' + (s.phone ? "افزودن ایمیل" : "افزودن شماره‌ی موبایل") + "</button>") +
+      '<a class="prof-tk" id="profTk" href="/tokens">' + COIN + '<span>توکن‌های من</span><b data-tk>' + tkTxt() + "</b></a>" +
       '<button class="btn ghost small wide" id="profOut" type="button">خروج از حساب</button></div>';
     document.getElementById("profBtn").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1944,9 +1978,114 @@
     document.getElementById("profPop").addEventListener("click", (e) => e.stopPropagation());
     document.getElementById("profOut").addEventListener("click", (e) => { closeProfile(); doLogout(e.currentTarget); });
     document.getElementById("profTk").addEventListener("click", () => closeProfile());
+    const pa = document.getElementById("profAdd");
+    if (pa) pa.addEventListener("click", () => { closeProfile(); openLinkModal(s.phone ? "email" : "phone"); });
     const edit = () => { closeProfile(); openProfileEdit(); };
     document.getElementById("profEdit").addEventListener("click", edit);
     document.getElementById("profAv").addEventListener("click", edit);
+  }
+
+
+  /* افزودن شماره‌ی موبایل (به حساب ایمیلی) یا ایمیل (به حساب موبایلی) با کد تأیید */
+  function openLinkModal(kind) {
+    const cur = auth.get();
+    if (!cur) return;
+    const isPhone = kind === "phone";
+    const prev = document.activeElement;
+    const ov = document.createElement("div");
+    ov.className = "modal pf-modal";
+    ov.innerHTML =
+      '<div class="modal-box pf-box" role="dialog" aria-modal="true" aria-labelledby="lkT">' +
+      '<div class="modal-head"><h2 id="lkT">' + (isPhone ? "افزودن شماره‌ی موبایل" : "افزودن ایمیل") + "</h2></div>" +
+      '<form class="modal-body" id="lkForm" novalidate>' +
+      '<p class="hint" style="margin:0">' + (isPhone ? "کد تأیید با پیامک برایتان فرستاده می‌شود." : "کد تأیید به ایمیل شما فرستاده می‌شود.") + "</p>" +
+      '<div id="lkS1"><label for="lkV">' + (isPhone ? "شماره‌ی موبایل" : "ایمیل") + '</label>' +
+      '<input id="lkV" class="auth-input" type="' + (isPhone ? "tel" : "email") + '" inputmode="' + (isPhone ? "tel" : "email") + '" dir="ltr" maxlength="' + (isPhone ? "14" : "254") + '" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="' + (isPhone ? "09123456789" : "name@example.com") + '"' + (isPhone ? "" : ' style="letter-spacing:0;font-size:1.05rem!important"') + "></div>" +
+      '<div id="lkS2" hidden><label for="lkC">کد ۵ رقمی</label><input id="lkC" class="auth-input" type="text" inputmode="numeric" dir="ltr" maxlength="5" autocomplete="one-time-code" placeholder="_ _ _ _ _"></div>' +
+      '<div class="auth-msg" id="lkMsg" role="alert"></div>' +
+      '<div class="actions"><button class="btn ghost" type="button" id="lkNo">انصراف</button><button class="btn" type="submit" id="lkYes">ارسال کد</button></div>' +
+      '<button class="btn ghost small wide" type="button" id="lkAgain" hidden>ارسال دوباره‌ی کد</button></form></div>';
+    document.body.appendChild(ov);
+    const prevOv = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const $ = (id) => ov.querySelector("#" + id);
+    const vEl = $("lkV"), cEl = $("lkC"), msg = $("lkMsg"), yes = $("lkYes"), again = $("lkAgain");
+    let step = 1, value = "", done = false, tmr = 0;
+    const say = (t, bad) => { msg.className = "auth-msg" + (bad ? " m-err" : " info"); msg.textContent = t || ""; };
+    const close = () => {
+      if (done) return;
+      done = true;
+      clearInterval(tmr);
+      document.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("pz:nav", close);
+      document.body.style.overflow = prevOv;
+      ov.remove();
+      if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    };
+    const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
+    document.addEventListener("keydown", onKey, true);
+    window.addEventListener("pz:nav", close);
+    ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+    $("lkNo").addEventListener("click", close);
+    const wait = (n) => {
+      clearInterval(tmr);
+      again.hidden = false; again.disabled = true;
+      let left = Math.max(1, n | 0);
+      const tick = () => { again.textContent = left > 0 ? "ارسال دوباره‌ی کد (" + faNum(left) + ")" : "ارسال دوباره‌ی کد"; again.disabled = left > 0; if (left-- <= 0) clearInterval(tmr); };
+      tick(); tmr = setInterval(tick, 1000);
+    };
+    const send = async (btn) => {
+      btn.disabled = true; btn.classList.add("loading"); say("");
+      const r = await authCall({ action: "link_send", token: cur.token, kind: kind, value: value });
+      if (done) return false;
+      btn.classList.remove("loading");
+      if (r && r.ok) {
+        step = 2; $("lkS1").hidden = true; $("lkS2").hidden = false;
+        yes.textContent = "تأیید"; yes.disabled = false;
+        say("کد به " + showPhone(value) + " فرستاده شد.");
+        wait(r.resend_in || 60);
+        cEl.value = ""; cEl.focus();
+        return true;
+      }
+      btn.disabled = false;
+      if (r && r.error === "no_session") { auth.clear(); close(); return false; }
+      say(((r && r.message) || "ارسال ناموفق بود. دوباره تلاش کنید.") + (r && r.retry_in ? " (" + faNum(r.retry_in) + " ثانیه)" : ""), true);
+      return false;
+    };
+    again.addEventListener("click", () => { if (!again.disabled) send(again).then(() => { if (!done) again.classList.remove("loading"); }); });
+    vEl.addEventListener("input", () => { vEl.classList.remove("bad"); say(""); });
+    cEl.addEventListener("input", () => { cEl.value = toLatinDigits(cEl.value).replace(/\D/g, "").slice(0, 5); cEl.classList.remove("bad"); say(""); });
+    $("lkForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (yes.disabled) return;
+      if (step === 1) {
+        const id = cleanIdent(vEl.value);
+        if (!id.ok || (id.v.indexOf("@") >= 0) === isPhone) { vEl.classList.add("bad"); say(isPhone ? "شماره‌ی موبایل معتبر نیست. مثل ۰۹۱۲۳۴۵۶۷۸۹ وارد کنید." : "ایمیل معتبر نیست. مثل name@example.com وارد کنید.", true); vEl.focus(); return; }
+        value = id.v;
+        await send(yes);
+        return;
+      }
+      const code = cEl.value;
+      if (!/^\d{5}$/.test(code)) { cEl.classList.add("bad"); say("کد ۵ رقمی را وارد کنید.", true); cEl.focus(); return; }
+      yes.disabled = true; yes.classList.add("loading"); say("");
+      const r = await authCall({ action: "link_verify", token: cur.token, kind: kind, value: value, code: code });
+      if (done) return;
+      yes.classList.remove("loading");
+      if (r && r.ok) {
+        const s2 = auth.get();
+        if (s2) auth.set(Object.assign({}, s2, isPhone ? { phone: value } : { email: value }));
+        close();
+        if (window.__pzToast) window.__pzToast(isPhone ? "شماره‌ی موبایل اضافه شد ✓" : "ایمیل اضافه شد ✓");
+        return;
+      }
+      yes.disabled = false;
+      if (r && r.error === "no_session") { auth.clear(); close(); return; }
+      if (r && (r.error === "locked" || r.error === "expired")) { say(r.message || "کد معتبر نیست. یک کد جدید بگیرید.", true); return; }
+      cEl.classList.add("bad");
+      say((r && r.message) || "تأیید ناموفق بود. دوباره تلاش کنید.", true);
+      cEl.focus(); cEl.select();
+    });
+    setTimeout(() => { if (!done) { try { vEl.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } }, 60);
   }
 
   /* پنجره‌ی «تغییر پروفایل»: نام و رنگ */
@@ -1987,14 +2126,14 @@
       if (done) return;
       done = true;
       document.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("hashchange", close);
+      window.removeEventListener("pz:nav", close);
       document.body.style.overflow = prevOv;
       ov.remove();
       if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     };
     const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
     document.addEventListener("keydown", onKey, true);
-    window.addEventListener("hashchange", close);
+    window.addEventListener("pz:nav", close);
     ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
     ov.querySelector("#pfNo").addEventListener("click", close);
     nmEl.addEventListener("input", () => { nmEl.classList.remove("bad"); msg.textContent = ""; paint(); });
@@ -2022,7 +2161,7 @@
   document.addEventListener("click", closeProfile);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { const pop = document.getElementById("profPop"); if (pop && !pop.hidden) { closeProfile(); const b = document.getElementById("profBtn"); if (b) b.focus(); } } });
   window.addEventListener("resize", closeProfile);
-  window.addEventListener("hashchange", closeProfile);
+  window.addEventListener("pz:nav", closeProfile);
 
   async function authCall(body) {
     let res;
@@ -2083,14 +2222,14 @@
 
   function viewSignup() {
     setTitle("ثبت‌نام");
-    if (auth.get()) { location.hash = signupNext ? "#/" + signupNext : "#/"; return null; }
-    const nextHash = signupNext ? "#/" + signupNext : "#/";
+    if (auth.get()) { go(signupNext ? "/" + signupNext : "/"); return null; }
+    const nextHash = signupNext ? "/" + signupNext : "/";
 
     app.innerHTML =
       '<div class="auth-wrap"><div class="card auth-card">' +
       '<div class="auth-logo">' + LOGO_CHECK + "</div>" +
       '<div id="authStep"></div></div>' +
-      '<div class="actions" id="authBack" style="justify-content:center"><a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a></div></div>";
+      '<div class="actions" id="authBack" style="justify-content:center"><a class="back" href="/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a></div></div>";
     const box = document.getElementById("authStep");
 
     let alive = true;
@@ -2399,7 +2538,7 @@
       const prog = document.getElementById("ringProg");
       prog.style.strokeDashoffset = "100";
       requestAnimationFrame(() => requestAnimationFrame(() => { prog.style.strokeDashoffset = "0"; }));
-      navTimer = setTimeout(() => { if (alive) location.hash = nextHash; }, created ? 3000 : 1700);
+      navTimer = setTimeout(() => { if (alive) go(nextHash); }, created ? 3000 : 1700);
     }
 
     stepStart();
@@ -2409,12 +2548,13 @@
   function viewAccount() {
     setTitle("حساب من");
     const s = auth.get();
-    if (!s) { location.hash = "#/signup"; return null; }
+    if (!s) { go("/signup"); return null; }
     app.innerHTML =
       '<div class="auth-wrap"><div class="card auth-card"><div class="auth-logo">' + LOGO_CHECK + "</div>" +
       '<div class="auth-step"><h1>حساب من</h1><p class="sub">' + (cleanName(s.name) ? "<strong>" + esc(cleanName(s.name)) + "</strong><br>" : "") + (s.phone ? "با این شماره" : "با این ایمیل") + " وارد شده‌اید:</p>" +
       '<div class="acc-phone">' + esc(showPhone(s.phone || s.email)) + "</div>" +
-      '<a class="btn wide" href="#/create">ساخت آزمون</a>' +
+      (s.phone && s.email ? '<div class="acc-phone" style="font-size:1rem;letter-spacing:0;margin-top:-10px">' + esc(showPhone(s.email)) + "</div>" : "") +
+      '<a class="btn wide" href="/create">ساخت آزمون</a>' +
       '<button class="btn ghost wide" id="logout" type="button">خروج از حساب</button></div></div></div>';
     document.getElementById("logout").addEventListener("click", (e) => doLogout(e.currentTarget));
     return null;
@@ -2424,8 +2564,8 @@
     const s = auth.get();
     if (!s || !cfg.SUPABASE_URL) return;
     const r = await authCall({ action: "me", token: s.token });
-    if (r && r.ok === false && r.error === "no_session") { auth.clear(); if (/^#\/account/.test(location.hash)) location.hash = "#/signup"; }
-    else if (r && r.ok && (cleanName(r.name) !== cleanName(s.name) || (r.avatar || "") !== (s.avatar || ""))) auth.set(Object.assign({}, s, { name: cleanName(r.name), avatar: r.avatar || undefined }));
+    if (r && r.ok === false && r.error === "no_session") { auth.clear(); if (/^\/account/.test(location.pathname)) go("/signup"); }
+    else if (r && r.ok && (cleanName(r.name) !== cleanName(s.name) || (r.avatar || "") !== (s.avatar || "") || (r.phone || "") !== (s.phone || "") || (r.email || "") !== (s.email || ""))) auth.set(Object.assign({}, s, { name: cleanName(r.name), avatar: r.avatar || undefined, phone: r.phone || undefined, email: r.email || undefined }));
   }
 
 
@@ -2452,7 +2592,7 @@
 
   function viewAdmin(token) {
     setTitle("پنل مدیریت");
-    if (!auth.get()) { location.replace("#/signup"); return null; }
+    if (!auth.get()) { go("/signup", true); return null; }
     const ok = () => token === routeToken;
     const PER = 25;
     let page = 0, q = "", seq = 0, timer = 0, total = 0, loaded = false;
@@ -2467,7 +2607,7 @@
       }
     };
     app.innerHTML =
-      '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
+      '<a class="back" href="/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
       '<div class="page-head"><h1>پنل مدیریت</h1><button class="btn small ghost" id="admRef" type="button">' + REFRESH + " بروزرسانی</button></div>" +
       '<p class="muted">فهرست کاربرانی که در پازمونک ثبت‌نام کرده‌اند؛ تازه‌ترین‌ها بالاتر.</p>' +
       '<div class="adm-st" id="admSt" aria-live="polite"></div>' +
@@ -2487,7 +2627,7 @@
       const d = fmtD(u.created_at);
       const nm = cleanName(u.name);
       return "<tr><td data-l=\"ردیف\" class=\"adm-i\">" + faNum(page * PER + i + 1) + "</td>" +
-        '<td data-l="نام"><div class="adm-n"><span class="av-s" aria-hidden="true">' + esc(nm ? initialOf(nm) : "؟") + "</span><span>" + (nm ? esc(nm) : '<em class="muted">بدون نام</em>') + "</span></div></td>" +
+        '<td data-l="نام"><button class="adm-n adm-nb" type="button" data-id="' + esc(u.id) + '" title="آزمون‌های این کاربر"><span class="av-s" aria-hidden="true">' + esc(nm ? initialOf(nm) : "؟") + "</span><span>" + (nm ? esc(nm) : '<em class="muted">بدون نام</em>') + "</span></button></td>" +
         '<td data-l="موبایل">' + (u.phone ? "<span class=\"adm-ltr\">" + esc(showPhone(u.phone)) + "</span>" : '<span class="muted">—</span>') + "</td>" +
         '<td data-l="ایمیل">' + (u.email ? '<span class="adm-ltr adm-em" dir="ltr">' + esc(u.email) + "</span>" : '<span class="muted">—</span>') + "</td>" +
         '<td data-l="توکن"><span class="adm-tk">' + COIN + "<b>" + fmtN(u.tokens || 0) + '</b></span><button class="adm-tkb" type="button" data-id="' + esc(u.id) + '" aria-label="تغییر توکن' + (nm ? "؛ " + esc(nm) : "") + '" title="تغییر توکن">' + PENCIL + "</button></td>" +
@@ -2550,14 +2690,14 @@
         if (done) return;
         done = true;
         document.removeEventListener("keydown", onKey, true);
-        window.removeEventListener("hashchange", close);
+        window.removeEventListener("pz:nav", close);
         document.body.style.overflow = prevOv;
         ov.remove();
         if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
       };
       const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
       document.addEventListener("keydown", onKey, true);
-      window.addEventListener("hashchange", close);
+      window.addEventListener("pz:nav", close);
       ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
       ov.querySelector("#tkmNo").addEventListener("click", close);
       ov.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
@@ -2583,21 +2723,66 @@
       });
       setTimeout(() => { if (!done) { try { A.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } }, 60);
     };
+    /* آزمون‌هایی که یک کاربر ساخته (فقط خواندنی) */
+    const openQuizzes = (u) => {
+      const prev = document.activeElement;
+      const nm = cleanName(u.name);
+      const ov = document.createElement("div");
+      ov.className = "modal";
+      ov.innerHTML =
+        '<div class="modal-box aq-box" role="dialog" aria-modal="true" aria-labelledby="aqT">' +
+        '<div class="modal-head"><h2 id="aqT"></h2><small class="muted aq-sub"></small></div>' +
+        '<div class="modal-body"><div id="aqList" aria-live="polite"><p class="muted">در حال بارگذاری…</p></div>' +
+        '<div class="actions"><button class="btn ghost" type="button" id="aqNo">بستن</button></div></div></div>';
+      document.body.appendChild(ov);
+      ov.querySelector("#aqT").textContent = "آزمون‌های " + (nm || "این کاربر");
+      ov.querySelector(".aq-sub").textContent = u.phone ? showPhone(u.phone) : (u.email || "");
+      const prevOv = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      let done = false;
+      const close = () => {
+        if (done) return;
+        done = true;
+        document.removeEventListener("keydown", onKey, true);
+        window.removeEventListener("pz:nav", close);
+        document.body.style.overflow = prevOv;
+        ov.remove();
+        if (prev && prev.isConnected) { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+      };
+      const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
+      document.addEventListener("keydown", onKey, true);
+      window.addEventListener("pz:nav", close);
+      ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+      ov.querySelector("#aqNo").addEventListener("click", close);
+      const box = ov.querySelector("#aqList");
+      rpc("admin_user_quizzes", { p_token: tokenOf(), p_user: u.id }).then((r) => {
+        if (done) return;
+        if (!r || r.ok !== true) { box.innerHTML = '<p class="muted">بارگذاری ممکن نشد.</p>'; return; }
+        const items = r.items || [];
+        box.innerHTML = items.length ? items.map((x) => {
+          const d = fmtD(x.created_at);
+          return '<div class="aq-row"><div class="aq-t"><b>' + esc(x.title) + "</b><small>" + faNum(x.questions || 0) + " سؤال · " + faNum(x.participants || 0) + " شرکت‌کننده" +
+            (x.group_name ? " · گروه «" + esc(x.group_name) + "»" : "") + " · " + esc(d[0]) + "</small></div>" +
+            '<a class="btn small ghost" href="/q/' + encodeURIComponent(x.id) + '">باز کردن</a></div>';
+        }).join("") + (r.total > items.length ? '<p class="muted aq-more">' + faNum(items.length) + " آزمونِ تازه از " + faNum(r.total) + "</p>" : "")
+          : '<p class="muted">این کاربر هنوز آزمونی نساخته است.</p>';
+      }).catch(() => { if (!done) box.innerHTML = '<p class="muted">بارگذاری ممکن نشد.</p>'; });
+      setTimeout(() => { if (!done) { const b = ov.querySelector("#aqNo"); if (b) b.focus({ preventScroll: true }); } }, 60);
+    };
     $("admList").addEventListener("click", (e) => {
       const b = e.target.closest(".adm-tkb");
-      if (!b) return;
-      const u = rowsById[b.dataset.id];
-      if (u) openTok(u);
+      if (b) { const u = rowsById[b.dataset.id]; if (u) openTok(u); return; }
+      const n = e.target.closest(".adm-nb");
+      if (n) { const u = rowsById[n.dataset.id]; if (u) openQuizzes(u); }
     });
 
 
-    const PAY_ST = { paid: "موفق", pending: "در انتظار", failed: "ناموفق", review: "نیازمند بررسی" };
     const loadPay = async () => {
       let r;
       try { r = await rpc("admin_payments", { p_token: tokenOf(), p_limit: 30 }); } catch (e) { if (ok() && $("apList")) $("apList").innerHTML = '<p class="muted">بارگذاری پرداخت‌ها ممکن نشد.</p>'; return; }
       if (!ok() || !r || r.ok !== true || !$("apList")) return;
       const st = r.stats || {};
-      $("apSt").innerHTML = [["پرداخت موفق", faNum(st.paid || 0)], ["مجموع فروش (تومان)", fmtN(st.sum || 0)], ["در انتظار", faNum(st.pending || 0)], ["نیازمند بررسی", faNum(st.review || 0)]]
+      $("apSt").innerHTML = [["پرداخت موفق", faNum(st.paid || 0)], ["مجموع فروش (تومان)", fmtN(st.sum || 0)]]
         .map((x) => "<div><b>" + x[1] + "</b><span>" + x[0] + "</span></div>").join("");
       const rows = r.rows || [];
       $("apList").innerHTML = rows.length ? rows.map((p) => {
@@ -2605,8 +2790,8 @@
         const who = nm || (p.phone ? showPhone(p.phone) : p.email || "—");
         return '<div class="apay-row"><div class="apay-u">' + esc(who) + "<small>" + esc(p.phone ? showPhone(p.phone) : p.email || "") + "</small></div>" +
           '<div class="apay-m">' + fmtN(p.tokens) + " توکن <small>· " + fmtN(p.amount) + " تومان</small><span class=\"apay-d\">" + d[0] + " · " + d[1] + (p.ref ? " · " + esc(p.ref) : "") + "</span></div>" +
-          '<span class="apay-s ' + esc(p.status) + '">' + (PAY_ST[p.status] || esc(p.status)) + "</span></div>";
-      }).join("") : '<p class="muted">هنوز پرداختی ثبت نشده است.</p>';
+          "</div>";
+      }).join("") : '<p class="muted">هنوز پرداخت موفقی ثبت نشده است.</p>';
     };
 
     const load = async () => {
@@ -2618,7 +2803,7 @@
         r = await rpc("admin_users", { p_token: tokenOf(), p_q: q || null, p_limit: PER, p_offset: page * PER });
       } catch (e) {
         if (my !== seq || !ok()) return;
-        if (/forbidden|دسترسی مجاز نیست/.test(e.message)) { location.replace("#/"); return; }
+        if (/forbidden|دسترسی مجاز نیست/.test(e.message)) { go("/", true); return; }
         if (list) list.classList.remove("busy");
         const er = $("admErr");
         if (!loaded) $("admList").innerHTML = "";
@@ -2626,7 +2811,7 @@
         return;
       }
       if (my !== seq || !ok()) return;
-      if (!r || r.ok !== true) { location.replace("#/"); return; }
+      if (!r || r.ok !== true) { go("/", true); return; }
       if (!(r.rows || []).length && page > 0 && r.total > 0) { page = 0; return load(); }
       loaded = true;
       $("admErr").hidden = true;
@@ -2676,7 +2861,7 @@
         if (done) return;
         done = true;
         document.removeEventListener("keydown", onKey, true);
-        window.removeEventListener("hashchange", onHash);
+        window.removeEventListener("pz:nav", onHash);
         document.body.style.overflow = prevOv;
         ov.remove();
         if (prev && prev.isConnected && v !== "nav") { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
@@ -2693,7 +2878,7 @@
         }
       };
       document.addEventListener("keydown", onKey, true);
-      window.addEventListener("hashchange", onHash);
+      window.addEventListener("pz:nav", onHash);
       ov.addEventListener("click", (e) => { if (e.target === ov) finish(false); });
       ov.querySelector("#cfNo").addEventListener("click", () => finish(false));
       ov.querySelector("#cfYes").addEventListener("click", () => finish(true));
@@ -2716,7 +2901,7 @@
     if (!box) return;
     const t = el("div", { class: "toast inv-toast", role: "alert" });
     t.appendChild(el("span", { text: text }));
-    t.appendChild(el("a", { href: "#/groups", text: "مشاهده", onclick: () => t.remove() }));
+    t.appendChild(el("a", { href: "/groups", text: "مشاهده", onclick: () => t.remove() }));
     t.appendChild(el("button", { type: "button", "aria-label": "بستن", html: ICONS.cross, onclick: () => t.remove() }));
     box.appendChild(t);
     setTimeout(() => t.remove(), 12000);
@@ -2737,7 +2922,7 @@
       if (fresh.length) {
         fresh.forEach((x) => inv.seen.add(x.group_id));
         store.set(seenKey, Array.from(inv.seen).slice(-200));
-        if (!/^#\/groups/.test(location.hash)) {
+        if (!/^\/groups/.test(location.pathname)) {
           inviteToast(fresh.length === 1 ? "دعوت جدید به گروه «" + fresh[0].group_name + "»" : faNum(fresh.length) + " دعوت جدید به گروه دارید");
         }
       }
@@ -2766,7 +2951,8 @@
     return groupsCache;
   }
   const groupName = (id) => { const g = (groupsCache || []).find((x) => x.id === id); return g ? g.name : ""; };
-  const grpMeta = (g) => (g.role === "owner" ? "مدیر" : "عضو") + " · " + faNum(g.members) + " عضو · " + faNum(g.quizzes) + " آزمون";
+  const ROLE_FA = { owner: "مالک", manager: "مدیر", member: "عضو" };
+  const grpMeta = (g) => (ROLE_FA[g.role] || "عضو") + " · " + faNum(g.members) + " عضو · " + faNum(g.quizzes) + " آزمون";
 
   /* ---------- صفحه‌ی گروه‌ها ---------- */
   function viewGroups(token) {
@@ -2794,7 +2980,7 @@
       const invs = data.invites || [];
       const gs = data.groups || [];
       app.innerHTML =
-        '<a class="back" href="#/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
+        '<a class="back" href="/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
         '<div class="page-head"><h1>گروه‌ها</h1><button class="btn small" id="newGrp" type="button" aria-expanded="' + showForm + '">' + ICONS.plus + " گروه جدید</button></div>" +
         '<p class="muted">در گروه می‌توانید آزمونی بسازید که فقط اعضای همان گروه آن را ببینند و بدهند.</p>' +
         (errMsg ? '<div class="err" role="alert">' + esc(errMsg) + "</div>" : "") +
@@ -2810,7 +2996,7 @@
         (gs.length
           ? '<div class="card"><div class="sec-t"><h2>گروه‌های من</h2></div>' +
             gs.map((g) =>
-              '<a class="grp-row" href="#/g/' + esc(g.id) + '"><span class="av-s" aria-hidden="true">' + esc(gInitial(g.name)) + '</span><div class="grp-t"><strong>' + esc(g.name) + "</strong><small>" + esc(grpMeta(g)) + "</small></div>" + '<span class="grp-go">' + ICONS.back + "</span></a>"
+              '<a class="grp-row" href="/g/' + esc(g.id) + '"><span class="av-s" aria-hidden="true">' + esc(gInitial(g.name)) + '</span><div class="grp-t"><strong>' + esc(g.name) + "</strong><small>" + esc(grpMeta(g)) + "</small></div>" + '<span class="grp-go">' + ICONS.back + "</span></a>"
             ).join("") + "</div>"
           : '<div class="card empty">' + USERS_ICON.replace("<svg", '<svg width="54" height="54"') + "<h2>هنوز در هیچ گروهی نیستید</h2>" +
             '<p class="muted">یک گروه بسازید و شماره‌ی دوستان یا دانش‌آموزهایتان را دعوت کنید. یا منتظر دعوت بمانید.</p></div>');
@@ -2833,7 +3019,7 @@
         try {
           const r = await gcall("group_create", { p_name: nm });
           groupsCache = null;
-          if (r && r.id) location.hash = "#/g/" + r.id; else { showForm = false; load(true); }
+          if (r && r.id) go("/g/" + r.id); else { showForm = false; load(true); }
         } catch (e) {
           if (!ok()) return;
           mk.disabled = false; mk.classList.remove("loading");
@@ -2854,7 +3040,7 @@
       const accept = b.dataset.act === "acc";
       const yes = await askConfirm(accept
         ? { title: "عضو گروه «" + item.group_name + "» شوید؟", text: "با پذیرفتن، آزمون‌های این گروه را می‌بینید و می‌توانید در آن‌ها شرکت کنید. مدیر گروه نام و شماره‌ی شما را می‌بیند.", yes: "بله، عضو می‌شوم" }
-        : { title: "دعوت رد شود؟", text: "دعوت به گروه «" + item.group_name + "» رد می‌شود و پاک می‌شود. برای عضویت دوباره، مدیر باید دوباره دعوتتان کند.", yes: "بله، رد کن", danger: true });
+        : { title: "دعوت رد شود؟", text: "دعوت به گروه «" + item.group_name + "» رد می‌شود و پاک می‌شود. برای عضویت دوباره، باید دوباره دعوتتان کنند.", yes: "بله، رد کن", danger: true });
       if (!yes || !ok()) return;
       b.disabled = true; b.classList.add("loading");
       try {
@@ -2949,7 +3135,7 @@
     function build(m, prev) {
       const cont = !!prev && prev._k === m._k && prev.u === m.u && m._d - prev._d < 600000;
       const kids = [];
-      if (!m.mine && !cont) kids.push(el("div", { class: "cn" }, [el("span", { text: m.name }), m.owner ? el("span", { class: "cbadge", text: "مدیر" }) : null]));
+      if (!m.mine && !cont) kids.push(el("div", { class: "cn" }, [el("span", { text: m.name }), (m.owner || m.manager) ? el("span", { class: "cbadge", text: m.owner ? "مالک" : "مدیر" }) : null]));
       if (m.reply && !m.deleted) {
         const r = quote(m.reply);
         kids.push(el("div", { class: "cq", "data-q": m.reply.id }, [el("b", { text: r.name }), el("span", { text: r.deleted ? "پیام حذف شده" : r.body })]));
@@ -3089,7 +3275,7 @@
       dead = true;
       clearTimeout(timer);
       o.toast(/گروه/.test(e.message) ? "دیگر عضو این گروه نیستید." : e.message);
-      location.hash = "#/groups";
+      go("/groups");
       return true;
     }
 
@@ -3430,39 +3616,44 @@
     };
 
     const owner = () => g && g.role === "owner";
+    const staff = () => g && (g.role === "owner" || g.role === "manager");
 
     const quizzesTab = () => {
       const qs = g.quizzes || [];
-      return (owner() ? '<div class="actions" style="margin-top:6px"><a class="btn" href="#/create?g=' + esc(g.id) + '">' + ICONS.plus + " آزمون جدید برای این گروه</a></div>" : "") +
+      return (staff() ? '<div class="actions" style="margin-top:6px"><a class="btn" href="/create?g=' + esc(g.id) + '">' + ICONS.plus + " آزمون جدید برای این گروه</a></div>" : "") +
         '<div class="card">' +
         (qs.length
           ? qs.map((q) =>
-              '<div class="mine-row"><span class="mine-t">' + esc(q.title) + (owner() && q.participants != null ? '<small class="mine-n">' + faNum(q.participants) + " شرکت‌کننده</small>" : "") + "</span>" +
-              (owner()
-                ? '<a class="btn small ghost" href="#/q/' + encodeURIComponent(q.id) + '">باز کردن</a>' + (q.secret ? '<a class="btn small" href="#/m/' + encodeURIComponent(q.id) + "/" + encodeURIComponent(q.secret) + '">نتایج</a>' : "")
-                : '<a class="btn small" href="#/q/' + encodeURIComponent(q.id) + '">شروع آزمون</a>') + "</div>"
+              '<div class="mine-row"><span class="mine-t">' + esc(q.title) + (staff() && q.participants != null ? '<small class="mine-n">' + faNum(q.participants) + " شرکت‌کننده</small>" : "") + "</span>" +
+              (staff()
+                ? '<a class="btn small ghost" href="/q/' + encodeURIComponent(q.id) + '">باز کردن</a>' + (q.secret ? '<a class="btn small" href="/m/' + encodeURIComponent(q.id) + '">نتایج</a>' : "")
+                : '<a class="btn small" href="/q/' + encodeURIComponent(q.id) + '">شروع آزمون</a>') + "</div>"
             ).join("")
-          : '<p class="muted" style="margin:0">' + (owner() ? "هنوز آزمونی برای این گروه نساخته‌اید. با دکمه‌ی بالا اولین آزمون را بسازید." : "هنوز آزمونی در این گروه نیست. وقتی مدیر آزمون بسازد، اینجا می‌بینید.") + "</p>") +
+          : '<p class="muted" style="margin:0">' + (staff() ? "هنوز آزمونی برای این گروه نساخته‌اید. با دکمه‌ی بالا اولین آزمون را بسازید." : "هنوز آزمونی در این گروه نیست. وقتی مالک یا مدیر آزمون بسازد، اینجا می‌بینید.") + "</p>") +
         "</div>";
     };
 
     const membersTab = () => {
       const ms = g.members || [];
       const pend = g.invites || [];
-      return (owner()
+      return (staff()
           ? '<div class="card"><h2>دعوت با شماره‌ی موبایل یا ایمیل</h2><p class="hint" style="margin-top:0">شخص فوراً عضو نمی‌شود؛ دعوت را داخل پازمونک می‌بیند و خودش می‌پذیرد یا رد می‌کند.</p>' +
             '<div class="grp-add"><input id="gPhone" type="text" inputmode="email" dir="ltr" maxlength="254" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="09123456789 یا name@example.com" aria-label="شماره‌ی موبایل یا ایمیل" value="' + esc(phoneVal) + '"><button class="btn" type="button" id="gInv">دعوت</button></div><div id="gMsg"></div></div>'
           : "") +
         '<div class="card"><div class="sec-t"><h2>اعضا</h2><span class="badge">' + faNum(ms.length) + "</span></div>" +
-        ms.map((m) =>
-          '<div class="grp-row"><span class="av-s" aria-hidden="true">' + esc(gInitial(m.name)) + '</span><div class="grp-t"><strong>' + esc(m.name) + (m.role === "owner" ? ' <span class="badge">مدیر</span>' : "") + "</strong>" +
-          (owner() && m.phone ? '<small><bdi class="grp-ph">' + esc(showPhone(m.phone)) + "</bdi></small>" : "") + "</div>" +
-          (owner() && m.role === "member" && m.user_id
-            ? '<div class="grp-a"><button class="btn small ghost" type="button" data-act="mk" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">مدیر شود</button>' +
-              '<button class="btn small danger" type="button" data-act="rm" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">حذف</button></div>'
-            : "") + "</div>"
-        ).join("") + "</div>" +
-        (owner() && pend.length
+        ms.map((m) => {
+          const canAct = m.role !== "owner" && m.user_id;
+          const acts = [];
+          if (canAct && owner()) {
+            acts.push('<button class="btn small ghost" type="button" data-act="role" data-r="' + (m.role === "manager" ? "member" : "manager") + '" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">' + (m.role === "manager" ? "برداشتن از مدیریت" : "مدیر شود") + "</button>");
+            acts.push('<button class="btn small ghost" type="button" data-act="mk" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">مالک شود</button>');
+          }
+          if (canAct && (owner() || (staff() && m.role === "member"))) acts.push('<button class="btn small danger" type="button" data-act="rm" data-u="' + esc(m.user_id) + '" data-n="' + esc(m.name) + '">حذف</button>');
+          return '<div class="grp-row"><span class="av-s" aria-hidden="true">' + esc(gInitial(m.name)) + '</span><div class="grp-t"><strong>' + esc(m.name) + (m.role === "owner" || m.role === "manager" ? ' <span class="badge">' + ROLE_FA[m.role] + "</span>" : "") + "</strong>" +
+            (staff() && m.phone ? '<small><bdi class="grp-ph">' + esc(showPhone(m.phone)) + "</bdi></small>" : "") + "</div>" +
+            (acts.length ? '<div class="grp-a">' + acts.join("") + "</div>" : "") + "</div>";
+        }).join("") + "</div>" +
+        (staff() && pend.length
           ? '<div class="card"><div class="sec-t"><h2>منتظر پاسخ</h2><span class="badge">' + faNum(pend.length) + "</span></div>" +
             pend.map((p) =>
               '<div class="grp-row"><span class="av-s" aria-hidden="true">' + USERS_ICON + '</span><div class="grp-t"><strong><bdi class="grp-ph">' + esc(showPhone(p.phone)) + "</bdi></strong><small>دعوت فرستاده شده</small></div>" +
@@ -3474,13 +3665,13 @@
     const draw = (errMsg) => {
       if (chatOff) { chatOff(); chatOff = null; }
       app.innerHTML =
-        '<a class="back" href="#/groups">' + ICONS.back + " گروه‌ها</a>" +
+        '<a class="back" href="/groups">' + ICONS.back + " گروه‌ها</a>" +
         (editName
           ? '<div class="card"><label for="gNewName">نام گروه</label><input id="gNewName" type="text" maxlength="60" autocomplete="off" value="' + esc(g.name) + '">' +
             '<div id="gRenMsg"></div><div class="actions"><button class="btn ghost" type="button" id="gRenBack">برگشت</button><button class="btn" type="button" id="gRenSave">ذخیره‌ی نام</button></div></div>'
           : '<div class="page-head grp-head"><h1>' + esc(g.name) + "</h1>" +
-            (owner() ? '<button class="btn small ghost" type="button" data-act="rename">تغییر نام گروه</button>' : "") +
-            '<span class="badge">' + (owner() ? "مدیر" : "عضو") + "</span></div>") +
+            (staff() ? '<button class="btn small ghost" type="button" data-act="rename">تغییر نام گروه</button>' : "") +
+            '<span class="badge">' + (ROLE_FA[g.role] || "عضو") + "</span></div>") +
         (errMsg ? '<div class="err" role="alert">' + esc(errMsg) + "</div>" : "") +
         '<div class="grp-tabs"><div class="seg" role="group" aria-label="بخش‌های گروه">' +
         '<button type="button" data-tab="quizzes" aria-pressed="' + (tab === "quizzes") + '">آزمون‌ها (' + faNum((g.quizzes || []).length) + ")</button>" +
@@ -3559,12 +3750,21 @@
       if (!b || !app.contains(b) || !g) return;
       const act = b.dataset.act;
       if (act === "rename") { editName = true; draw(""); return; }
-      if (act === "mk") {
-        const nm = b.dataset.n, uid = b.dataset.u;
-        if (!(await askConfirm({ title: "«" + nm + "» مدیر گروه شود؟", text: "از این به بعد او مدیر گروه «" + g.name + "» است و شما عضو معمولی می‌شوید؛ دیگر نمی‌توانید عضو اضافه یا حذف کنید یا نتایج آزمون‌های گروه را ببینید. لینک‌های مدیریت آزمون‌ها هم به او منتقل می‌شود. فقط خودش می‌تواند دوباره شما را مدیر کند.", yes: "بله، مدیر عوض شود", danger: true })) || !ok()) return;
+      if (act === "role") {
+        const nm = b.dataset.n, uid = b.dataset.u, r = b.dataset.r;
+        const up = r === "manager";
+        if (!(await askConfirm({ title: up ? "«" + nm + "» مدیر شود؟" : "«" + nm + "» از مدیریت برداشته شود؟", text: up ? "مدیر به همه‌ی اطلاعات گروه «" + g.name + "» (اعضا، آزمون‌ها و نتایج) دسترسی دارد و می‌تواند دعوت بفرستد و عضو عادی را حذف کند. فقط شما می‌توانید مدیر تعیین یا برکنار کنید و گروه را ببندید." : "او دیگر عضو عادی است و نتایج و اطلاعات مدیریتی گروه را نمی‌بیند. لینک‌های مدیریت آزمون‌های گروه هم تازه می‌شود.", yes: up ? "بله، مدیر شود" : "بله، بردار", danger: !up })) || !ok()) return;
         b.disabled = true; b.classList.add("loading");
         tab = "members";
-        run(() => gcall("group_transfer", { p_group: gid, p_user: uid }), "مدیر گروه عوض شد");
+        run(() => gcall("group_set_role", { p_group: gid, p_user: uid, p_role: r }), up ? "مدیر تعیین شد" : "از مدیریت برداشته شد");
+        return;
+      }
+      if (act === "mk") {
+        const nm = b.dataset.n, uid = b.dataset.u;
+        if (!(await askConfirm({ title: "«" + nm + "» مالک گروه شود؟", text: "از این به بعد او مالک گروه «" + g.name + "» است و شما مدیر می‌شوید. فقط مالک می‌تواند مدیر تعیین یا برکنار کند، مالک را عوض کند و گروه را ببندد؛ برگرداندنش هم فقط دست خود اوست.", yes: "بله، مالک شود", danger: true })) || !ok()) return;
+        b.disabled = true; b.classList.add("loading");
+        tab = "members";
+        run(() => gcall("group_transfer", { p_group: gid, p_user: uid }), "مالک گروه عوض شد");
         return;
       }
       if (act === "rm") {
@@ -3578,14 +3778,14 @@
         b.disabled = true; b.classList.add("loading");
         run(() => gcall("group_invite_cancel", { p_group: gid, p_phone: ph }), "دعوت لغو شد");
       } else if (act === "leave") {
-        if (!(await askConfirm({ title: "گروه را ترک می‌کنید؟", text: "دیگر آزمون‌های گروه «" + g.name + "» را نمی‌بینید. برای برگشتن، مدیر باید دوباره دعوتتان کند.", yes: "بله، ترک می‌کنم", danger: true })) || !ok()) return;
+        if (!(await askConfirm({ title: "گروه را ترک می‌کنید؟", text: "دیگر آزمون‌های گروه «" + g.name + "» را نمی‌بینید. برای برگشتن، باید دوباره دعوتتان کنند.", yes: "بله، ترک می‌کنم", danger: true })) || !ok()) return;
         b.disabled = true; b.classList.add("loading");
-        try { await gcall("group_leave", { p_group: gid }); groupsCache = null; if (ok()) location.hash = "#/groups"; }
+        try { await gcall("group_leave", { p_group: gid }); groupsCache = null; if (ok()) go("/groups"); }
         catch (err) { if (ok()) { b.disabled = false; b.classList.remove("loading"); draw(err.message); } }
       } else if (act === "del") {
         if (!(await askConfirm({ title: "گروه «" + g.name + "» حذف شود؟", text: "گروه، همه‌ی آزمون‌های گروه و نتایجشان برای همیشه پاک می‌شود و برگشت ندارد.", yes: "بله، همه را حذف کن", danger: true })) || !ok()) return;
         b.disabled = true; b.classList.add("loading");
-        try { await gcall("group_delete", { p_group: gid }); groupsCache = null; if (ok()) location.hash = "#/groups"; }
+        try { await gcall("group_delete", { p_group: gid }); groupsCache = null; if (ok()) go("/groups"); }
         catch (err) { if (ok()) { b.disabled = false; b.classList.remove("loading"); draw(err.message); } }
       }
     }
@@ -3601,8 +3801,8 @@
     ensureGroups().then((gs) => {
       const bx = document.getElementById("grpChipBox");
       if (!bx || gid !== createGroup) return;
-      const g = gs.find((x) => x.id === gid && x.role === "owner");
-      bx.innerHTML = g ? groupChip(g.name) : '<div class="err" role="alert">این گروه پیدا نشد یا شما مدیر آن نیستید؛ آزمون ساخته نمی‌شود. با «بازگشت» یک گروه دیگر یا حالت عمومی را انتخاب کنید.</div>';
+      const g = gs.find((x) => x.id === gid && (x.role === "owner" || x.role === "manager"));
+      bx.innerHTML = g ? groupChip(g.name) : '<div class="err" role="alert">این گروه پیدا نشد یا شما مالک یا مدیر آن نیستید؛ آزمون ساخته نمی‌شود. با «بازگشت» یک گروه دیگر یا حالت عمومی را انتخاب کنید.</div>';
     }).catch(() => {});
   }
 
@@ -3630,7 +3830,7 @@
     syncHeroNow();
   }
   function onGateKey(e) {
-    if (e.key === "Escape") { e.preventDefault(); location.hash = "#/"; }
+    if (e.key === "Escape") { e.preventDefault(); go("/"); }
   }
 
   function viewGate(target, token) {
@@ -3652,8 +3852,8 @@
       '<div class="gate-ic">' + LOCK_ICON + "</div>" +
       '<h2 id="gateT">' + (tut ? "برای استفاده از معلم هوشمند وارد شوید" : tok ? "برای خرید توکن وارد شوید" : grp ? "برای دیدن گروه‌ها وارد شوید" : take ? "برای شرکت در آزمون وارد شوید" : "برای ساخت آزمون وارد شوید") + "</h2>" +
       '<p id="gateD">' + (tut ? "معلم هوشمند" : tok ? "خرید توکن" : grp ? "گروه‌ها" : take ? "شرکت در آزمون" : "ساخت آزمون") + " فقط برای کاربران ثبت‌نام‌شده است. ثبت‌نام با شماره‌ی موبایل یا ایمیل است و کمتر از یک دقیقه طول می‌کشد." + (take ? " بعد از ورود، مستقیم به همین آزمون برمی‌گردید." : "") + "</p>" +
-      '<a class="btn wide" id="gateGo" href="#/signup' + (/^create/.test(target) ? "" : "?next=" + target) + '">ثبت‌نام / ورود</a>' +
-      '<a class="gate-back" href="#/">بازگشت به صفحه‌ی اصلی</a></div>';
+      '<a class="btn wide" id="gateGo" href="/signup' + (/^create/.test(target) ? "" : "?next=" + target) + '">ثبت‌نام / ورود</a>' +
+      '<a class="gate-back" href="/">بازگشت به صفحه‌ی اصلی</a></div>';
     document.body.appendChild(g);
     document.addEventListener("keydown", onGateKey, true);
     setTimeout(() => { if (token === routeToken) { const b = document.getElementById("gateGo"); if (b) b.focus({ preventScroll: true }); } }, 30);
@@ -4197,7 +4397,7 @@
         }
         log.appendChild(e);
         follow = true; scrollEnd();
-        if (r.code === "no_session") setTimeout(() => { if (ok()) location.hash = "#/signup"; }, 1800);
+        if (r.code === "no_session") setTimeout(() => { if (ok()) go("/signup"); }, 1800);
       }
       sync();
       if (willAuto) { autoLeft--; setTimeout(() => { if (alive && ok() && !busy) submit(false, "ادامه بده"); }, 500); }
@@ -4296,6 +4496,30 @@
   app.addEventListener("click", fxOff, true);   /* نه در pointerdown: وسط کلیک نباید چیزی جابه‌جا شود */
   app.addEventListener("keydown", fxOff, true);
 
+  /* کلید مدیریتِ آزمون از حساب کاربر خوانده می‌شود (نه از آدرس): اول حافظه‌ی همین صفحه، بعد آزمون‌های روی این دستگاه، بعد سرور */
+  function withSecret(kind, id, query, token) {
+    const run = (secret) => {
+      if (token !== routeToken) return;
+      if (kind === "m") viewManage(id, secret, /(^|&)new=1(&|$)/.test(query), token, { updated: /(^|&)updated=1(&|$)/.test(query), cleared: +((/(^|&)cleared=(\d+)/.exec(query) || [])[2] || 0) });
+      else viewEdit(id, secret, token);
+    };
+    if (memSecrets[id]) { run(memSecrets[id]); return null; }
+    const loc = store.localQuizzes().filter((x) => x.id === id)[0];
+    if (loc && loc.secret) { run(loc.secret); return null; }
+    const s = auth.get();
+    if (!s) return viewGate(kind + "/" + id, token);
+    setTitle();
+    app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
+    const load = () => rpc("quiz_secret", { p_token: s.token, p_id: id }).then((r) => {
+      if (token !== routeToken) return;
+      if (r && r.ok && r.secret) { memSecrets[id] = r.secret; run(r.secret); }
+      else if (r && r.error === "no_session") { auth.clear(); go("/signup?next=" + kind + "/" + encodeURIComponent(id), true); }
+      else showError("این آزمون در حساب شما نیست. با حسابی که آزمون را ساخته (یا مالک/مدیر گروه آن هستید) وارد شوید.");
+    }).catch((e) => { if (token === routeToken) showError(e.message, load); });
+    load();
+    return null;
+  }
+
   function route() {
     if (gateOn) closeGate();
     if (cleanup) { try { cleanup(); } catch (e) { /* ignore */ } cleanup = null; }
@@ -4305,9 +4529,9 @@
 
     if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { showSetup(); return; }
 
-    const parts0 = location.hash.replace(/^#/, "").split("?");
-    const path = parts0[0];
-    const query = parts0[1] || "";
+    upgradeLegacy();
+    const path = location.pathname;
+    const query = location.search.replace(/^\?/, "");
     const parts = path.split("/").filter(Boolean).map(safeDecode);
     const okId = (s) => /^[A-Za-z0-9_-]{1,64}$/.test(s || "");
 
@@ -4331,12 +4555,9 @@
       if (!okId(parts[1])) showError("لینک آزمون نامعتبر است.");
       else if (!auth.get()) cleanup = viewGate("q/" + parts[1], token);
       else viewTake(parts[1], token);
-    } else if (parts[0] === "m") {
-      if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
-      else viewManage(parts[1], parts[2], /(^|&)new=1(&|$)/.test(query), token, { updated: /(^|&)updated=1(&|$)/.test(query), cleared: +((/(^|&)cleared=(\d+)/.exec(query) || [])[2] || 0) });
-    } else if (parts[0] === "edit") {
-      if (!okId(parts[1]) || !/^[A-Za-z0-9]{16,128}$/.test(parts[2] || "")) showError("لینک مدیریت نامعتبر است.");
-      else viewEdit(parts[1], parts[2], token);
+    } else if (parts[0] === "m" || parts[0] === "edit") {
+      if (!okId(parts[1])) showError("لینک مدیریت نامعتبر است.");
+      else cleanup = withSecret(parts[0], parts[1], query, token);
     } else if (parts[0] === "groups") {
       cleanup = auth.get() ? viewGroups(token) : viewGate("groups", token);
     } else if (parts[0] === "g") {
@@ -4344,11 +4565,11 @@
       else cleanup = auth.get() ? viewGroup(parts[1], token) : viewGate("g/" + parts[1], token);
     } else if (parts[0] === "signup") {
       const nx = ((/(^|&)next=([^&]*)/.exec(query) || [])[2] || "");
-      /* بعد از ثبت‌نام/ورود همیشه به خانه می‌رود؛ فقط لینک مستقیم یک آزمون (q/…) بعد از ورود همان آزمون را باز می‌کند */
-      signupNext = /^q\/[A-Za-z0-9_-]{1,64}$/.test(nx) ? nx : "";
+      /* بعد از ثبت‌نام/ورود همیشه به خانه می‌رود؛ فقط لینک مستقیم یک آزمون (q/…) یا نتایجش (m/…) بعد از ورود باز می‌شود */
+      signupNext = /^(q|m)\/[A-Za-z0-9_-]{1,64}$/.test(nx) ? nx : "";
       cleanup = viewSignup();
     } else if (parts[0] === "tutor") {
-      if (!TUTOR_ON) location.replace("#/");
+      if (!TUTOR_ON) go("/", true);
       else cleanup = auth.get() ? viewTutor(token) : viewGate("tutor", token);
     } else if (parts[0] === "tokens") {
       cleanup = auth.get() ? viewTokens(token) : viewGate("tokens", token);
@@ -4368,15 +4589,27 @@
     if (!initial) app.focus({ preventScroll: true });
   }
 
-  window.addEventListener("hashchange", () => {
+  /* دکمه‌ی «عقب/جلو» مرورگر (و لینک‌های قدیمی با #) */
+  function onNavigate() {
     if (genLockHash !== null) {
-      if (location.hash !== genLockHash) location.replace(genLockHash);
+      if (curPath() !== genLockHash) { try { history.pushState(null, "", genLockHash); } catch (e) { /* ignore */ } }
       return;
     }
+    window.dispatchEvent(new Event("pz:nav"));
     route();
+  }
+  window.addEventListener("popstate", onNavigate);
+  window.addEventListener("hashchange", () => { if (/^#\//.test(location.hash)) onNavigate(); });
+  /* لینک‌های داخلی بدون بارگذاری دوباره‌ی صفحه باز می‌شوند (تب جدید، Ctrl/⌘ و کلیک وسط همان رفتار عادی مرورگر را دارند) */
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+    if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
+    const h = a.getAttribute("href") || "";
+    if (h.charAt(0) !== "/" || h.charAt(1) === "/") return;
+    e.preventDefault();
+    go(h);
   });
-  const homeBtn = document.getElementById("homeBtn");
-  if (homeBtn) homeBtn.addEventListener("click", () => { if (!location.hash || location.hash === "#/" || location.hash === "#") window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" }); });
   window.addEventListener("authchange", syncInviteWatch);
   syncAuthBtn();
   route();
