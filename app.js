@@ -1024,7 +1024,7 @@
     return out.slice(0, LIMITS.questions);
   }
 
-  /* مدل‌های معلم هوشمند (ساخت آزمون فقط با DeepSeek V4.1 است و مدلی برای انتخاب ندارد) */
+  /* مدل‌های معلم هوشمند (مدل ساخت آزمون جدا، در صفحه‌ی ساخت آزمون انتخاب می‌شود) */
   const AI_MODELS = [
     { id: "ds-v41", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash" },
     { id: "ds-vision", label: "DeepSeek Vision", provider: "deepseek", model: "deepseek-v4-flash-vision-exp", vision: true },
@@ -1118,7 +1118,7 @@
     setTitle("ساخت آزمون با هوش مصنوعی");
     setTimeout(fillGroupChip, 0);
     tkSync(true);
-    const st = { mode: "mixed", level: "medium", count: 10 };
+    const st = { mode: "mixed", level: "medium", count: 10, model: "deepseek" };
     let busy = false;
     let ctl = null;
     let gone = false;
@@ -1135,11 +1135,11 @@
       '<div class="card ai-form">' +
       '<div class="tk-strip">' + COIN + '<span class="tk-strip-t">موجودی شما: <b data-tk>' + tkTxt() + '</b> پولک</span><a class="tk-strip-a" href="/tokens">خرید پولک</a></div>' +
       '<label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off">' +
+      '<label>هوش مصنوعی</label>' + seg("model", [["deepseek", "DeepSeek V4.1"], ["glm-flash", "GLM 5.3 Flash"], ["glm", "GLM 5.3"]]) +
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
       '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
       '<label for="count">تعداد سؤال</label><div class="stepper"><button type="button" id="cm" aria-label="کمتر">−</button><input id="count" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="cp" aria-label="بیشتر">+</button><span class="hint">از ۱ تا ۳۰</span></div>' +
       '<p class="tk-cost" id="tkCost" aria-live="polite"></p>' +
-      '<p class="hint tk-model">آزمون با هوش مصنوعی DeepSeek V4.1 ساخته می‌شود.</p>' +
       "</div>" +
       '<div id="msg"></div>' +
       '<div class="actions"><a class="btn ghost" href="' + withG("/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' <span id="goT">ساخت آزمون و دریافت لینک</span><span class="go-cost" id="goCost"></span></button></div>' +
@@ -1182,11 +1182,11 @@
     window.addEventListener("tkchange", onTk);
     paintCost();
 
-    const go = $("go");
+    const goBtn = $("go");
     const lockUi = (on) => {
       busy = on;
-      go.disabled = on;
-      go.classList.toggle("loading", on);
+      goBtn.disabled = on;
+      goBtn.classList.toggle("loading", on);
       $("wait").hidden = !on;
       setGenLock(on);
     };
@@ -1219,7 +1219,7 @@
       fail("آزمون ساخته شد و پولک‌تان مصرف شد، ولی ذخیره‌ی آن ناموفق بود (" + ((err && err.message) || "خطای نامشخص") + "). دکمه‌ی «ذخیره‌ی دوباره‌ی آزمون» را بزنید؛ پولک دوباره کم نمی‌شود.");
     };
 
-    go.addEventListener("click", async () => {
+    goBtn.addEventListener("click", async () => {
       if (busy) return;
       msg.innerHTML = "";
       if (pending) return saveQuiz(pending);
@@ -1227,7 +1227,7 @@
       const t = $("topic").value.trim();
       if (!t) { $("topic").classList.add("bad"); $("topic").focus(); return fail("موضوع آزمون را بنویسید."); }
       if (tk.bal != null && tk.bal < st.count) return fail("پولک شما کافی نیست؛ موجودی شما " + faNum(tk.bal) + " پولک است و این آزمون " + faNum(st.count) + " پولک می‌خواهد. تعداد سؤال را کمتر کنید یا پولک بخرید.", buyLink);
-      const body = { mode: st.mode, difficulty: st.level, count: st.count, topic: t };
+      const body = { mode: st.mode, difficulty: st.level, count: st.count, topic: t, model: st.model };
 
       lockUi(true);
       ctl = new AbortController();
@@ -3166,7 +3166,7 @@
         '<div id="gMsg"></div><div class="actions"><button class="btn ghost" type="button" id="gBack">برگشت</button><button class="btn" type="button" id="gMake">ساخت گروه</button></div></div>';
       const inp = document.getElementById("gName"), mk = document.getElementById("gMake"), msg = document.getElementById("gMsg");
       document.getElementById("gBack").addEventListener("click", () => { showForm = false; draw(""); });
-      const go = async () => {
+      const make = async () => {
         const nm = cleanName(inp.value);
         if (nm.length < 2) { msg.innerHTML = '<div class="err" role="alert">نام گروه را بنویسید (حداقل ۲ حرف).</div>'; inp.focus(); return; }
         mk.disabled = true; mk.classList.add("loading"); msg.innerHTML = "";
@@ -3180,8 +3180,8 @@
           msg.innerHTML = '<div class="err" role="alert">' + esc(e.message) + "</div>";
         }
       };
-      mk.addEventListener("click", go);
-      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+      mk.addEventListener("click", make);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); make(); } });
     };
 
     app.addEventListener("click", onClick);
@@ -4017,9 +4017,11 @@
   /* ---------- معلم هوشمند ---------- */
   /* فعلاً از سایت پنهان است (کدش سر جایش مانده). برای روشن‌کردن دوباره: این مقدار true، دکمه‌ی ttBtn در index.html بدون hidden، و TUTOR_ENABLED=1 روی سرور */
   const TUTOR_ON = false;
-  const TT_GRADES = ["هفتم", "هشتم", "نهم", "دهم", "یازدهم", "دوازدهم", "دانشگاه", "عمومی"];
+  const TT_GRADES = ["اول", "دوم", "سوم", "چهارم", "پنجم", "ششم", "هفتم", "هشتم", "نهم", "دهم", "یازدهم", "دوازدهم", "دانشگاه", "عمومی"];
   const TT_JR = ["ریاضی", "علوم تجربی", "فارسی", "عربی", "زبان انگلیسی", "مطالعات اجتماعی", "هدیه‌های آسمان"];
+  const TT_EL = ["ریاضی", "فارسی", "نگارش", "علوم تجربی", "مطالعات اجتماعی", "هدیه‌های آسمان", "آموزش قرآن"];
   const TT_SUBJECTS = {
+    "اول": TT_EL, "دوم": TT_EL, "سوم": TT_EL, "چهارم": TT_EL, "پنجم": TT_EL, "ششم": TT_EL,
     "هفتم": TT_JR, "هشتم": TT_JR, "نهم": TT_JR,
     "دهم": ["ریاضی", "فیزیک", "شیمی", "زیست‌شناسی", "فارسی", "عربی", "زبان انگلیسی", "دین و زندگی", "هندسه", "زمین‌شناسی", "جامعه‌شناسی", "اقتصاد", "تاریخ", "جغرافیا", "منطق"],
     "یازدهم": ["ریاضی", "حسابان", "هندسه", "آمار و احتمال", "فیزیک", "شیمی", "زیست‌شناسی", "فارسی", "عربی", "زبان انگلیسی", "دین و زندگی", "جامعه‌شناسی", "اقتصاد", "تاریخ", "جغرافیا", "فلسفه"],
@@ -4156,14 +4158,14 @@
       subject: typeof saved.subject === "string" ? saved.subject : "",
       other: typeof saved.other === "string" ? saved.other.slice(0, 40) : "",
       model: "ds-vision",   /* معلم فقط با DeepSeek Vision کار می‌کند */
-      useBook: saved.useBook !== false,
+      book: saved.useBook === false ? "0" : (typeof saved.book === "string" && /^(0|[a-z0-9_-]{1,40})$/.test(saved.book) ? saved.book : ""),   /* "" = اولین کتاب آن درس، "0" = بدون کتاب، یا نام یکی از کتاب‌ها */
       chats: saved.chats && typeof saved.chats === "object" ? saved.chats : {},
     };
-    if (st.subject !== TT_OTHER && TT_SUBJECTS[st.grade].indexOf(st.subject) < 0) st.subject = TT_SUBJECTS[st.grade][0];
+    if (!st.subject) st.subject = TT_SUBJECTS[st.grade][0];   /* اعتبارسنجی بعد از رسیدن فهرست کتاب‌ها (چون بعضی درس‌ها فقط از روی کتاب‌ها می‌آیند) */
     const persist = () => {
       const trim = (n) => { const k = Object.keys(st.chats); if (k.length > n) k.slice(0, k.length - n).forEach((x) => delete st.chats[x]); };
       trim(14);
-      const pack = () => store.set(KEY, { grade: st.grade, subject: st.subject, other: st.other, model: st.model, useBook: st.useBook, chats: st.chats });
+      const pack = () => store.set(KEY, { grade: st.grade, subject: st.subject, other: st.other, model: st.model, book: st.book, chats: st.chats });
       if (!pack()) { trim(Math.max(1, Math.floor(Object.keys(st.chats).length / 2))); pack(); }   /* حافظه‌ی مرورگر پر بود: قدیمی‌ترین گفت‌وگوها پاک می‌شوند */
     };
     loadKatex();   /* فرمول‌ها از همین حالا آماده می‌شوند تا اولین پاسخ معطل نماند */
@@ -4217,15 +4219,28 @@
     if (window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
 
     /* کتاب درسیِ آماده برای پایه و درس انتخاب‌شده (اگر باشد) */
-    let books = [];
-    const curBook = () => (st.useBook ? books.find((b) => b.grade === st.grade && b.subject === subjName()) || null : null);
+    let books = [], booksLoaded = false;
+    const EXTRA_BOOK = /کتاب کار|ضمیمه|اهل سنت|اقلیت|استعداد|آزمایشی/;
+    const booksFor = () => books.filter((b) => b.grade === st.grade && b.subject === subjName()).sort((a, b) => (EXTRA_BOOK.test(a.title) ? 1 : 0) - (EXTRA_BOOK.test(b.title) ? 1 : 0));
+    const curBook = () => {
+      if (st.book === "0") return null;
+      const l = booksFor();
+      return l.find((b) => b.slug === st.book) || l[0] || null;
+    };
+    /* درس‌های هر پایه: فهرست ثابت + هر درسی که کتابش آماده است */
+    const subjectsOf = (g) => {
+      const l = (TT_SUBJECTS[g] || []).slice();
+      books.forEach((b) => { if (b.grade === g && typeof b.subject === "string" && b.subject && l.indexOf(b.subject) < 0) l.push(b.subject); });
+      return l;
+    };
     const bookSync = () => {
-      const m = books.find((b) => b.grade === st.grade && b.subject === subjName());
+      const l = booksFor();
       const sel = $("ttBook");
-      $("ttBookBox").hidden = !m;
-      if (!m) return;
-      sel.innerHTML = '<option value="1">' + esc(m.title) + '</option><option value="0">بدون کتاب</option>';
-      sel.value = st.useBook ? "1" : "0";
+      $("ttBookBox").hidden = !l.length;
+      if (!l.length) return;
+      sel.innerHTML = l.map((b) => '<option value="' + esc(b.slug) + '">' + esc(b.title) + "</option>").join("") + '<option value="0">بدون کتاب</option>';
+      const c = curBook();
+      sel.value = c ? c.slug : "0";
     };
 
     const applyCfg = () => {
@@ -4237,7 +4252,9 @@
     };
 
     const fillSubjects = () => {
-      subj.innerHTML = TT_SUBJECTS[st.grade].map((s) => '<option value="' + s + '">' + s + "</option>").join("") + '<option value="' + TT_OTHER + '">درس دیگر…</option>';
+      const lst = subjectsOf(st.grade);
+      if (st.subject && st.subject !== TT_OTHER && lst.indexOf(st.subject) < 0 && !booksLoaded) lst.push(st.subject);
+      subj.innerHTML = lst.map((s) => '<option value="' + esc(s) + '">' + esc(s) + "</option>").join("") + '<option value="' + TT_OTHER + '">درس دیگر…</option>';
       subj.value = st.subject;
       otherBox.hidden = st.subject !== TT_OTHER;
       other.value = st.other;
@@ -4245,7 +4262,7 @@
     $("ttGrade").value = st.grade;
     $("ttModel").value = st.model;
     fillSubjects();
-    rpc("books_list", {}).then((r) => { if (!alive || !Array.isArray(r)) return; books = r.filter((b) => b && typeof b.slug === "string"); bookSync(); applyCfg(); if (!hist().length) renderLog(); }).catch(() => {});
+    rpc("books_list", {}).then((r) => { if (!alive || !Array.isArray(r)) return; books = r.filter((b) => b && typeof b.slug === "string" && typeof b.grade === "string" && typeof b.subject === "string" && typeof b.title === "string"); booksLoaded = true; if (st.subject !== TT_OTHER && subjectsOf(st.grade).indexOf(st.subject) < 0) { st.subject = subjectsOf(st.grade)[0]; persist(); } fillSubjects(); bookSync(); applyCfg(); if (!hist().length) renderLog(); }).catch(() => {});
 
     /* یادداشتِ «پاسخ ناقص» با دکمه‌ی ادامه */
     const incNote = (el, msg, withBtn) => {
@@ -4563,8 +4580,8 @@
     ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && fine.matches) { e.preventDefault(); if (!busy) submit(); } });
     $("ttForm").addEventListener("submit", (e) => { e.preventDefault(); if (busy) stop(); else submit(); });
     $("ttSum").addEventListener("click", () => { cfgOpen = !cfgOpen; applyCfg(); });
-    $("ttGrade").addEventListener("change", (e) => { st.grade = e.target.value; st.subject = TT_SUBJECTS[st.grade][0]; fillSubjects(); persist(); lastFailed = null; renderLog(); cfgOpen = !hist().length && tallEnough(); applyCfg(); sync(); });
-    subj.addEventListener("change", () => { st.subject = subj.value; otherBox.hidden = st.subject !== TT_OTHER; persist(); lastFailed = null; renderLog(); cfgOpen = (!hist().length && tallEnough()) || st.subject === TT_OTHER; applyCfg(); sync(); if (st.subject === TT_OTHER) other.focus(); });
+    $("ttGrade").addEventListener("change", (e) => { st.grade = e.target.value; st.subject = subjectsOf(st.grade)[0]; st.book = ""; fillSubjects(); persist(); lastFailed = null; renderLog(); cfgOpen = !hist().length && tallEnough(); applyCfg(); sync(); });
+    subj.addEventListener("change", () => { st.subject = subj.value; st.book = ""; otherBox.hidden = st.subject !== TT_OTHER; persist(); lastFailed = null; renderLog(); cfgOpen = (!hist().length && tallEnough()) || st.subject === TT_OTHER; applyCfg(); sync(); if (st.subject === TT_OTHER) other.focus(); });
     other.addEventListener("input", () => { st.other = other.value.slice(0, 40); persist(); if (!hist().length && !busy) renderLog(); applyCfg(); sync(); });
     const clipSync = () => {
       const v = !!aiModel(st.model).vision;
@@ -4614,7 +4631,7 @@
     });
     $("ttAttX").addEventListener("click", () => { if (busy) return; attReset(); sync(); fit(); ta.focus(); });
     $("ttModel").addEventListener("change", (e) => { st.model = e.target.value; persist(); applyCfg(); clipSync(); });
-    $("ttBook").addEventListener("change", (e) => { st.useBook = e.target.value !== "0"; persist(); applyCfg(); });
+    $("ttBook").addEventListener("change", (e) => { st.book = e.target.value; persist(); applyCfg(); });
     const newChat = async () => {
       if (!hist().length) { ta.focus(); return; }
       const yes = await askConfirm({ title: "گفت‌وگوی جدید؟", text: "گفت‌وگوی فعلیِ این درس پاک می‌شود.", yes: "پاک کن و شروع کن" });
