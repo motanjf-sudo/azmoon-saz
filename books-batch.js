@@ -321,11 +321,11 @@ async function visionOffset(pdf, slug) {
       const msg = (d && d.choices && d.choices[0] && d.choices[0].message) || {};
       const fin = d && d.choices && d.choices[0] && d.choices[0].finish_reason;
       const txt = toAscii(String(msg.content || '') + '\n' + (msg.content ? '' : String(msg.reasoning_content || '')));
-      const m = txt.match(/\{[\s\S]*\}/); if (!m) { VLAST = 'no json in reply: finish=' + fin + ' keys=' + Object.keys(msg).join('/') + ' len=' + txt.length + ' ' + asc(txt.trim()); continue; }
-      const o = JSON.parse(m[0]);
-      for (const k of Object.keys(o)) {
-        const pg = parseInt(k, 10), num = typeof o[k] === 'number' ? o[k] : parseInt(String(o[k] == null ? '' : o[k]).replace(/\D/g, ''), 10);
-        if (pg >= FIRST && Number.isInteger(num) && num >= 1 && num < pg) { const off = pg - num - 1; votes.set(off, (votes.get(off) || 0) + 1); total++; }
+      const found = new Map();
+      for (const m of txt.matchAll(/["']?\b(\d{1,3})\b["']?\s*[:=]\s*["']?(null|\d{1,3})\b/gi)) found.set(parseInt(m[1], 10), /^null$/i.test(m[2]) ? null : parseInt(m[2], 10));
+      if (!found.size) { VLAST = 'no pairs in reply: finish=' + fin + ' keys=' + Object.keys(msg).join('/') + ' len=' + txt.length + ' ' + asc(txt.trim()); continue; }
+      for (const [pg, num] of found) {
+        if (pg >= FIRST && pg <= LAST && Number.isInteger(num) && num >= 1 && num < pg) { const off = pg - num - 1; votes.set(off, (votes.get(off) || 0) + 1); total++; }
       }
     } catch (e) { VLAST = 'error: ' + asc(e && e.message); }
   }
