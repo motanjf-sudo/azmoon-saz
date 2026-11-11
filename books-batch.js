@@ -293,14 +293,18 @@ function detectOffset(pdf) {
 
 
 // کتاب‌هایی که متن لایه‌ی PDF ندارند (بیشتر دبستان): از DeepSeek Vision می‌خواهیم شماره‌ی چاپی چند صفحه را بخواند و رأی می‌گیریم.
+let VLAST = '';
+const asc = (x) => String(x).replace(/[^\x20-\x7e]/g, '?').slice(0, 160);
 async function visionOffset(pdf, slug) {
+  VLAST = '';
   const key = process.env.DEEPSEEK_API_KEY;
-  if (!key) return null;
+  if (!key) { VLAST = 'no DEEPSEEK_API_KEY in env'; return null; }
   const dir = path.join(TMP, slug + '-v');
   fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
   const FIRST = 4, LAST = 21;
   const rr = cp.spawnSync('pdftoppm', ['-f', String(FIRST), '-l', String(LAST), '-scale-to-x', '480', '-scale-to-y', '-1', '-jpeg', '-jpegopt', 'quality=60', pdf, path.join(dir, 'v')], { encoding: 'utf8' });
   const files = rr.status === 0 ? fs.readdirSync(dir).filter((f) => /^v-\d+\.jpg$/.test(f)).sort() : [];
+  if (!files.length) VLAST = 'pdftoppm made no images: ' + asc(rr.stderr || rr.error || rr.status);
   const votes = new Map(); let total = 0;
   for (let i = 0; i < files.length; i += 6) {
     const part = files.slice(i, i + 6);
@@ -312,22 +316,29 @@ async function visionOffset(pdf, slug) {
     });
     try {
       const r = await fetch(VISION_URL, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key }, body: JSON.stringify({ model: VISION_MODEL, messages: [{ role: 'user', content }], max_tokens: 400, temperature: 0 }), signal: AbortSignal.timeout(120000) });
-      if (!r.ok) continue;
+      if (!r.ok) { VLAST = 'HTTP ' + r.status + ' ' + asc(await r.text().catch(() => '')); continue; }
       const d = await r.json();
       const txt = toAscii(String(d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content || ''));
-      const m = txt.match(/\{[\s\S]*\}/); if (!m) continue;
+      const m = txt.match(/\{[\s\S]*\}/); if (!m) { VLAST = 'no json in reply: ' + asc(txt); continue; }
       const o = JSON.parse(m[0]);
       for (const k of Object.keys(o)) {
         const pg = parseInt(k, 10), num = typeof o[k] === 'number' ? o[k] : parseInt(String(o[k] == null ? '' : o[k]).replace(/\D/g, ''), 10);
         if (pg >= FIRST && Number.isInteger(num) && num >= 1 && num < pg) { const off = pg - num - 1; votes.set(off, (votes.get(off) || 0) + 1); total++; }
       }
-    } catch (e) { /* ادامه */ }
+    } catch (e) { VLAST = 'error: ' + asc(e && e.message); }
   }
+  if (!VLAST && best_ok(votes, total) === null) VLAST = 'votes=' + [...votes].map(([o, c]) => o + ':' + c).join(',') + ' total=' + total;
   fs.rmSync(dir, { recursive: true, force: true });
   let best = null, bc = 0;
   for (const [o, c] of votes) if (c > bc) { best = o; bc = c; }
   if (best === null || bc < 3 || bc / total < 0.6) return null;
   return best;
+}
+
+function best_ok(votes, total) {
+  let best = null, bc = 0;
+  for (const [o, c] of votes) if (c > bc) { best = o; bc = c; }
+  return (best === null || bc < 3 || bc / total < 0.6) ? null : best;
 }
 
 // فهرست مطالب: صفحه‌ی «فهرست» و صفحه‌ی بعدش (متن لایه‌ی PDF)
@@ -361,7 +372,7 @@ function imgCount(slug) { try { return fs.readdirSync(path.join(BOOKS, slug)).fi
     if (!(await download(b.url, pdf))) { console.log(tag + ' FAIL download'); fail.push(b.id + ' download'); continue; }
     let off = detectOffset(pdf), how = 'text';
     if (off === null) { off = await visionOffset(pdf, slug); how = 'vision'; }
-    if (off === null) { console.log(tag + ' FAIL page-offset not detected (text and vision both failed)'); noOff.push(b.id); try { fs.unlinkSync(pdf); } catch (e) { /* ignore */ } continue; }
+    if (off === null) { console.log(tag + ' FAIL page-offset not detected (text and vision both failed) vision: ' + VLAST); noOff.push(b.id); try { fs.unlinkSync(pdf); } catch (e) { /* ignore */ } continue; }
     const toc = makeToc(pdf);
     const tocFile = path.join(TMP, slug + '.toc.txt');
     if (toc) fs.writeFileSync(tocFile, toc);
