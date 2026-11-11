@@ -315,11 +315,13 @@ async function visionOffset(pdf, slug) {
       content.push({ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + fs.readFileSync(path.join(dir, f)).toString('base64') } });
     });
     try {
-      const r = await fetch(VISION_URL, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key }, body: JSON.stringify({ model: VISION_MODEL, messages: [{ role: 'user', content }], max_tokens: 400, temperature: 0 }), signal: AbortSignal.timeout(120000) });
+      const r = await fetch(VISION_URL, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key }, body: JSON.stringify({ model: VISION_MODEL, messages: [{ role: 'user', content }], max_tokens: 4000, temperature: 0 }), signal: AbortSignal.timeout(120000) });
       if (!r.ok) { VLAST = 'HTTP ' + r.status + ' ' + asc(await r.text().catch(() => '')); continue; }
       const d = await r.json();
-      const txt = toAscii(String(d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content || ''));
-      const m = txt.match(/\{[\s\S]*\}/); if (!m) { VLAST = 'no json in reply: ' + asc(txt); continue; }
+      const msg = (d && d.choices && d.choices[0] && d.choices[0].message) || {};
+      const fin = d && d.choices && d.choices[0] && d.choices[0].finish_reason;
+      const txt = toAscii(String(msg.content || '') + '\n' + (msg.content ? '' : String(msg.reasoning_content || '')));
+      const m = txt.match(/\{[\s\S]*\}/); if (!m) { VLAST = 'no json in reply: finish=' + fin + ' keys=' + Object.keys(msg).join('/') + ' len=' + txt.length + ' ' + asc(txt.trim()); continue; }
       const o = JSON.parse(m[0]);
       for (const k of Object.keys(o)) {
         const pg = parseInt(k, 10), num = typeof o[k] === 'number' ? o[k] : parseInt(String(o[k] == null ? '' : o[k]).replace(/\D/g, ''), 10);
