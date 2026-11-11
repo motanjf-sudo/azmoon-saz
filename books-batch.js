@@ -246,6 +246,9 @@ const FORCE = argv.includes('--force'), DRY = argv.includes('--dry');
 const only = argv.includes('--only') ? new Set(String(argv[argv.indexOf('--only') + 1] || '').split(',')) : null;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+try { require(process.env.SHIM_JS || '/opt/pazmoonak/deno-shim.js'); } catch (e) { /* بدون واسطه‌ی AI_RELAY ادامه می‌دهیم */ }   // fetch را از AI_RELAY عبور می‌دهد، مثل خود سرور
+const VISION_URL = process.env.VISION_URL || 'https://api.deepseek.com/chat/completions';
+const VISION_MODEL = process.env.VISION_MODEL || 'deepseek-v4-flash-vision-exp';
 const BIDI = /[‎‏‪-‮⁦-⁩]/g;
 const toAscii = (s) => s.replace(/[۰-۹]/g, (c) => String(c.charCodeAt(0) - 0x06f0)).replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x0660));
 
@@ -288,6 +291,45 @@ function detectOffset(pdf) {
   return best;
 }
 
+
+// کتاب‌هایی که متن لایه‌ی PDF ندارند (بیشتر دبستان): از DeepSeek Vision می‌خواهیم شماره‌ی چاپی چند صفحه را بخواند و رأی می‌گیریم.
+async function visionOffset(pdf, slug) {
+  const key = process.env.DEEPSEEK_API_KEY;
+  if (!key) return null;
+  const dir = path.join(TMP, slug + '-v');
+  fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  const FIRST = 4, LAST = 21;
+  const rr = cp.spawnSync('pdftoppm', ['-f', String(FIRST), '-l', String(LAST), '-scale-to-x', '480', '-scale-to-y', '-1', '-jpeg', '-jpegopt', 'quality=60', pdf, path.join(dir, 'v')], { encoding: 'utf8' });
+  const files = rr.status === 0 ? fs.readdirSync(dir).filter((f) => /^v-\d+\.jpg$/.test(f)).sort() : [];
+  const votes = new Map(); let total = 0;
+  for (let i = 0; i < files.length; i += 6) {
+    const part = files.slice(i, i + 6);
+    const content = [{ type: 'text', text: 'These are pages of an Iranian school textbook, each labeled with its PDF page number. For each labeled page, read the page number that is PRINTED on the page itself (a small number near a bottom or top corner or the bottom center; digits may be Persian like ۱۲). Ignore lesson numbers, exercise numbers and years. If no printed page number is clearly visible, use null. Reply with ONLY a JSON object mapping the PDF page label to the printed number, for example {"4": null, "5": 12}.' }];
+    part.forEach((f) => {
+      const n = parseInt(f.slice(2, -4), 10);
+      content.push({ type: 'text', text: 'PDF page ' + n + ':' });
+      content.push({ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + fs.readFileSync(path.join(dir, f)).toString('base64') } });
+    });
+    try {
+      const r = await fetch(VISION_URL, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key }, body: JSON.stringify({ model: VISION_MODEL, messages: [{ role: 'user', content }], max_tokens: 400, temperature: 0 }), signal: AbortSignal.timeout(120000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const txt = toAscii(String(d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content || ''));
+      const m = txt.match(/\{[\s\S]*\}/); if (!m) continue;
+      const o = JSON.parse(m[0]);
+      for (const k of Object.keys(o)) {
+        const pg = parseInt(k, 10), num = typeof o[k] === 'number' ? o[k] : parseInt(String(o[k] == null ? '' : o[k]).replace(/\D/g, ''), 10);
+        if (pg >= FIRST && Number.isInteger(num) && num >= 1 && num < pg) { const off = pg - num - 1; votes.set(off, (votes.get(off) || 0) + 1); total++; }
+      }
+    } catch (e) { /* ادامه */ }
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+  let best = null, bc = 0;
+  for (const [o, c] of votes) if (c > bc) { best = o; bc = c; }
+  if (best === null || bc < 3 || bc / total < 0.6) return null;
+  return best;
+}
+
 // فهرست مطالب: صفحه‌ی «فهرست» و صفحه‌ی بعدش (متن لایه‌ی PDF)
 function makeToc(pdf) {
   const pages = pageTexts(pdf, 1, 14);
@@ -317,8 +359,9 @@ function imgCount(slug) { try { return fs.readdirSync(path.join(BOOKS, slug)).fi
     if (!FORCE && imgCount(slug) >= 10) { console.log(tag + ' SKIP already done'); skip.push(b.id); continue; }
     const pdf = path.join(TMP, slug + '.pdf');
     if (!(await download(b.url, pdf))) { console.log(tag + ' FAIL download'); fail.push(b.id + ' download'); continue; }
-    const off = detectOffset(pdf);
-    if (off === null) { console.log(tag + ' FAIL page-offset not detected (do by hand)'); noOff.push(b.id); try { fs.unlinkSync(pdf); } catch (e) { /* ignore */ } continue; }
+    let off = detectOffset(pdf), how = 'text';
+    if (off === null) { off = await visionOffset(pdf, slug); how = 'vision'; }
+    if (off === null) { console.log(tag + ' FAIL page-offset not detected (text and vision both failed)'); noOff.push(b.id); try { fs.unlinkSync(pdf); } catch (e) { /* ignore */ } continue; }
     const toc = makeToc(pdf);
     const tocFile = path.join(TMP, slug + '.toc.txt');
     if (toc) fs.writeFileSync(tocFile, toc);
@@ -328,7 +371,7 @@ function imgCount(slug) { try { return fs.readdirSync(path.join(BOOKS, slug)).fi
     try { fs.unlinkSync(pdf); } catch (e) { /* ignore */ }
     try { fs.unlinkSync(tocFile); } catch (e) { /* ignore */ }
     if (r.status !== 0) { console.log(tag + ' FAIL ingest: ' + String(r.stdout + r.stderr).replace(/\s+/g, ' ').slice(-160)); fail.push(b.id + ' ingest'); continue; }
-    console.log(tag + ' OK offset=' + off + ' pages=' + imgCount(slug) + (toc ? ' toc=yes' : ' toc=no'));
+    console.log(tag + ' OK offset=' + off + '(' + how + ') pages=' + imgCount(slug) + (toc ? ' toc=yes' : ' toc=no'));
     done.push(b.id);
     await sleep(500);
   }
