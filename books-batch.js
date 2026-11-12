@@ -275,14 +275,14 @@ function pageTexts(pdf, from, to) {
 
 // شماره‌ی چاپی = شماره‌ی صفحه‌ی PDF − ۱ − offset. offset از روی شماره‌های پایین (یا بالای) صفحه‌ها پیدا می‌شود.
 function detectOffset(pdf) {
-  const pages = pageTexts(pdf, 1, 70);
+  const pages = pageTexts(pdf, 1, 120);
   const votes = new Map(); let total = 0;
   pages.forEach((t, i) => {
     const p = i + 1;
     const lines = t.split('\n').map((l) => toAscii(l.replace(BIDI, '')).trim()).filter(Boolean);
     if (!lines.length) return;
     for (const cand of [lines[lines.length - 1], lines[0]]) {
-      if (/^\d{1,3}$/.test(cand)) { const k = +cand; if (k >= 1 && k < p) { const off = p - k - 1; votes.set(off, (votes.get(off) || 0) + 1); total++; break; } }
+      if (/^\d{1,3}$/.test(cand)) { const k = +cand; if (k >= 1 && k <= p) { const off = p - k - 1; votes.set(off, (votes.get(off) || 0) + 1); total++; break; } }
     }
   });
   let best = null, bc = 0;
@@ -294,20 +294,21 @@ function detectOffset(pdf) {
 
 // کتاب‌هایی که متن لایه‌ی PDF ندارند (بیشتر دبستان): از DeepSeek Vision می‌خواهیم شماره‌ی چاپی چند صفحه را بخواند و رأی می‌گیریم.
 let VLAST = '';
-const asc = (x) => String(x).replace(/[^\x20-\x7e]/g, '?').slice(0, 160);
+const asc = (x) => String(x).replace(/[^\x20-\x7e]/g, '?').slice(0, 200);
 async function visionOffset(pdf, slug) {
   VLAST = '';
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) { VLAST = 'no DEEPSEEK_API_KEY in env'; return null; }
   const dir = path.join(TMP, slug + '-v');
   fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
-  const FIRST = 4, LAST = 21;
-  const rr = cp.spawnSync('pdftoppm', ['-f', String(FIRST), '-l', String(LAST), '-scale-to-x', '480', '-scale-to-y', '-1', '-jpeg', '-jpegopt', 'quality=60', pdf, path.join(dir, 'v')], { encoding: 'utf8' });
+  const votes = new Map(); let total = 0, SAMPLE = '';
+  for (const [FIRST, LAST] of [[4, 21], [22, 45]]) {
+  fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  const rr = cp.spawnSync('pdftoppm', ['-f', String(FIRST), '-l', String(LAST), '-scale-to-x', '720', '-scale-to-y', '-1', '-jpeg', '-jpegopt', 'quality=70', pdf, path.join(dir, 'v')], { encoding: 'utf8' });
   const files = rr.status === 0 ? fs.readdirSync(dir).filter((f) => /^v-\d+\.jpg$/.test(f)).sort() : [];
   if (!files.length) VLAST = 'pdftoppm made no images: ' + asc(rr.stderr || rr.error || rr.status);
-  const votes = new Map(); let total = 0;
-  for (let i = 0; i < files.length; i += 6) {
-    const part = files.slice(i, i + 6);
+  for (let i = 0; i < files.length; i += 4) {
+    const part = files.slice(i, i + 4);
     const content = [{ type: 'text', text: 'These are pages of an Iranian school textbook, each labeled with its PDF page number. For each labeled page, read the page number that is PRINTED on the page itself (a small number near a bottom or top corner or the bottom center; digits may be Persian like ۱۲). Ignore lesson numbers, exercise numbers and years. If no printed page number is clearly visible, use null. Reply with ONLY a JSON object mapping the PDF page label to the printed number, for example {"4": null, "5": 12}.' }];
     part.forEach((f) => {
       const n = parseInt(f.slice(2, -4), 10);
@@ -324,12 +325,15 @@ async function visionOffset(pdf, slug) {
       const found = new Map();
       for (const m of txt.matchAll(/["']?\b(\d{1,3})\b["']?\s*[:=]\s*["']?(null|\d{1,3})\b/gi)) found.set(parseInt(m[1], 10), /^null$/i.test(m[2]) ? null : parseInt(m[2], 10));
       if (!found.size) { VLAST = 'no pairs in reply: finish=' + fin + ' keys=' + Object.keys(msg).join('/') + ' len=' + txt.length + ' ' + asc(txt.trim()); continue; }
+      if (!SAMPLE) SAMPLE = JSON.stringify([...found]).replace(/null/g, 'n').slice(0, 110);
       for (const [pg, num] of found) {
         if (pg >= FIRST && pg <= LAST && Number.isInteger(num) && num >= 1 && num < pg) { const off = pg - num - 1; votes.set(off, (votes.get(off) || 0) + 1); total++; }
       }
     } catch (e) { VLAST = 'error: ' + asc(e && e.message); }
   }
-  if (!VLAST && best_ok(votes, total) === null) VLAST = 'votes=' + [...votes].map(([o, c]) => o + ':' + c).join(',') + ' total=' + total;
+  if (best_ok(votes, total) !== null) break;
+  }
+  if (!VLAST && best_ok(votes, total) === null) VLAST = 'votes=' + [...votes].map(([o, c]) => o + ':' + c).join(',') + ' total=' + total + ' sample=' + SAMPLE;
   fs.rmSync(dir, { recursive: true, force: true });
   let best = null, bc = 0;
   for (const [o, c] of votes) if (c > bc) { best = o; bc = c; }
