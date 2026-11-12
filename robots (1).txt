@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+# صفحه‌های خصوصی و وابسته به حساب کاربری؛ محتوای عمومی ندارند
+Disallow: /q/
+Disallow: /m/
+Disallow: /edit/
+Disallow: /g/
+Disallow: /groups
+Disallow: /tokens
+Disallow: /wallet
+Disallow: /account
+Disallow: /admin
+Disallow: /signup
+Disallow: /tutor
+Disallow: /create
+
+Sitemap: https://pazmoonak.com/sitemap.xml
