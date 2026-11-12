@@ -243,6 +243,7 @@ const INGEST = process.env.INGEST_JS || '/opt/pazmoonak/ingest.js';
 const TMP = process.env.BATCH_TMP || '/root/books-tmp';
 const argv = process.argv.slice(2);
 const FORCE = argv.includes('--force'), DRY = argv.includes('--dry');
+const manual = new Map(String(argv.includes('--offsets') ? argv[argv.indexOf('--offsets') + 1] || '' : '').split(',').filter(Boolean).map((x) => x.split('=')));   // --offsets 14263=-1,14324=3  (offset دستی)
 const only = argv.includes('--only') ? new Set(String(argv[argv.indexOf('--only') + 1] || '').split(',')) : null;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -281,7 +282,8 @@ function detectOffset(pdf) {
     const p = i + 1;
     const lines = t.split('\n').map((l) => toAscii(l.replace(BIDI, '')).trim()).filter(Boolean);
     if (!lines.length) return;
-    for (const cand of [lines[lines.length - 1], lines[0]]) {
+    for (const cand of [lines[lines.length - 1], lines[0], lines[lines.length - 2], lines[1], lines[lines.length - 3]]) {
+      if (cand === undefined) continue;
       if (/^\d{1,3}$/.test(cand)) { const k = +cand; if (k >= 1 && k <= p) { const off = p - k - 1; votes.set(off, (votes.get(off) || 0) + 1); total++; break; } }
     }
   });
@@ -376,7 +378,8 @@ function imgCount(slug) { try { return fs.readdirSync(path.join(BOOKS, slug)).fi
     if (!FORCE && imgCount(slug) >= 10) { console.log(tag + ' SKIP already done'); skip.push(b.id); continue; }
     const pdf = path.join(TMP, slug + '.pdf');
     if (!(await download(b.url, pdf))) { console.log(tag + ' FAIL download'); fail.push(b.id + ' download'); continue; }
-    let off = detectOffset(pdf), how = 'text';
+    let off = manual.has(b.id) ? parseInt(manual.get(b.id), 10) : detectOffset(pdf), how = manual.has(b.id) ? 'manual' : 'text';
+    if (off === null || Number.isNaN(off)) off = null;
     if (off === null) { off = await visionOffset(pdf, slug); how = 'vision'; }
     if (off === null) { console.log(tag + ' FAIL page-offset not detected (text and vision both failed) vision: ' + VLAST); noOff.push(b.id); try { fs.unlinkSync(pdf); } catch (e) { /* ignore */ } continue; }
     const toc = makeToc(pdf);
