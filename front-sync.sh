@@ -15,7 +15,7 @@ for f in index.html app.js config.js; do
 done
 mkdir -p "$WEB"
 put() { install -m 644 "$D$1" "$WEB/$1.new" && mv -f "$WEB/$1.new" "$WEB/$1"; }
-for f in katex-bundle.js app.js config.js style.css robots.txt sitemap.xml vazirmatn.woff2; do [ -f "$D$f" ] && put "$f"; done
+for f in katex-bundle.js app.js config.js style.css robots.txt sitemap.xml vazirmatn.woff2 favicon.ico favicon-48.png favicon-192.png favicon-512.png apple-touch-icon.png og-image.png site.webmanifest; do [ -f "$D$f" ] && put "$f"; done
 # فایل‌های تأیید مالکیت گوگل (google….html)
 for g in "$D"google*.html; do [ -f "$g" ] && put "$(basename "$g")"; done
 if [ -d "$D/logo" ]; then mkdir -p "$WEB/logo" && cp -f "$D"logo/* "$WEB/logo/" && chmod 644 "$WEB"/logo/*; fi
