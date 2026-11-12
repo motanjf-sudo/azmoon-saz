@@ -4796,6 +4796,13 @@
     const parts = path.split("/").filter(Boolean).map(safeDecode);
     const okId = (s) => /^[A-Za-z0-9_-]{1,64}$/.test(s || "");
 
+    /* سئو: فقط صفحه‌ی اصلی در گوگل می‌آید؛ بقیه (آزمون‌ها، حساب، گروه‌ها، آدرس نامعتبر) noindex و canonical درست می‌گیرند */
+    try {
+      const home = parts.length === 0, cn = document.querySelector('link[rel="canonical"]'), rb = document.querySelector('meta[name="robots"]');
+      if (cn) cn.setAttribute("href", "https://pazmoonak.com" + (home ? "/" : location.pathname));
+      if (rb) rb.setAttribute("content", home ? "index,follow,max-snippet:-1,max-image-preview:large" : "noindex,nofollow");
+    } catch (e) { /* ignore */ }
+
     createGroup = parts[0] === "create" ? ((/(^|&)g=([0-9a-f]{8})(&|$)/.exec(query) || [])[2] || "") : "";
 
     const kind = parts[0] || "home";
