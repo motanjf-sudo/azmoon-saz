@@ -4018,7 +4018,7 @@
   /* برای خاموش‌کردن: این مقدار false، دکمه‌ی ttBtn در index.html با hidden، و TUTOR_ENABLED=0 روی سرور */
   const TUTOR_ON = true;
   const TT_GRADES = ["اول", "دوم", "سوم", "چهارم", "پنجم", "ششم", "هفتم", "هشتم", "نهم", "دهم", "یازدهم", "دوازدهم", "دانشگاه", "عمومی"];
-  const TT_JR = ["ریاضی", "علوم تجربی", "فارسی", "عربی", "زبان انگلیسی", "مطالعات اجتماعی", "هدیه‌های آسمان"];
+  const TT_JR = ["ریاضی", "علوم تجربی", "فارسی", "عربی", "زبان انگلیسی", "مطالعات اجتماعی", "دینی"];
   const TT_EL = ["ریاضی", "فارسی", "نگارش", "علوم تجربی", "مطالعات اجتماعی", "هدیه‌های آسمان", "آموزش قرآن"];
   const TT_SUBJECTS = {
     "اول": TT_EL, "دوم": TT_EL, "سوم": TT_EL, "چهارم": TT_EL, "پنجم": TT_EL, "ششم": TT_EL,
@@ -4167,6 +4167,12 @@
       book: saved.useBook === false ? "0" : (typeof saved.book === "string" && /^(0|[a-z0-9_-]{1,40})$/.test(saved.book) ? saved.book : ""),   /* "" = اولین کتاب آن درس، "0" = بدون کتاب، یا نام یکی از کتاب‌ها */
       chats: saved.chats && typeof saved.chats === "object" ? saved.chats : {},
     };
+    /* درسِ «هدیه‌های آسمان» در متوسطه‌ی اول حالا «دینی» است (پیام‌های آسمان / از من تا خدا) */
+    if (st.subject === "هدیه‌های آسمان" && ["هفتم", "هشتم", "نهم"].indexOf(st.grade) >= 0) {
+      const o = st.grade + "|هدیه‌های آسمان", n = st.grade + "|دینی";
+      if (st.chats[o] && !st.chats[n]) st.chats[n] = st.chats[o];
+      delete st.chats[o]; st.subject = "دینی";
+    }
     const persist = () => {
       const trim = (n) => { const k = Object.keys(st.chats); if (k.length > n) k.slice(0, k.length - n).forEach((x) => delete st.chats[x]); };
       trim(14);
@@ -4223,8 +4229,17 @@
 
     /* ---------- انتخاب پایه ← درس ← کتاب ---------- */
     let books = [], booksState = 0;   /* 0 در حال بارگیری، 1 آماده، 2 نشد */
-    const EXTRA_BOOK = /کتاب کار|ضمیمه|اهل سنت|اقلیت|استعداد|آزمایشی/;
-    const booksFor = () => (st.grade ? books.filter((b) => b.grade === st.grade && b.subject === subjName()).sort((a, b) => (EXTRA_BOOK.test(a.title) ? 1 : 0) - (EXTRA_BOOK.test(b.title) ? 1 : 0)) : []);
+    /* اسم کتاب برای نمایش: بدون پایه و برچسب‌های اضافه، با رقم فارسی */
+    const cleanName = (t) => faNum(String(t || "").replace(/\s*-?\s*\(?\s*(?:پایه\s*)?(?:هفتم|هشتم|نهم)\s*\)?\s*$/, "").replace(/\s*\(اجرای آزمایشی\)/, "").replace(/\s+/g, " ").trim());
+    const TT_TAGS = ["ریاضی و تجربی", "ریاضی فیزیک", "علوم تجربی", "علوم انسانی", "علوم و معارف اسلامی"];
+    const bookParts = (b) => {
+      const k = b.title.indexOf(" · "), n = cleanName(k < 0 ? b.title : b.title.slice(0, k)), t = k < 0 ? "" : b.title.slice(k + 3).trim();
+      /* برچسب رشته فقط وقتی دو کتابِ هم‌نام در یک پایه و درس هست */
+      const dup = !!t && books.some((x) => x !== b && x.grade === b.grade && x.subject === b.subject && cleanName(x.title.split(" · ")[0]) === n);
+      return { n: n, t: dup ? t : "" };
+    };
+    const bookRank = (b) => (/کتاب کار/.test(b.title) ? 100 : 0) + (TT_TAGS.indexOf(bookParts(b).t) + 1);
+    const booksFor = () => (st.grade ? books.filter((b) => b.grade === st.grade && b.subject === subjName()).sort((a, b) => bookRank(a) - bookRank(b)) : []);
     const curBook = () => {
       if (st.book === "0") return null;
       const l = booksFor();
@@ -4240,7 +4255,6 @@
       return have.sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0));
     };
     const hasBook = (g, x) => books.some((b) => b.grade === g && b.subject === x);
-    const bookParts = (b) => { const k = b.title.indexOf(" · "); return k < 0 ? { n: b.title, t: "" } : { n: b.title.slice(0, k), t: b.title.slice(k + 3) }; };
     const subjReady = () => !!st.grade && !!st.subject && (st.subject !== TT_OTHER || st.other.trim().length >= 2);
     const seen = { s: false, b: false };   /* هر مرحله فقط بار اول که پیدا می‌شود با انیمیشن می‌آید */
 
@@ -4322,7 +4336,7 @@
       if (!chat) return;
       const cb = curBook();
       $("ttCtxT").textContent = (st.grade === "عمومی" ? "" : st.grade + " · ") + (subjName() || "؟");
-      $("ttCtxS").textContent = cb ? bookParts(cb).n : (booksState === 0 && st.book !== "0" ? "…" : "بدون کتاب");
+      $("ttCtxS").textContent = cb ? (() => { const p = bookParts(cb); return p.n + (p.t ? " · " + p.t : ""); })() : (booksState === 0 && st.book !== "0" ? "…" : "بدون کتاب");
       fit();
     };
     const startChat = () => {
@@ -4406,9 +4420,7 @@
         const e = document.createElement("div");
         e.className = "tt-empty";
         const cb = curBook();
-        e.innerHTML = '<span class="tt-ic big">' + TT_CAP + "</span><h2>سلام! من معلم پازمونک‌ام 👋</h2><p>" +
-          (subjName() ? "درسِ «" + esc(subjName()) + "»" + (st.grade === "عمومی" ? "" : " پایه‌ی " + esc(st.grade)) + " را با هم مرور می‌کنیم." : "اسم درس را بنویس تا شروع کنیم.") + "</p>" +
-          (cb ? '<div class="tt-hint">' + TT_BOOK + "<span>شماره‌ی صفحه‌ی کتاب را بگو (مثلاً «صفحه‌ی ۴۵») تا همان صفحه را ببینم و توضیح بدهم.</span></div>" : "");
+        e.innerHTML = '<span class="tt-ic big">' + TT_CAP + "</span><h2>" + (cb ? "از چه صفحه‌ای شروع کنیم؟" : "چه سؤالی داری؟") + "</h2>";
         log.appendChild(e);
         return;
       }
