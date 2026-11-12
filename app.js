@@ -2122,7 +2122,7 @@
       html += '<div class="dr-who"><strong>پازمونک</strong><small>آزمون‌ساز آنلاین</small></div>';
     }
     html += '<button class="dr-x" type="button" id="drX" aria-label="بستن منو">' + CROSS + "</button></div><nav class=\"dr-nav\" aria-label=\"منوی اصلی\">";
-    html += item("/", MENU_IC.home, "خانه") + item("/create", MENU_IC.plus, "ساخت آزمون");
+    html += item("/", MENU_IC.home, "خانه") + item("/create", MENU_IC.plus, "ساخت آزمون") + (TUTOR_ON ? item("/tutor", TT_CAP, "معلم هوشمند") : "");
     if (s) {
       if (visible("grpBtn")) html += item("/groups", MENU_IC.users, "گروه‌ها", gcount ? '<b class="dr-badge">' + esc(gcount) + "</b>" : "");
       html += item("/tokens", COIN, "پولک‌های من", '<b class="dr-bal">' + tkTxt() + "</b>") + item("/wallet", MENU_IC.wallet, "بخش مالی");
@@ -4015,8 +4015,8 @@
   }
 
   /* ---------- معلم هوشمند ---------- */
-  /* فعلاً از سایت پنهان است (کدش سر جایش مانده). برای روشن‌کردن دوباره: این مقدار true، دکمه‌ی ttBtn در index.html بدون hidden، و TUTOR_ENABLED=1 روی سرور */
-  const TUTOR_ON = false;
+  /* برای خاموش‌کردن: این مقدار false، دکمه‌ی ttBtn در index.html با hidden، و TUTOR_ENABLED=0 روی سرور */
+  const TUTOR_ON = true;
   const TT_GRADES = ["اول", "دوم", "سوم", "چهارم", "پنجم", "ششم", "هفتم", "هشتم", "نهم", "دهم", "یازدهم", "دوازدهم", "دانشگاه", "عمومی"];
   const TT_JR = ["ریاضی", "علوم تجربی", "فارسی", "عربی", "زبان انگلیسی", "مطالعات اجتماعی", "هدیه‌های آسمان"];
   const TT_EL = ["ریاضی", "فارسی", "نگارش", "علوم تجربی", "مطالعات اجتماعی", "هدیه‌های آسمان", "آموزش قرآن"];
@@ -4030,12 +4030,19 @@
     "عمومی": ["هر درسی"],
   };
   const TT_OTHER = "__other";
-  const TT_CHIPS = [
-    "این درس را از اول برایم ساده توضیح بده",
-    "یک مثال حل‌شده با توضیح قدم‌به‌قدم نشان بده",
-    "از من چند سؤال بپرس تا خودم را بسنجم",
-    "خلاصه‌ی نکته‌های مهم این درس را بگو",
+  const ttSafe = (m) => String(m == null ? "" : m).replace(/دیپ[\s\u200c]*سیک|deep[\s-]*seek/gi, "معلم");   /* اسم مدل در هیچ پیامی به کاربر نشان داده نمی‌شود */
+  const TT_GROUPS = [
+    { t: "دبستان", g: ["اول", "دوم", "سوم", "چهارم", "پنجم", "ششم"] },
+    { t: "متوسطه‌ی اول", g: ["هفتم", "هشتم", "نهم"] },
+    { t: "متوسطه‌ی دوم", g: ["دهم", "یازدهم", "دوازدهم"] },
+    { t: "سایر", g: ["دانشگاه", "عمومی"] },
   ];
+  const TT_SVG = (p, w) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (w || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + "</svg>";
+  const TT_BOOK = TT_SVG('<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>');
+  const TT_CHECK = TT_SVG('<path d="m5 12.5 4.5 4.5L19 7.5"/>', 3.2);
+  const TT_GO = TT_SVG('<path d="M19 12H5M11 6l-6 6 6 6"/>', 2.4);
+  const TT_BACK = TT_SVG('<path d="M5 12h14M13 6l6 6-6 6"/>', 2.4);
+  const TT_SWAP = TT_SVG('<path d="m7 4-4 4 4 4M3 8h15M17 20l4-4-4-4M21 16H6"/>');
   const TT_CAP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9.5 12 5l10 4.5-10 4.5z"/><path d="M6 11.6v4.4c0 1.4 2.7 3 6 3s6-1.6 6-3v-4.4"/><path d="M22 9.5V15"/></svg>';
   const TT_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>';
   const TT_IMG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3.5"/><circle cx="9" cy="10" r="1.7"/><path d="m21 16-5.2-5.2L8 19"/></svg>';
@@ -4146,7 +4153,6 @@
   }
 
   const TT_STOP = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>';
-  const TT_CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 
   function viewTutor(token) {
     setTitle("معلم هوشمند");
@@ -4154,14 +4160,13 @@
     const KEY = "tutor:v1";
     const saved = store.get(KEY, {}) || {};
     const st = {
-      grade: TT_GRADES.indexOf(saved.grade) >= 0 ? saved.grade : "نهم",
+      grade: TT_GRADES.indexOf(saved.grade) >= 0 ? saved.grade : "",
       subject: typeof saved.subject === "string" ? saved.subject : "",
       other: typeof saved.other === "string" ? saved.other.slice(0, 40) : "",
       model: "ds-vision",   /* معلم فقط با DeepSeek Vision کار می‌کند */
       book: saved.useBook === false ? "0" : (typeof saved.book === "string" && /^(0|[a-z0-9_-]{1,40})$/.test(saved.book) ? saved.book : ""),   /* "" = اولین کتاب آن درس، "0" = بدون کتاب، یا نام یکی از کتاب‌ها */
       chats: saved.chats && typeof saved.chats === "object" ? saved.chats : {},
     };
-    if (!st.subject) st.subject = TT_SUBJECTS[st.grade][0];   /* اعتبارسنجی بعد از رسیدن فهرست کتاب‌ها (چون بعضی درس‌ها فقط از روی کتاب‌ها می‌آیند) */
     const persist = () => {
       const trim = (n) => { const k = Object.keys(st.chats); if (k.length > n) k.slice(0, k.length - n).forEach((x) => delete st.chats[x]); };
       trim(14);
@@ -4175,25 +4180,23 @@
     const hist = () => (Array.isArray(st.chats[chatKey()]) ? st.chats[chatKey()] : []);
 
     app.innerHTML =
-      '<section class="tt" aria-labelledby="ttH">' +
-      '<div class="tt-head"><span class="tt-ic">' + TT_CAP + '</span><div><h1 id="ttH">معلم هوشمند</h1><p class="tt-sub">پایه و درس را انتخاب کن و هر چیزی را که نمی‌فهمی بپرس؛ مثل یک معلم خصوصی، قدم‌به‌قدم توضیح می‌دهد.</p></div></div>' +
-      '<div class="tt-sumrow"><button class="tt-sum" id="ttSum" type="button" aria-expanded="false" aria-controls="ttBar"><span id="ttSumT"></span>' + TT_CHEV + "</button>" +
-      '<button class="btn ghost small tt-new2" id="ttNew2" type="button" aria-label="گفت‌وگوی جدید">' + TT_NEW + "<span>جدید</span></button></div>" +
-      '<div class="tt-bar" id="ttBar">' +
-      '<label class="tt-f"><span>پایه</span><select id="ttGrade">' + TT_GRADES.map((g) => '<option value="' + g + '">' + (g === "عمومی" ? "عمومی (همه‌ی درس‌ها)" : g) + "</option>").join("") + "</select></label>" +
-      '<label class="tt-f"><span>درس</span><select id="ttSubj"></select></label>' +
-      '<label class="tt-f tt-f-other" id="ttOtherBox" hidden><span>اسم درس</span><input id="ttOther" type="text" maxlength="40" placeholder="مثلاً مدار الکتریکی" autocomplete="off"></label>' +
-      '<label class="tt-f tt-f-model" id="ttBookBox" hidden><span>کتاب درسی</span><select id="ttBook"></select></label>' +
-      '<select id="ttModel" hidden><option value="ds-vision">DeepSeek Vision</option></select>' +
-      '<button class="btn ghost small tt-new" id="ttNew" type="button">' + TT_NEW + "<span>گفت‌وگوی جدید</span></button></div>" +
-      '<div class="tt-box" id="ttBox"><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
+      '<section class="tt" aria-label="معلم هوشمند">' +
+      '<div class="tp" id="ttPick" hidden>' +
+      '<button class="tp-back" id="ttBack" type="button" hidden>' + TT_BACK + "<span>بازگشت به گفت‌وگو</span></button>" +
+      '<div class="tp-hero"><span class="tt-ic big">' + TT_CAP + '</span><h1 id="ttH">معلم هوشمند</h1><p>پایه و درس را انتخاب کن؛ کتاب درسی خودکار می‌آید و هر چه نفهمیدی بپرس.</p></div>' +
+      '<section class="tp-s" id="tpG" aria-label="پایه"></section><section class="tp-s" id="tpS" aria-label="درس" hidden></section><section class="tp-s" id="tpB" aria-label="کتاب" hidden></section>' +
+      '<div class="tp-bar" id="tpGo"></div></div>' +
+      '<div class="tt-ctx" id="ttCtx" hidden><span class="tt-ic">' + TT_CAP + '</span><div class="tt-ctx-t"><strong id="ttCtxT"></strong><small>' + TT_BOOK + '<span id="ttCtxS"></span></small></div>' +
+      '<button class="btn ghost small tt-ab" id="ttChg" type="button" aria-label="تغییر پایه و درس">' + TT_SWAP + "<span>تغییر</span></button>" +
+      '<button class="btn ghost small tt-ab" id="ttNew" type="button" aria-label="گفت‌وگوی جدید">' + TT_NEW + "<span>جدید</span></button></div>" +
+      '<div class="tt-box" id="ttBox" hidden><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
       '<div class="tt-att" id="ttAttBox" hidden><img id="ttAttImg" alt="عکس پیوست‌شده"><span id="ttAttT">عکس پیوست شد؛ همراه همه‌ی پیام‌های این گفت‌وگو فرستاده می‌شود.</span><button type="button" id="ttAttX" aria-label="حذف عکس">' + CI.close + "</button></div>" +
       '<form class="chat-in tt-in" id="ttForm" autocomplete="off"><button class="tt-clip" type="button" id="ttClip" aria-label="پیوست عکس" title="پیوست عکس" hidden>' + TT_IMG + '</button><input type="file" id="ttFile" accept="image/*" hidden><textarea id="ttTa" rows="1" maxlength="2000" dir="auto" enterkeyhint="send" placeholder="سؤالت را بنویس…" aria-label="سؤال شما"></textarea>' +
       '<button class="chat-send" type="submit" id="ttSend" aria-label="ارسال" disabled>' + CI.send + "</button></form></div>" +
-      '<p class="muted tt-note" id="ttNote">معلم هوشمند ممکن است گاهی اشتباه کند؛ نکته‌های مهم را با کتاب درسی‌ات مقایسه کن.</p></section>';
+      '<p class="muted tt-note" id="ttNote" hidden>معلم هوشمند ممکن است گاهی اشتباه کند؛ نکته‌های مهم را با کتاب درسی‌ات مقایسه کن.</p></section>';
 
     const $ = (id) => document.getElementById(id);
-    const log = $("ttLog"), ta = $("ttTa"), sendBtn = $("ttSend"), subj = $("ttSubj"), other = $("ttOther"), otherBox = $("ttOtherBox"), box = $("ttBox");
+    const log = $("ttLog"), ta = $("ttTa"), sendBtn = $("ttSend"), box = $("ttBox"), pickEl = $("ttPick");
     let busy = false;
     let alive = true;
     let lastFailed = null;
@@ -4201,12 +4204,12 @@
     const toast = (m) => { if (window.__pzToast) window.__pzToast(m); };
     let follow = true;
     let ctl = null, userStop = false, stopHook = null, autoLeft = 0;
-    const tallEnough = () => (window.visualViewport ? window.visualViewport.height : window.innerHeight) >= 760;
-    let cfgOpen = !hist().length && tallEnough();
+    let mode = st.grade && subjName() && hist().length ? "chat" : "pick";   /* گفت‌وگوی قبلی دارد: مستقیم به چت؛ وگرنه صفحه‌ی انتخاب */
+    let prevSel = null;   /* اگر «تغییر» را بزند و پشیمان شود، به همین انتخاب برمی‌گردد */
 
     /* ارتفاع جعبه‌ی چت = همه‌ی جای خالیِ صفحه (بدون اسکرولِ اضافه‌ی صفحه؛ با کیبورد موبایل هم درست می‌شود) */
     const fit = () => {
-      if (!alive || !box.isConnected) return;
+      if (!alive || !box.isConnected || mode !== "chat") return;
       const vv = window.visualViewport;
       const H = vv ? vv.height : window.innerHeight;
       const top = box.getBoundingClientRect().top + window.scrollY;
@@ -4218,51 +4221,133 @@
     window.addEventListener("resize", onResize);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
 
-    /* کتاب درسیِ آماده برای پایه و درس انتخاب‌شده (اگر باشد) */
-    let books = [], booksLoaded = false;
+    /* ---------- انتخاب پایه ← درس ← کتاب ---------- */
+    let books = [], booksState = 0;   /* 0 در حال بارگیری، 1 آماده، 2 نشد */
     const EXTRA_BOOK = /کتاب کار|ضمیمه|اهل سنت|اقلیت|استعداد|آزمایشی/;
-    const booksFor = () => books.filter((b) => b.grade === st.grade && b.subject === subjName()).sort((a, b) => (EXTRA_BOOK.test(a.title) ? 1 : 0) - (EXTRA_BOOK.test(b.title) ? 1 : 0));
+    const booksFor = () => (st.grade ? books.filter((b) => b.grade === st.grade && b.subject === subjName()).sort((a, b) => (EXTRA_BOOK.test(a.title) ? 1 : 0) - (EXTRA_BOOK.test(b.title) ? 1 : 0)) : []);
     const curBook = () => {
       if (st.book === "0") return null;
       const l = booksFor();
       return l.find((b) => b.slug === st.book) || l[0] || null;
     };
-    /* درس‌های هر پایه: فهرست ثابت + هر درسی که کتابش آماده است */
+    /* درس‌های هر پایه: اگر کتابی دارد همان‌ها (به ترتیب آشنا)، وگرنه فهرست ثابت */
     const subjectsOf = (g) => {
-      const l = (TT_SUBJECTS[g] || []).slice();
-      books.forEach((b) => { if (b.grade === g && typeof b.subject === "string" && b.subject && l.indexOf(b.subject) < 0) l.push(b.subject); });
-      return l;
+      const fixed = TT_SUBJECTS[g] || [];
+      const have = [];
+      books.forEach((b) => { if (b.grade === g && b.subject && have.indexOf(b.subject) < 0) have.push(b.subject); });
+      if (!have.length) return fixed.slice();
+      const rank = (x) => { const k = fixed.indexOf(x); return k < 0 ? 999 : k; };
+      return have.sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0));
     };
-    const bookSync = () => {
-      const l = booksFor();
-      const sel = $("ttBook");
-      $("ttBookBox").hidden = !l.length;
-      if (!l.length) return;
-      sel.innerHTML = l.map((b) => '<option value="' + esc(b.slug) + '">' + esc(b.title) + "</option>").join("") + '<option value="0">بدون کتاب</option>';
-      const c = curBook();
-      sel.value = c ? c.slug : "0";
-    };
+    const hasBook = (g, x) => books.some((b) => b.grade === g && b.subject === x);
+    const bookParts = (b) => { const k = b.title.indexOf(" · "); return k < 0 ? { n: b.title, t: "" } : { n: b.title.slice(0, k), t: b.title.slice(k + 3) }; };
+    const subjReady = () => !!st.grade && !!st.subject && (st.subject !== TT_OTHER || st.other.trim().length >= 2);
+    const seen = { s: false, b: false };   /* هر مرحله فقط بار اول که پیدا می‌شود با انیمیشن می‌آید */
 
+    const renderG = () => {
+      $("tpG").innerHTML = '<h2 class="tp-h"><b' + (st.grade ? ' class="ok"' : "") + ">" + (st.grade ? TT_CHECK : "۱") + "</b>پایه‌ی تحصیلی</h2>" +
+        TT_GROUPS.map((x) => '<div class="tp-grp"><span class="tp-gl">' + x.t + '</span><div class="tp-grid">' +
+          x.g.map((g) => '<button type="button" class="tp-t' + (g === st.grade ? " on" : "") + '" data-g="' + g + '" aria-pressed="' + (g === st.grade) + '">' + g + "</button>").join("") + "</div></div>").join("");
+    };
+    const renderS = () => {
+      const el = $("tpS");
+      if (!st.grade) { seen.s = false; el.hidden = true; el.innerHTML = ""; return; }
+      el.hidden = false;
+      el.classList.toggle("new", !seen.s); seen.s = true;
+      let h = '<h2 class="tp-h"><b' + (subjReady() ? ' class="ok"' : "") + ">" + (subjReady() ? TT_CHECK : "۲") + "</b>درس</h2>";
+      if (booksState === 0) h += '<div class="tp-chips tp-skel" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>';
+      else {
+        h += '<div class="tp-chips" role="group" aria-label="درس">' + subjectsOf(st.grade).map((x) => '<button type="button" class="tp-c' + (x === st.subject ? " on" : "") + '" data-s="' + esc(x) + '" aria-pressed="' + (x === st.subject) + '">' + (hasBook(st.grade, x) ? TT_BOOK : "") + "<span>" + esc(x) + "</span></button>").join("") +
+          '<button type="button" class="tp-c more' + (st.subject === TT_OTHER ? " on" : "") + '" data-s="' + TT_OTHER + '" aria-pressed="' + (st.subject === TT_OTHER) + '">' + TT_NEW + "<span>درس دیگر</span></button></div>";
+        if (st.subject === TT_OTHER) h += '<label class="tp-oth"><span>اسم درس</span><input id="ttOther" type="text" maxlength="40" placeholder="مثلاً مدار الکتریکی" autocomplete="off" value="' + esc(st.other) + '"></label>';
+      }
+      el.innerHTML = h;
+    };
+    const renderB = () => {
+      const el = $("tpB");
+      if (!subjReady()) { seen.b = false; el.hidden = true; el.innerHTML = ""; return; }
+      el.hidden = false;
+      el.classList.toggle("new", !seen.b); seen.b = true;
+      const l = booksFor(), cur = curBook();
+      let h = '<h2 class="tp-h"><b class="ok">' + TT_CHECK + "</b>کتاب درسی</h2>";
+      if (!l.length) h += '<p class="tp-none">' + TT_BOOK + "<span>برای این درس کتابی در سایت نیست؛ بدون کتاب هم کمکت می‌کنم.</span></p>";
+      else {
+        h += '<div class="tp-books" role="radiogroup" aria-label="کتاب درسی">' + l.map((b) => {
+          const p = bookParts(b), on = !!cur && cur.slug === b.slug;
+          return '<button type="button" role="radio" aria-checked="' + on + '" class="tp-b' + (on ? " on" : "") + '" data-b="' + esc(b.slug) + '"><i class="tp-r"></i><span class="tp-bt"><b>' + esc(p.n) + "</b>" + (p.t ? "<small>" + esc(p.t) + "</small>" : "") + "</span>" + TT_BOOK + "</button>";
+        }).join("") + '<button type="button" role="radio" aria-checked="' + !cur + '" class="tp-b none' + (!cur ? " on" : "") + '" data-b="0"><i class="tp-r"></i><span class="tp-bt"><b>بدون کتاب</b><small>فقط گفت‌وگو</small></span></button></div>';
+      }
+      el.innerHTML = h;
+    };
+    const renderGo = () => {
+      const ready = subjReady();
+      const cb = ready ? curBook() : null;
+      const has = ready && Array.isArray(st.chats[chatKey()]) && st.chats[chatKey()].length > 0;
+      $("tpGo").innerHTML = '<span class="tp-sm">' + (ready ? "<b>" + esc((st.grade === "عمومی" ? "" : st.grade + " · ") + subjName()) + "</b><small>" + (cb ? "با کتاب درسی" : "بدون کتاب") + "</small>" : "<b>" + (st.grade ? "حالا درس را انتخاب کن" : "پایه‌ات را انتخاب کن") + "</b>") + "</span>" +
+        '<button type="button" class="btn tp-go" id="ttGo"' + (ready ? "" : " disabled") + ">" + (has ? "ادامه‌ی گفت‌وگو" : "شروع گفت‌وگو") + TT_GO + "</button>";
+    };
+    const renderPick = () => { renderG(); renderS(); renderB(); renderGo(); $("ttBack").hidden = !prevSel; };
+
+    const reduceMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const bring = (id) => setTimeout(() => { const el = $(id); if (alive && el && !el.hidden && mode === "pick") { try { el.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "nearest" }); } catch (e) { /* ignore */ } } }, 80);
+    const refocus = (attr, v) => { const n = Array.prototype.find.call(pickEl.querySelectorAll("[" + attr + "]"), (x) => x.getAttribute(attr) === v); if (n) { try { n.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } };
+
+    pickEl.addEventListener("click", (e) => {
+      const t = e.target.closest ? e.target.closest("button") : null;
+      if (!t || !pickEl.contains(t) || t.disabled) return;
+      if (t.hasAttribute("data-g")) {
+        const g = t.getAttribute("data-g");
+        if (g !== st.grade) { st.grade = g; st.subject = ""; st.other = ""; st.book = ""; persist(); }
+        renderPick(); refocus("data-g", g); bring("tpS");
+      } else if (t.hasAttribute("data-s")) {
+        const x = t.getAttribute("data-s");
+        st.subject = x; st.book = ""; persist();
+        renderS(); renderB(); renderGo();
+        if (x === TT_OTHER) { const o = $("ttOther"); if (o) o.focus(); } else { refocus("data-s", x); bring("tpB"); }
+      } else if (t.hasAttribute("data-b")) {
+        const b = t.getAttribute("data-b");
+        st.book = b; persist();
+        renderB(); renderGo(); refocus("data-b", b);
+      } else if (t.id === "ttGo") startChat();
+      else if (t.id === "ttBack") backToChat();
+    });
+    pickEl.addEventListener("input", (e) => {
+      if (e.target && e.target.id === "ttOther") { st.other = e.target.value.slice(0, 40); persist(); renderB(); renderGo(); const so = $("tpS").querySelector(".tp-h b"); if (so) { so.innerHTML = subjReady() ? TT_CHECK : "۲"; so.className = subjReady() ? "ok" : ""; } }
+    });
+
+    const phText = () => (curBook() ? "سؤالت یا شماره‌ی صفحه را بنویس…" : "سؤالت را بنویس…");
     const applyCfg = () => {
-      $("ttBar").classList.toggle("closed", !cfgOpen);
-      $("ttSum").setAttribute("aria-expanded", cfgOpen ? "true" : "false");
-      bookSync();
-      $("ttSumT").textContent = st.grade + " · " + (subjName() || "؟") + (curBook() ? " · با کتاب" : "");
+      const chat = mode === "chat";
+      pickEl.hidden = chat; $("ttCtx").hidden = !chat; box.hidden = !chat; $("ttNote").hidden = !chat;
+      if (!chat) return;
+      const cb = curBook();
+      $("ttCtxT").textContent = (st.grade === "عمومی" ? "" : st.grade + " · ") + (subjName() || "؟");
+      $("ttCtxS").textContent = cb ? bookParts(cb).n : (booksState === 0 && st.book !== "0" ? "…" : "بدون کتاب");
       fit();
     };
-
-    const fillSubjects = () => {
-      const lst = subjectsOf(st.grade);
-      if (st.subject && st.subject !== TT_OTHER && lst.indexOf(st.subject) < 0 && !booksLoaded) lst.push(st.subject);
-      subj.innerHTML = lst.map((s) => '<option value="' + esc(s) + '">' + esc(s) + "</option>").join("") + '<option value="' + TT_OTHER + '">درس دیگر…</option>';
-      subj.value = st.subject;
-      otherBox.hidden = st.subject !== TT_OTHER;
-      other.value = st.other;
+    const startChat = () => {
+      if (!subjReady()) return;
+      mode = "chat"; prevSel = null;
+      persist(); lastFailed = null; attReset();
+      renderLog(); applyCfg(); sync(); clipSync();
+      try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+      requestAnimationFrame(fit);
+      if (fine.matches) { try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     };
-    $("ttGrade").value = st.grade;
-    $("ttModel").value = st.model;
-    fillSubjects();
-    rpc("books_list", {}).then((r) => { if (!alive || !Array.isArray(r)) return; books = r.filter((b) => b && typeof b.slug === "string" && typeof b.grade === "string" && typeof b.subject === "string" && typeof b.title === "string"); booksLoaded = true; if (st.subject !== TT_OTHER && subjectsOf(st.grade).indexOf(st.subject) < 0) { st.subject = subjectsOf(st.grade)[0]; persist(); } fillSubjects(); bookSync(); applyCfg(); if (!hist().length) renderLog(); }).catch(() => {});
+    const openPick = () => {
+      if (busy) return;
+      prevSel = { grade: st.grade, subject: st.subject, other: st.other, book: st.book };
+      mode = "pick"; seen.s = true; seen.b = true;
+      renderPick(); applyCfg();
+      try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+    };
+    const backToChat = () => {
+      if (!prevSel) return;
+      Object.assign(st, prevSel); prevSel = null; mode = "chat";
+      persist(); lastFailed = null; renderLog(); applyCfg(); sync(); clipSync();
+      requestAnimationFrame(fit);
+    };
+    rpc("books_list", {}).then((r) => { if (!alive) return; if (Array.isArray(r)) books = r.filter((b) => b && typeof b.slug === "string" && typeof b.grade === "string" && typeof b.subject === "string" && typeof b.title === "string"); booksState = Array.isArray(r) ? 1 : 2; renderPick(); applyCfg(); if (!hist().length) renderLog(); clipSync(); }).catch(() => { if (!alive) return; booksState = 2; renderPick(); });
 
     /* یادداشتِ «پاسخ ناقص» با دکمه‌ی ادامه */
     const incNote = (el, msg, withBtn) => {
@@ -4320,11 +4405,11 @@
       if (!h.length) {
         const e = document.createElement("div");
         e.className = "tt-empty";
+        const cb = curBook();
         e.innerHTML = '<span class="tt-ic big">' + TT_CAP + "</span><h2>سلام! من معلم پازمونک‌ام 👋</h2><p>" +
-          (subjName() ? "درسِ «" + esc(subjName()) + "»" + (st.grade === "عمومی" ? "" : " پایه‌ی " + esc(st.grade)) + " را با هم مرور می‌کنیم." : "اسم درس را بنویس تا شروع کنیم.") +
-          '</p><div class="tt-chips">' + (curBook() ? ["صفحه‌ی ۱۲ کتاب را قدم‌به‌قدم توضیح بده"] : []).concat(TT_CHIPS).map((c) => '<button type="button" class="tt-chip">' + esc(c) + "</button>").join("") + "</div>";
+          (subjName() ? "درسِ «" + esc(subjName()) + "»" + (st.grade === "عمومی" ? "" : " پایه‌ی " + esc(st.grade)) + " را با هم مرور می‌کنیم." : "اسم درس را بنویس تا شروع کنیم.") + "</p>" +
+          (cb ? '<div class="tt-hint">' + TT_BOOK + "<span>شماره‌ی صفحه‌ی کتاب را بگو (مثلاً «صفحه‌ی ۴۵») تا همان صفحه را ببینم و توضیح بدهم.</span></div>" : "");
         log.appendChild(e);
-        e.querySelectorAll(".tt-chip").forEach((b) => b.addEventListener("click", () => { ta.value = b.textContent; autosize(); sync(); submit(); }));
         return;
       }
       h.forEach((m, i) => log.appendChild(bubble(m.r === "u" ? "user" : "ai", m.c, "", m.r === "a" && m.p && i === h.length - 1 ? { btn: true } : null)));
@@ -4334,8 +4419,7 @@
     function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; }
     let sendMode = "";
     function sync() {
-      ["ttGrade", "ttSubj", "ttModel", "ttBook", "ttNew", "ttNew2", "ttClip", "ttAttX"].forEach((id) => { $(id).disabled = busy; });
-      other.disabled = busy;
+      ["ttChg", "ttNew", "ttClip", "ttAttX"].forEach((id) => { $(id).disabled = busy; });
       const mode = busy ? "stop" : "send";
       if (mode !== sendMode) {
         sendMode = mode;
@@ -4441,7 +4525,6 @@
         }
         log.appendChild(ub);
         if (!forced) { ta.value = ""; autosize(); }
-        if (cfgOpen) { cfgOpen = false; applyCfg(); }
       }
       persist();
       busy = true; sync();
@@ -4543,7 +4626,7 @@
         if (key === chatKey()) {
           if (live && live.isConnected) {
             finish(r.reply);
-            if (r.inc && !willAuto) incNote(live, r.error, true);
+            if (r.inc && !willAuto) incNote(live, ttSafe(r.error), true);
             if (follow) scrollEnd();
           } else {
             const el = bubble("ai", r.reply, "in", r.inc && !willAuto ? { btn: true } : null);
@@ -4558,7 +4641,7 @@
         e.className = "tt-m ai err";
         e.setAttribute("role", "alert");
         e.innerHTML = '<span class="tt-av">!</span><div class="tt-b"></div>';
-        e.querySelector(".tt-b").textContent = r.error;
+        e.querySelector(".tt-b").textContent = ttSafe(r.error);
         if (r.code !== "limit" && r.code !== "no_session") {
           const rb = document.createElement("button");
           rb.type = "button"; rb.className = "btn ghost small"; rb.textContent = "تلاش دوباره";
@@ -4579,18 +4662,15 @@
     ta.addEventListener("input", () => { autosize(); sync(); });
     ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && fine.matches) { e.preventDefault(); if (!busy) submit(); } });
     $("ttForm").addEventListener("submit", (e) => { e.preventDefault(); if (busy) stop(); else submit(); });
-    $("ttSum").addEventListener("click", () => { cfgOpen = !cfgOpen; applyCfg(); });
-    $("ttGrade").addEventListener("change", (e) => { st.grade = e.target.value; st.subject = subjectsOf(st.grade)[0]; st.book = ""; fillSubjects(); persist(); lastFailed = null; renderLog(); cfgOpen = !hist().length && tallEnough(); applyCfg(); sync(); });
-    subj.addEventListener("change", () => { st.subject = subj.value; st.book = ""; otherBox.hidden = st.subject !== TT_OTHER; persist(); lastFailed = null; renderLog(); cfgOpen = (!hist().length && tallEnough()) || st.subject === TT_OTHER; applyCfg(); sync(); if (st.subject === TT_OTHER) other.focus(); });
-    other.addEventListener("input", () => { st.other = other.value.slice(0, 40); persist(); if (!hist().length && !busy) renderLog(); applyCfg(); sync(); });
+    $("ttChg").addEventListener("click", openPick);
     const clipSync = () => {
       const v = !!aiModel(st.model).vision;
       $("ttClip").hidden = !v;
       if (!v && att) attReset();
-      ta.placeholder = v && att ? "درباره‌ی عکس بپرس…" : "سؤالت را بنویس…";
+      ta.placeholder = v && att ? "درباره‌ی عکس بپرس…" : phText();
       fit();
     };
-    const attReset = () => { att = null; attShown = false; $("ttAttBox").hidden = true; $("ttAttImg").removeAttribute("src"); ta.placeholder = "سؤالت را بنویس…"; };
+    const attReset = () => { att = null; attShown = false; $("ttAttBox").hidden = true; $("ttAttImg").removeAttribute("src"); ta.placeholder = phText(); };
     /* عکس را کوچک می‌کنیم (حداکثر ۱۲۸۰ پیکسل، JPEG) تا سریع بالا برود و روی گوشی‌های ضعیف هم کند نشود */
     const readImg = (file) => new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
@@ -4630,20 +4710,18 @@
       } catch (e) { toast("این عکس باز نشد. یک عکس JPG یا PNG انتخاب کنید."); }
     });
     $("ttAttX").addEventListener("click", () => { if (busy) return; attReset(); sync(); fit(); ta.focus(); });
-    $("ttModel").addEventListener("change", (e) => { st.model = e.target.value; persist(); applyCfg(); clipSync(); });
-    $("ttBook").addEventListener("change", (e) => { st.book = e.target.value; persist(); applyCfg(); });
     const newChat = async () => {
       if (!hist().length) { ta.focus(); return; }
       const yes = await askConfirm({ title: "گفت‌وگوی جدید؟", text: "گفت‌وگوی فعلیِ این درس پاک می‌شود.", yes: "پاک کن و شروع کن" });
       if (!yes || !ok()) return;
       st.chats[chatKey()] = [];
       attReset();
-      persist(); lastFailed = null; renderLog(); cfgOpen = tallEnough(); applyCfg(); sync(); ta.focus();
+      persist(); lastFailed = null; renderLog(); applyCfg(); sync(); ta.focus();
     };
     $("ttNew").addEventListener("click", newChat);
-    $("ttNew2").addEventListener("click", newChat);
+    $("ttBack").addEventListener("click", backToChat);
 
-    renderLog(); applyCfg(); sync(); autosize(); clipSync();
+    renderPick(); renderLog(); applyCfg(); sync(); autosize(); clipSync();
     requestAnimationFrame(fit);
     setTimeout(fit, 700);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
