@@ -2893,6 +2893,330 @@
 
 
 
+  /* ---------- آزمایشگاه مدل‌ها: دکمه‌ی گرد کنار صفحه + چت با همه‌ی مدل‌ها (فقط مدیر؛ دسترسی سمت سرور بررسی می‌شود) ---------- */
+  const LAB = { fab: null, panel: null, models: null, sel: null, hist: [], busy: false, ctl: null, stopped: false, open: false, loading: false, failedText: "", vvOn: false };
+  const LAB_IC = {
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.5-4.6A8 8 0 1 1 21 12z"/><path d="M12 8.2l.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9z" fill="currentColor" stroke="none"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
+    send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg>',
+    stop: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>',
+  };
+  const labSrcTag = (m) => (m.src === "ds" ? "مستقیم" : m.group === "DeepSeek" ? "سرویس دوم" : "");
+  const labFmtS = (ms) => faNum((ms / 1000).toFixed(1)).replace(".", "٫");
+  const labCopy = (t, done) => {
+    const ok = () => { if (done) done(); };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(ok, () => labCopyOld(t, ok)); return; }
+    } catch (e) { /* ادامه با روش قدیمی */ }
+    labCopyOld(t, ok);
+  };
+  function labCopyOld(t, ok) {
+    const a = document.createElement("textarea");
+    a.value = t; a.setAttribute("readonly", ""); a.style.cssText = "position:fixed;top:-100px;opacity:0";
+    document.body.appendChild(a); a.select();
+    try { if (document.execCommand("copy")) ok(); } catch (e) { /* ignore */ }
+    a.remove();
+  }
+  function labStore(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { /* ignore */ } return null; }
+
+  function labSync(on) {
+    if (on && !LAB.fab) labMount();
+    else if (!on && LAB.fab) labUnmount();
+  }
+  function labUnmount() {
+    try { if (LAB.ctl) LAB.ctl.abort(); } catch (e) { /* ignore */ }
+    labVV(false);
+    if (LAB.fab) LAB.fab.remove();
+    if (LAB.panel) LAB.panel.remove();
+    LAB.fab = LAB.panel = null; LAB.models = null; LAB.sel = null; LAB.hist = []; LAB.busy = false; LAB.ctl = null; LAB.open = false; LAB.loading = false; LAB.failedText = "";
+  }
+  /* روی گوشی وقتی کیبورد باز می‌شود، پنل با ارتفاعِ دیدنی صفحه هماهنگ می‌شود تا ورودی زیر کیبورد نماند */
+  function labVV(on) {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const fit = () => {
+      const p = LAB.panel;
+      if (!p) return;
+      if (!LAB.open || window.innerWidth >= 640) { p.style.removeProperty("--lab-h"); p.style.removeProperty("--lab-b"); return; }
+      p.style.setProperty("--lab-h", Math.max(260, Math.round(vv.height - 16)) + "px");
+      p.style.setProperty("--lab-b", Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) + 8 + "px");
+    };
+    if (on && !LAB.vvOn) { LAB.vvOn = true; vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); LAB.vvFit = fit; fit(); }
+    else if (!on && LAB.vvOn) { LAB.vvOn = false; vv.removeEventListener("resize", LAB.vvFit); vv.removeEventListener("scroll", LAB.vvFit); if (LAB.panel) { LAB.panel.style.removeProperty("--lab-h"); LAB.panel.style.removeProperty("--lab-b"); } }
+  }
+
+  function labMount() {
+    const fab = document.createElement("button");
+    fab.type = "button"; fab.className = "lab-fab"; fab.id = "labFab";
+    fab.setAttribute("aria-label", "چت با مدل‌های هوش مصنوعی"); fab.setAttribute("aria-haspopup", "dialog"); fab.setAttribute("aria-expanded", "false");
+    fab.innerHTML = LAB_IC.chat + '<i class="lab-dot" hidden></i>';
+    const p = document.createElement("section");
+    p.className = "lab-panel"; p.id = "labPanel"; p.hidden = true;
+    p.setAttribute("role", "dialog"); p.setAttribute("aria-label", "چت با مدل‌های هوش مصنوعی");
+    p.innerHTML =
+      '<header class="lab-hd"><button type="button" class="lab-model" id="labModel" aria-haspopup="listbox" aria-expanded="false"><span class="lab-mname" id="labMName">در حال بارگذاری…</span><span class="lab-mtag" id="labMTag" hidden></span>' + LAB_IC.chev + "</button>" +
+      '<button type="button" class="lab-ib" id="labNew" aria-label="گفت‌وگوی تازه" title="گفت‌وگوی تازه">' + LAB_IC.plus + "</button>" +
+      '<button type="button" class="lab-ib" id="labClose" aria-label="بستن" title="بستن">' + LAB_IC.x + "</button></header>" +
+      '<div class="lab-log" id="labLog" role="log" aria-live="off"><p class="lab-empty">یک مدل انتخاب کنید و شروع به نوشتن کنید.<br>می‌توانید وسط گفت‌وگو مدل را عوض کنید و جواب‌ها را مقایسه کنید.</p></div>' +
+      '<form class="lab-in" id="labForm" autocomplete="off"><textarea id="labTa" rows="1" maxlength="12000" placeholder="پیام…" aria-label="پیام"></textarea>' +
+      '<button type="submit" class="lab-send" id="labSend" aria-label="ارسال" disabled>' + LAB_IC.send + "</button></form>" +
+      '<div class="lab-pick" id="labPick" hidden><div class="lab-ph"><input type="search" id="labQ" placeholder="جست‌وجوی مدل…" aria-label="جست‌وجوی مدل" autocomplete="off"><button type="button" class="lab-ib" id="labPX" aria-label="بستن فهرست">' + LAB_IC.x + '</button></div><div class="lab-pl" id="labPL" role="listbox" aria-label="مدل‌ها"></div></div>';
+    document.body.appendChild(fab);
+    document.body.appendChild(p);
+    LAB.fab = fab; LAB.panel = p;
+
+    const $ = (id) => p.querySelector("#" + id);
+    const log = $("labLog"), ta = $("labTa"), sendBtn = $("labSend"), pick = $("labPick"), pl = $("labPL"), qIn = $("labQ"), mBtn = $("labModel");
+    const coarse = () => { try { return window.matchMedia("(pointer: coarse)").matches; } catch (e) { return false; } };
+    const near = () => log.scrollHeight - log.scrollTop - log.clientHeight < 90;
+    const toEnd = () => { log.scrollTop = log.scrollHeight; };
+
+    /* ----- باز و بسته ----- */
+    function setOpen(v) {
+      LAB.open = v;
+      p.hidden = !v; fab.hidden = v;
+      fab.setAttribute("aria-expanded", String(v));
+      labVV(v);
+      if (v) {
+        if (!LAB.models && !LAB.loading) loadModels(false);
+        if (!coarse()) setTimeout(() => { try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }, 30);
+        toEnd();
+      } else {
+        closePick();
+        try { fab.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+      }
+    }
+    fab.addEventListener("click", () => setOpen(true));
+    $("labClose").addEventListener("click", () => setOpen(false));
+    p.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      if (!pick.hidden) closePick(); else setOpen(false);
+    });
+
+    /* ----- فهرست مدل‌ها ----- */
+    function renderModelBtn() {
+      const m = LAB.sel;
+      $("labMName").textContent = m ? m.name : (LAB.loading ? "در حال بارگذاری…" : "انتخاب مدل");
+      const tg = $("labMTag"), t = m ? labSrcTag(m) : "";
+      tg.hidden = !t; tg.textContent = t;
+      sync();
+    }
+    async function loadModels(refresh) {
+      const s = auth.get();
+      if (!s) return;
+      LAB.loading = true; renderModelBtn();
+      let err = "";
+      try {
+        const r = await fetch(cfg.SUPABASE_URL + "/functions/v1/lab", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+          body: JSON.stringify({ action: "models", token: s.token, refresh: !!refresh }),
+        });
+        const d = await r.json().catch(() => null);
+        if (!LAB.panel) return;
+        if (r.ok && d && Array.isArray(d.models) && d.models.length) {
+          LAB.models = d.models;
+          const saved = labStore("lab:model");
+          LAB.sel = (LAB.sel && d.models.find((m) => m.src === LAB.sel.src && m.id === LAB.sel.id)) || d.models.find((m) => m.src + ":" + m.id === saved) || d.models[0];
+        } else err = (d && d.error) || "فهرست مدل‌ها نیامد.";
+      } catch (e) { err = "اتصال برقرار نشد."; }
+      if (!LAB.panel) return;
+      LAB.loading = false;
+      renderModelBtn();
+      if (err && !LAB.models) { log.querySelector(".lab-empty") && (log.querySelector(".lab-empty").textContent = err + " دوباره روی نام مدل بزنید."); }
+      if (!pick.hidden) renderPick();
+    }
+    function renderPick() {
+      const q = qIn.value.trim().toLowerCase();
+      pl.textContent = "";
+      if (!LAB.models) {
+        const d = document.createElement("div"); d.className = "lab-pm";
+        d.textContent = LAB.loading ? "در حال بارگذاری…" : "فهرست نیامد.";
+        if (!LAB.loading) { const b = document.createElement("button"); b.type = "button"; b.className = "btn small"; b.textContent = "تلاش دوباره"; b.addEventListener("click", () => loadModels(true)); d.appendChild(b); }
+        pl.appendChild(d); return;
+      }
+      const list = LAB.models.filter((m) => !q || (m.name + " " + m.group + " " + m.id).toLowerCase().indexOf(q) >= 0);
+      if (!list.length) { const d = document.createElement("div"); d.className = "lab-pm"; d.textContent = "مدلی پیدا نشد."; pl.appendChild(d); return; }
+      let last = "";
+      list.forEach((m) => {
+        const g = m.group + (m.src === "ds" ? " · مستقیم" : m.group === "DeepSeek" ? " · سرویس دوم" : "");
+        if (g !== last) { last = g; const h = document.createElement("div"); h.className = "lab-pg"; h.textContent = g; pl.appendChild(h); }
+        const b = document.createElement("button");
+        const on = LAB.sel && LAB.sel.src === m.src && LAB.sel.id === m.id;
+        b.type = "button"; b.className = "lab-po"; b.setAttribute("role", "option"); b.setAttribute("aria-selected", String(!!on));
+        b.textContent = m.name;
+        b.addEventListener("click", () => { LAB.sel = m; labStore("lab:model", m.src + ":" + m.id); renderModelBtn(); closePick(); if (!coarse()) ta.focus({ preventScroll: true }); });
+        pl.appendChild(b);
+      });
+    }
+    function openPick() {
+      if (!LAB.models && !LAB.loading) loadModels(true);
+      pick.hidden = false; mBtn.setAttribute("aria-expanded", "true");
+      qIn.value = ""; renderPick();
+      if (!coarse()) setTimeout(() => qIn.focus({ preventScroll: true }), 30);
+      const sel = pl.querySelector('[aria-selected="true"]');
+      if (sel) sel.scrollIntoView({ block: "center" });
+    }
+    function closePick() { pick.hidden = true; mBtn.setAttribute("aria-expanded", "false"); }
+    mBtn.addEventListener("click", () => { if (pick.hidden) openPick(); else closePick(); });
+    $("labPX").addEventListener("click", () => { closePick(); try { mBtn.focus({ preventScroll: true }); } catch (e) { /* ignore */ } });
+    qIn.addEventListener("input", renderPick);
+
+    /* ----- گفت‌وگو ----- */
+    function sync() {
+      sendBtn.classList.toggle("stop", LAB.busy);
+      sendBtn.innerHTML = LAB.busy ? LAB_IC.stop : LAB_IC.send;
+      sendBtn.setAttribute("aria-label", LAB.busy ? "توقف پاسخ" : "ارسال");
+      sendBtn.disabled = LAB.busy ? false : (!ta.value.trim() || !LAB.sel);
+      $("labNew").disabled = false;
+      const dot = fab.querySelector(".lab-dot");
+      if (dot) dot.hidden = !LAB.busy;
+      log.setAttribute("aria-busy", String(LAB.busy));
+    }
+    const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; };
+    ta.addEventListener("input", () => { grow(); sync(); });
+    ta.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !coarse()) { e.preventDefault(); if (!LAB.busy) submit(); }
+    });
+    $("labForm").addEventListener("submit", (e) => { e.preventDefault(); if (LAB.busy) { LAB.stopped = true; try { if (LAB.ctl) LAB.ctl.abort(); } catch (x) { /* ignore */ } } else submit(); });
+    $("labNew").addEventListener("click", () => {
+      if (LAB.busy) { LAB.stopped = true; try { if (LAB.ctl) LAB.ctl.abort(); } catch (x) { /* ignore */ } }
+      LAB.hist = []; LAB.failedText = "";
+      log.innerHTML = '<p class="lab-empty">گفت‌وگوی تازه. هر مدلی را که می‌خواهید انتخاب کنید و بنویسید.</p>';
+      sync();
+    });
+
+    const mk = (cls, html) => { const d = document.createElement("div"); d.className = cls; if (html) d.innerHTML = html; return d; };
+    function userBubble(t) { const d = mk("lab-m me"); const b = mk("lab-b"); b.textContent = t; d.appendChild(b); return d; }
+
+    async function submit(retryText) {
+      if (LAB.busy || !LAB.sel) return;
+      const s = auth.get();
+      if (!s) { labUnmount(); return; }
+      const text = retryText || ta.value.trim();
+      if (!text) return;
+      const model = LAB.sel;
+      const empty = log.querySelector(".lab-empty"); if (empty) empty.remove();
+      log.querySelectorAll(".lab-m.err").forEach((n) => n.remove());
+      if (!retryText) { log.appendChild(userBubble(text)); ta.value = ""; grow(); }
+      else { /* تلاش دوباره: پیام کاربر قبلاً در صفحه است */ }
+      LAB.hist.push({ r: "u", c: text });
+      LAB.failedText = "";
+      const wrap = mk("lab-m ai streaming");
+      const tag = mk("lab-tag"); tag.textContent = model.name + (labSrcTag(model) ? " · " + labSrcTag(model) : "");
+      const body = mk("lab-b tt-md"); body.innerHTML = '<span class="tt-dots" role="status" aria-label="در حال نوشتن"><i></i><i></i><i></i></span>';
+      const meta = mk("lab-meta");
+      wrap.appendChild(tag); wrap.appendChild(body); wrap.appendChild(meta);
+      log.appendChild(wrap);
+      LAB.busy = true; LAB.stopped = false; sync(); toEnd();
+
+      const t0 = performance.now();
+      let txt = "", first = 0, usage = null, trunc = false, err = "", done = false, stall = false, shown = "", timer = 0, lastDraw = 0;
+      const draw = (final) => {
+        timer = 0;
+        if (!final && shown === txt) return;
+        shown = txt;
+        const stick = near();
+        body.innerHTML = ttMd(txt, !final);
+        if (final) renderMath(body);
+        lastDraw = performance.now();
+        if (stick) toEnd();
+      };
+      const sched = () => { if (timer) return; const w = Math.max(0, 110 - (performance.now() - lastDraw)); timer = setTimeout(() => draw(false), w); };
+      LAB.ctl = window.AbortController ? new AbortController() : null;
+      let res = null;
+      try {
+        res = await fetch(cfg.SUPABASE_URL + "/functions/v1/lab", {
+          method: "POST", signal: LAB.ctl ? LAB.ctl.signal : undefined,
+          headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+          body: JSON.stringify({ action: "chat", token: s.token, model: model.id, src: model.src, messages: LAB.hist.slice(-24).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
+        });
+      } catch (e) { err = LAB.stopped ? "" : "اتصال به سرور برقرار نشد."; }
+
+      if (res && res.ok && /text\/event-stream/i.test(res.headers.get("content-type") || "") && res.body && res.body.getReader) {
+        const rd = res.body.getReader(), dec = new TextDecoder();
+        let buf = "";
+        const line = (ln) => {
+          ln = ln.replace(/\r$/, "");
+          if (ln.indexOf("data:") !== 0) return;
+          let j; try { j = JSON.parse(ln.slice(5)); } catch (e) { return; }
+          if (typeof j.d === "string") { if (!first) first = performance.now() - t0; txt += j.d; sched(); }
+          else if (j.done) { done = true; trunc = !!j.truncated; if (j.usage) usage = j.usage; }
+          else if (j.error) err = String(j.error);
+        };
+        const read = () => new Promise((resolve, reject) => {
+          const tm = setTimeout(() => { stall = true; try { if (LAB.ctl) LAB.ctl.abort(); } catch (e) { /* ignore */ } reject(new Error("stall")); }, 90000);
+          rd.read().then((v) => { clearTimeout(tm); resolve(v); }, (e) => { clearTimeout(tm); reject(e); });
+        });
+        try {
+          for (;;) {
+            const r = await read();
+            if (r.done) break;
+            buf += dec.decode(r.value, { stream: true });
+            let i;
+            while ((i = buf.indexOf("\n")) >= 0) { const ln = buf.slice(0, i); buf = buf.slice(i + 1); line(ln); }
+          }
+          if (buf) line(buf);
+        } catch (e) { if (!err && !done && !LAB.stopped) err = stall ? "پاسخ دیر رسید و قطع شد." : "اتصال در میانه‌ی پاسخ قطع شد."; }
+      } else if (res) {
+        let d = null; try { d = await res.json(); } catch (e) { /* ignore */ }
+        err = (d && d.error) || "پاسخ دادن ممکن نشد.";
+        if (res.status === 401 || (d && d.code === "forbidden")) { err = (d && d.error) || err; }
+      }
+
+      /* پایان */
+      if (!LAB.panel) return;   /* در همین حین خارج شده‌اید */
+      clearTimeout(timer); timer = 0;
+      const total = performance.now() - t0;
+      LAB.busy = false; LAB.ctl = null;
+      wrap.classList.remove("streaming");
+      if (txt) {
+        draw(true);
+        LAB.hist.push({ r: "a", c: txt });
+        const parts = [];
+        if (first) parts.push("اولین کلمه " + labFmtS(first) + " ثانیه");
+        parts.push("کل " + labFmtS(total) + " ثانیه");
+        if (usage && usage.out) {
+          parts.push(faNum(usage.out) + " توکن");
+          const gen = (total - (first || 0)) / 1000;
+          if (gen > 0.3 && usage.out > 5) parts.push(faNum(Math.round(usage.out / gen)) + " توکن بر ثانیه");
+        }
+        const note = LAB.stopped ? "متوقف شد" : err ? err : trunc ? "پاسخ ناقص ماند" : "";
+        meta.textContent = parts.join(" · ") + (note ? " · " + note : "");
+        const cp = document.createElement("button");
+        cp.type = "button"; cp.className = "lab-cp"; cp.setAttribute("aria-label", "کپی پاسخ"); cp.title = "کپی پاسخ"; cp.innerHTML = LAB_IC.copy;
+        cp.addEventListener("click", () => labCopy(txt, () => { if (window.__pzToast) window.__pzToast("کپی شد"); }));
+        meta.appendChild(cp);
+        if (err && !LAB.stopped) wrap.classList.add("warn");
+      } else {
+        /* بدون هیچ متنی: پیام کاربر را از تاریخچه برمی‌داریم تا دوباره‌فرستادنش پیام تکراری نسازد */
+        LAB.hist.pop();
+        wrap.remove();
+        if (!LAB.stopped) {
+          LAB.failedText = text;
+          const e = mk("lab-m err");
+          const b = mk("lab-b");
+          const sp = document.createElement("span"); sp.textContent = (model.name + ": " + (err || "پاسخی نرسید."));
+          b.appendChild(sp);
+          const rt = document.createElement("button"); rt.type = "button"; rt.className = "btn small"; rt.textContent = "تلاش دوباره (با مدل انتخاب‌شده)";
+          rt.addEventListener("click", () => { if (!LAB.busy) submit(LAB.failedText); });
+          b.appendChild(rt);
+          e.appendChild(b); log.appendChild(e);
+        } else {
+          const u = log.querySelectorAll(".lab-m.me"); if (u.length) u[u.length - 1].remove(); if (!ta.value) { ta.value = text; grow(); }
+        }
+      }
+      sync();
+      toEnd();
+    }
+    renderModelBtn();
+    sync();
+  }
+
   /* ---------- پنل مدیریت (فقط برای ادمین؛ دسترسی سمت سرور بررسی می‌شود و این دکمه فقط یک میان‌بر است) ---------- */
   let adminTok = "", adminOk = false;
   function adminSync() {
@@ -2900,8 +3224,8 @@
     if (!b) return;
     const s = auth.get();
     const root = document.documentElement;
-    if (!s) { adminTok = ""; adminOk = false; b.hidden = true; root.classList.remove("has-adm"); return; }
-    if (adminTok === s.token) { b.hidden = !adminOk; root.classList.toggle("has-adm", adminOk); return; }
+    if (!s) { adminTok = ""; adminOk = false; b.hidden = true; root.classList.remove("has-adm"); labSync(false); return; }
+    if (adminTok === s.token) { b.hidden = !adminOk; root.classList.toggle("has-adm", adminOk); labSync(adminOk); return; }
     const t = s.token;
     adminTok = t; adminOk = false; b.hidden = true; root.classList.remove("has-adm");
     rpc("admin_check", { p_token: t }).then((r) => {
@@ -2910,6 +3234,7 @@
       adminOk = r === true;
       b.hidden = !adminOk;
       document.documentElement.classList.toggle("has-adm", adminOk);
+      labSync(adminOk);
     }).catch(() => { if (adminTok === t) adminTok = ""; });
   }
 
