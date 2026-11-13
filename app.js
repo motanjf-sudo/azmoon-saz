@@ -47,6 +47,7 @@
     list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="7" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="5" cy="17" r="1.6"/><path d="M10 7h10M10 12h10M10 17h10"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3.2 3.2L12 5.5"/><path d="M13.5 15l5.5 5.5M19 15l-5.5 5.5"/><path d="M20.5 3.5L3.5 20.5" stroke-opacity=".4" stroke-dasharray="1.2 2.4"/></svg>',
     mix: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3.5" width="13" height="9" rx="2.2"/><rect x="8" y="11.5" width="13" height="9" rx="2.2"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9.5 2.5h5"/></svg>',
     pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14 7l3 3"/></svg>',
     up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg>',
     down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg>',
@@ -499,6 +500,62 @@
   });
 
   /* ---------- انتخاب مدل آزمون ---------- */
+  /* ---------- زمان آزمون (به دقیقه؛ خالی یعنی بدون زمان) ---------- */
+  const DUR_MAX = 600;
+  const durNum = (t) => {
+    const x = String(t == null ? "" : t).replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g, "");
+    return x ? Math.min(DUR_MAX, parseInt(x, 10)) : 0;
+  };
+  const okDur = (v) => (Number.isInteger(v) && v >= 1 && v <= DUR_MAX ? v : null);
+  const durUp = (v) => (v < 10 ? v + 1 : (Math.floor(v / 5) + 1) * 5);
+  const durDown = (v) => (v <= 10 ? v - 1 : (Math.ceil(v / 5) - 1) * 5);
+  const DUR_HINT = {
+    none: "بدون محدودیت زمان؛ هر کس هر وقت بخواهد پاسخ می‌دهد.",
+    set: "با زدن «شروع آزمون» تایمر شروع می‌شود و با تمام‌شدن زمان، پاسخ‌ها خودکار ثبت می‌شود.",
+    auto: "هوش مصنوعی بر اساس تعداد و سختی سؤال‌ها زمان مناسب را انتخاب می‌کند؛ بعداً می‌توانید تغییرش دهید.",
+  };
+  /* پیشنهاد زمان از روی خود سؤال‌ها (اگر هوش مصنوعی زمانی نداده بود) */
+  function estimateMinutes(qs, level) {
+    const per = { tf: [20, 30, 40], mcq: [40, 60, 90] }, li = level === "easy" ? 0 : level === "hard" ? 2 : 1;
+    let sec = 0;
+    qs.forEach((q) => { sec += per[q.type === "tf" ? "tf" : "mcq"][li] + (String(q.text).indexOf("$") >= 0 ? 30 : 0); });
+    let d = Math.max(1, Math.ceil(sec / 60));
+    if (d > 30) d = Math.ceil(d / 5) * 5;
+    return Math.min(DUR_MAX, d);
+  }
+  function durHtml(modes, mode, minutes) {
+    const L = { none: "بدون زمان", set: modes.indexOf("auto") >= 0 ? "دلخواه" : "زمان‌دار", auto: "خودکار" };
+    return '<div class="dur"><label id="durLbl">زمان آزمون</label>' +
+      '<div class="seg" role="group" aria-labelledby="durLbl" id="durSeg">' +
+      modes.map((m) => '<button type="button" data-v="' + m + '" aria-pressed="' + String(m === mode) + '">' + L[m] + "</button>").join("") + "</div>" +
+      '<div class="dur-set" id="durSet"' + (mode === "set" ? "" : " hidden") + '><div class="stepper"><button type="button" id="durM" aria-label="کمتر">−</button>' +
+      '<input id="durIn" type="text" inputmode="numeric" autocomplete="off" value="' + faNum(minutes) + '" aria-label="زمان آزمون به دقیقه"><button type="button" id="durP" aria-label="بیشتر">+</button></div>' +
+      '<span class="dur-unit">دقیقه</span></div><p class="hint dur-hint" id="durHint" aria-live="polite">' + DUR_HINT[mode] + "</p></div>";
+  }
+  function durBind(root, mode, minutes, onChange) {
+    const st = { mode: mode, min: minutes };
+    const q = (id) => root.querySelector("#" + id);
+    const seg = q("durSeg"), set = q("durSet"), inp = q("durIn"), hint = q("durHint");
+    const cur = () => Math.min(DUR_MAX, Math.max(1, durNum(inp.value) || st.min));
+    const fire = () => { if (onChange) onChange(); };
+    const setMin = (v) => { st.min = Math.min(DUR_MAX, Math.max(1, v)); inp.value = faNum(st.min); fire(); };
+    seg.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b || !seg.contains(b)) return;
+      st.mode = b.dataset.v;
+      seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      set.hidden = st.mode !== "set";
+      hint.textContent = DUR_HINT[st.mode];
+      fire();
+    });
+    q("durM").addEventListener("click", () => setMin(durDown(cur())));
+    q("durP").addEventListener("click", () => setMin(durUp(cur())));
+    inp.addEventListener("blur", () => setMin(cur()));
+    inp.addEventListener("input", () => { const v = durNum(inp.value); if (v) { st.min = v; fire(); } });
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+    return { mode: () => st.mode, min: cur };
+  }
+
   function draftInfo() {
     const d = store.get("quizDraft", null);
     if (!d || !Array.isArray(d.questions) || ACTIVE_MODES.indexOf(d.type) < 0) return null;
@@ -607,10 +664,13 @@
     let titleVal = "";
     let descVal = "";
     let restored = false;
+    let durInit = null;      /* زمان آزمون در لحظه‌ی باز شدن صفحه (دقیقه یا null) */
+    let durCtl = null;
 
     if (edit) {
       titleVal = String(edit.title || "").slice(0, LIMITS.title);
       descVal = String(edit.description || "").slice(0, LIMITS.desc);
+      durInit = okDur(edit.duration);
       edit.questions.slice(0, LIMITS.questions).forEach((s) => {
         if (!s) return;
         const q = newQ(s.type === "tf" ? "tf" : "mcq");
@@ -629,6 +689,7 @@
         restored = true;
         titleVal = String(d.title || "").slice(0, LIMITS.title);
         descVal = String(d.description || "").slice(0, LIMITS.desc);
+        durInit = okDur(d.duration);
         d.questions.slice(0, LIMITS.questions).forEach((s) => {
           if (!s) return;
           const t = allowed.indexOf(s.type) >= 0 ? s.type : allowed[0];
@@ -658,6 +719,7 @@
       '<div class="card" id="meta">' +
       '<label for="title">عنوان آزمون</label><input id="title" type="text" maxlength="' + LIMITS.title + '" autocomplete="off">' +
       '<label for="desc">توضیح (اختیاری)</label><textarea id="desc" maxlength="' + LIMITS.desc + '"></textarea></div>' +
+      '<div class="card dur-card">' + durHtml(["none", "set"], durInit ? "set" : "none", durInit || 20) + "</div>" +
       '<div id="qs"></div>' +
       '<div class="card add-card"><span class="add-lbl">افزودن سؤال:</span><div class="add-btns" id="addBtns"></div></div>' +
       '<div id="msg"></div>' +
@@ -674,10 +736,12 @@
     /* پیش‌نویس خودکار */
     let draftTimer = 0;
     let finished = false;
+    const durValue = () => (durCtl && durCtl.mode() === "set" ? durCtl.min() : null);
     const draftPayload = () => ({
       type: mode,
       title: titleEl.value,
       description: descEl.value,
+      duration: durValue(),
       questions: questions.map((q) => ({ type: q.type, text: q.text, options: q.options, correct: q.correct, tf: q.tf })),
     });
     const hasContent = () => titleEl.value.trim() || questions.some((q) => q.text.trim() || q.options.some((o) => o.trim()));
@@ -689,6 +753,7 @@
     const touch = () => { if (finished || edit) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 400); };
     titleEl.addEventListener("input", () => { titleEl.classList.remove("bad"); msg.innerHTML = ""; touch(); });
     descEl.addEventListener("input", touch);
+    durCtl = durBind(app, durInit ? "set" : "none", durInit || 20, touch);
 
     const fresh = document.getElementById("freshBtn");
     if (fresh) fresh.addEventListener("click", () => { finished = true; clearTimeout(draftTimer); store.del("quizDraft"); const t = withG("/create/" + mode); if (t === curPath()) route(); else go(t); });
@@ -932,28 +997,28 @@
       saveBtn.classList.add("loading");
       try {
         if (edit) {
-          const r = await rpc("update_quiz", {
+          const r = await rpc("update_quiz", Object.assign({
             p_id: edit.id,
             p_secret: edit.secret,
             p_title: titleEl.value.trim(),
             p_description: descEl.value.trim(),
             p_questions: serialize(),
             p_confirm_clear: nSubs > 0,
-          });
+          }, durValue() !== durInit ? { p_duration: durValue(), p_set_duration: true } : {}));
           finished = true;
           await keepQuiz({ id: edit.id, secret: edit.secret, title: titleEl.value.trim() });
           memSecrets[edit.id] = edit.secret;
           go("/m/" + encodeURIComponent(edit.id) + "?updated=1" + (r && r.cleared ? "&cleared=" + r.cleared : ""));
           return;
         }
-        const id = await rpc("create_quiz", {
+        const id = await rpc("create_quiz", Object.assign({
           p_title: titleEl.value.trim(),
           p_description: descEl.value.trim(),
           p_questions: serialize(),
           p_secret: secret,
           p_token: tokenOf(),
           p_group: createGroup || null,
-        });
+        }, durValue() ? { p_duration: durValue() } : {}));
         finished = true;
         clearTimeout(draftTimer);
         store.del("quizDraft");
@@ -997,6 +1062,7 @@
       description: d.description,
       questions: Array.isArray(d.questions) ? d.questions : [],
       submissions: Array.isArray(d.submissions) ? d.submissions.length : 0,
+      duration: d.duration,
     });
     if (token === routeToken) cleanup = c; else if (c) c();
   }
@@ -1139,6 +1205,7 @@
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
       '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
       '<label for="count">تعداد سؤال</label><div class="stepper"><button type="button" id="cm" aria-label="کمتر">−</button><input id="count" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="cp" aria-label="بیشتر">+</button><span class="hint">از ۱ تا ۳۰</span></div>' +
+      durHtml(["none", "auto", "set"], "none", 15) +
       '<p class="tk-cost" id="tkCost" aria-live="polite"></p>' +
       "</div>" +
       '<div id="msg"></div>' +
@@ -1150,7 +1217,8 @@
     const fail = (t, extraHtml) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + (extraHtml || "") + "</div>"; };
     const buyLink = ' <a class="err-a" href="/tokens">خرید پولک</a>';
 
-    app.querySelectorAll(".seg").forEach((g) => {
+    const durCtl = durBind(app, "none", 15, null);
+    app.querySelectorAll(".seg[data-seg]").forEach((g) => {
       g.addEventListener("click", (e) => {
         const b = e.target.closest("button");
         if (!b || busy) return;
@@ -1188,6 +1256,7 @@
       goBtn.disabled = on;
       goBtn.classList.toggle("loading", on);
       $("wait").hidden = !on;
+      app.querySelectorAll(".dur button,.dur input").forEach((x) => { x.disabled = on; });
       setGenLock(on);
     };
 
@@ -1197,9 +1266,9 @@
       let res = null, err = null;
       try {
         const secret = randomSecret();
-        const id = await rpc("create_quiz", {
+        const id = await rpc("create_quiz", Object.assign({
           p_title: p.title, p_description: p.desc, p_questions: p.questions, p_secret: secret, p_token: tokenOf(), p_group: createGroup || null,
-        });
+        }, p.duration ? { p_duration: p.duration } : {}));
         await keepQuiz({ id: id, secret: secret, title: p.title });
         res = { id: id, secret: secret };
       } catch (e) { err = e; }
@@ -1229,6 +1298,7 @@
       if (tk.bal != null && tk.bal < st.count) return fail("پولک شما کافی نیست؛ موجودی شما " + faNum(tk.bal) + " پولک است و این آزمون " + faNum(st.count) + " پولک می‌خواهد. تعداد سؤال را کمتر کنید یا پولک بخرید.", buyLink);
       const body = { mode: st.mode, difficulty: st.level, count: st.count, topic: t, model: st.model };
 
+      const wantDur = durCtl.mode();
       lockUi(true);
       ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), 130000);
@@ -1266,6 +1336,7 @@
           desc: String((d && d.description) || "").trim().slice(0, LIMITS.desc),
           used: (d && d.used) || questions.length,
           bal: d && typeof d.tokens === "number" ? d.tokens : null,
+          duration: wantDur === "set" ? okDur(durCtl.min()) : wantDur === "auto" ? (okDur(Number(d && d.duration_min)) || estimateMinutes(questions, st.level)) : null,
         };
       } catch (e) {
         if (gone) return;
@@ -1584,6 +1655,19 @@
   }
 
   /* ---------- شرکت در آزمون ---------- */
+  const fmtDur = (m) => {
+    m = Number(m);
+    if (m < 60) return faNum(m) + " دقیقه";
+    const h = Math.floor(m / 60), r = m % 60;
+    return faNum(h) + " ساعت" + (r ? " و " + faNum(r) + " دقیقه" : "");
+  };
+  const clockTxt = (sec) => {
+    sec = Math.max(0, sec);
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), x = sec % 60;
+    const p = (v) => (v < 10 ? "0" : "") + v;
+    return faNum((h ? h + ":" + p(m) : p(m)) + ":" + p(x));
+  };
+
   async function viewTake(id, token) {
     setTitle();
     app.innerHTML = '<p class="muted">در حال بارگذاری…</p>';
@@ -1592,7 +1676,44 @@
     if (token !== routeToken) return;
     if (!quiz || !Array.isArray(quiz.questions)) return showError("این آزمون پیدا نشد.");
     setTitle(quiz.title);
+    const dur = okDur(quiz.duration);
+    /* آزمون زمان‌دار تا وقتی شروع نشده، سؤالی نمی‌فرستد؛ بعد از بارگذاری دوباره‌ی صفحه، همان آزمونِ در حال انجام ادامه پیدا می‌کند */
+    if (dur && !(quiz.questions.length && quiz.remaining != null)) return takeIntro(quiz, id, token, dur);
+    return takeRun(quiz, id, token, dur);
+  }
 
+  function takeIntro(quiz, id, token, dur) {
+    const cnt = Number(quiz.count) || 0;
+    app.innerHTML =
+      "<h1>" + esc(quiz.title) + "</h1>" +
+      (quiz.group_name ? groupChip(quiz.group_name) : "") +
+      (quiz.description ? '<p class="muted">' + esc(quiz.description) + "</p>" : "") +
+      '<div class="card tk-intro"><div class="stats two"><div class="stat"><b>' + faNum(cnt) + "</b><span>سؤال</span></div>" +
+      '<div class="stat"><b>' + fmtDur(dur) + "</b><span>زمان آزمون</span></div></div>" +
+      "<p>با زدن «شروع آزمون» زمان شروع می‌شود و متوقف نمی‌شود. با تمام‌شدن زمان، پاسخ‌های شما خودکار ثبت می‌شود.</p>" +
+      '<div id="msg"></div><button class="btn" type="button" id="startBtn">' + ICONS.clock + " شروع آزمون</button></div>";
+    const btn = document.getElementById("startBtn"), msg = document.getElementById("msg");
+    btn.addEventListener("click", async () => {
+      msg.innerHTML = "";
+      btn.disabled = true;
+      btn.classList.add("loading");
+      try {
+        const r = await rpc("quiz_start", { p_id: id, p_token: tokenOf() });
+        if (token !== routeToken) return;
+        if (!r || !Array.isArray(r.questions) || !r.questions.length || r.remaining == null) throw new Error("شروع آزمون ممکن نشد. دوباره تلاش کنید.");
+        try { sessionStorage.removeItem("takeDraft:" + id); } catch (e) { /* بی‌اهمیت */ }
+        takeRun(r, id, token, okDur(r.duration));
+        window.scrollTo(0, 0);
+      } catch (err) {
+        if (token !== routeToken) return;
+        btn.disabled = false;
+        btn.classList.remove("loading");
+        msg.innerHTML = '<div class="err" role="alert">' + esc(err.message) + "</div>";
+      }
+    });
+  }
+
+  function takeRun(quiz, id, token, dur) {
     const qs = quiz.questions.map((q) => ({ type: typeOf(q.type), text: String(q.text == null ? "" : q.text), options: Array.isArray(q.options) ? q.options.map(String) : [] }));
     const n = qs.length;
     const answers = new Array(n).fill(null);
@@ -1614,7 +1735,9 @@
       "<h1>" + esc(quiz.title) + "</h1>" +
       (quiz.group_name ? groupChip(quiz.group_name) : "") +
       (quiz.description ? '<p class="muted">' + esc(quiz.description) + "</p>" : "") +
-      '<div class="ap" role="status" aria-live="polite"><div class="ap-top"><span id="apTxt"></span></div><div class="ap-bar"><i id="apBar"></i></div></div>' +
+      '<div class="ap"><div class="ap-top"><span id="apTxt" role="status" aria-live="polite"></span>' +
+      (dur ? '<span class="ap-time" id="tm" role="timer" aria-label="زمان باقی‌مانده">' + ICONS.clock + '<span id="tmTxt"></span></span>' : "") + '</div><div class="ap-bar"><i id="apBar"></i></div>' +
+      (dur ? '<div class="ap-bar ap-tbar" aria-hidden="true"><i id="tmBar"></i></div><span class="sr-only" id="tmSr" role="status" aria-live="polite"></span>' : "") + "</div>" +
       '<form id="f" novalidate>' +
       '<div class="card" id="nameCard"><div id="nameAcc" class="name-acc" hidden></div>' +
       '<div id="nameField"><label for="name">نام شما</label><input id="name" type="text" maxlength="100" autocomplete="name"></div></div>' +
@@ -1676,25 +1799,29 @@
       }
     });
 
-    let skipOk = false;
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const fail = (t) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + "</div>"; };
+    let skipOk = false, sending = false, over = false, tmId = 0;
+    const stopTimer = () => { clearInterval(tmId); };
+    const fail = (t) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + "</div>"; };
+    const send = async (auto) => {
+      if (sending) return;
       msg.innerHTML = "";
       syncNameCard();
-      const name = accName() || nameEl.value.trim();
+      let name = accName() || nameEl.value.trim();
       if (!name) {
-        fail("نام خود را وارد کنید.");
-        nameEl.classList.add("bad");
-        nameEl.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "center" });
-        nameEl.focus({ preventScroll: true });
-        return;
+        if (!over) {
+          fail("نام خود را وارد کنید.");
+          nameEl.classList.add("bad");
+          nameEl.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "center" });
+          nameEl.focus({ preventScroll: true });
+          return;
+        }
+        name = "بدون نام";
       }
       nameEl.classList.remove("bad");
       const left = [];
       answers.forEach((a, i) => { if (a === null) left.push(i); });
       form.querySelectorAll(".unanswered").forEach((c) => c.classList.remove("unanswered"));
-      if (left.length && !skipOk) {
+      if (left.length && !skipOk && !over) {
         skipOk = true;
         left.forEach((i) => { const c = form.querySelector('.qcard[data-i="' + i + '"]'); if (c) c.classList.add("unanswered"); });
         msg.innerHTML = '<div class="warn" role="alert">به ' + faNum(left.length) + " سؤال پاسخ نداده‌اید. اگر می‌خواهید همین‌طور ثبت شود دوباره روی «ثبت پاسخ‌ها» بزنید.</div>";
@@ -1703,23 +1830,65 @@
         return;
       }
       const btn = document.getElementById("submitBtn");
+      sending = true;
       btn.disabled = true;
       btn.classList.add("loading");
       try {
         const r = await rpc("submit_quiz", { p_id: id, p_name: name, p_answers: answers, p_token: tokenOf() });
+        stopTimer();
         dropDraft();
         if (token !== routeToken) return;
-        if (!accName()) store.set("lastName", name);
-        showResult(quiz, qs, answers, r, token);
+        if (!accName() && name !== "بدون نام") store.set("lastName", name);
+        showResult(quiz, qs, answers, r, token, over ? "زمان آزمون تمام شد و پاسخ‌های شما خودکار ثبت شد." : "");
       } catch (err) {
+        sending = false;
+        if (token !== routeToken) return;
         btn.disabled = false;
         btn.classList.remove("loading");
-        fail(err.message);
+        if (dur && /زمان آزمون تمام|اول «شروع/.test(err.message)) {
+          stopTimer();
+          dropDraft();
+          btn.hidden = true;
+          msg.innerHTML = '<div class="err" role="alert">' + esc(err.message) + '</div><button class="btn" type="button" id="restart">شروع دوباره</button>';
+          document.getElementById("restart").addEventListener("click", () => { viewTake(id, token); window.scrollTo(0, 0); });
+        } else fail(err.message);
       }
-    });
+    };
+    form.addEventListener("submit", (e) => { e.preventDefault(); send(false); });
+
+    /* تایمر آزمون زمان‌دار: پایان زمان از ساعت سرور (ثانیه‌ی باقی‌مانده‌ی دریافتی) حساب می‌شود، نه از ساعت دستگاه */
+    if (dur) {
+      const total = dur * 60;
+      const endAt = Date.now() + Math.max(0, Number(quiz.remaining) || 0) * 1000;
+      const ap = app.querySelector(".ap"), tmTxt = document.getElementById("tmTxt"), tmBar = document.getElementById("tmBar"), tmSr = document.getElementById("tmSr");
+      let lvl = "";
+      const tick = () => {
+        if (token !== routeToken || !ap.isConnected) { stopTimer(); document.removeEventListener("visibilitychange", onVis); return; }
+        const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+        tmTxt.textContent = clockTxt(left);
+        tmBar.style.setProperty("--v", Math.min(1, left / total));
+        const nl = left <= Math.max(10, Math.min(60, total * 0.12)) ? "danger" : left <= Math.min(300, total * 0.35) ? "warn" : "";
+        if (nl !== lvl) {
+          lvl = nl;
+          if (nl) ap.setAttribute("data-t", nl); else ap.removeAttribute("data-t");
+          if (nl) tmSr.textContent = nl === "danger" ? "زمان آزمون رو به پایان است." : "از زمان آزمون کمی باقی مانده است.";
+        }
+        if (left <= 0 && !over) {
+          over = true;
+          stopTimer();
+          form.querySelectorAll("input[type=radio]").forEach((r) => { r.disabled = true; });
+          msg.innerHTML = '<div class="warn" role="alert">زمان آزمون تمام شد؛ در حال ثبت پاسخ‌های شما…</div>';
+          send(true);
+        }
+      };
+      const onVis = () => { if (!document.hidden) tick(); };
+      document.addEventListener("visibilitychange", onVis);
+      tmId = setInterval(tick, 1000);
+      tick();
+    }
   }
 
-  function showResult(quiz, qs, answers, r, token) {
+  function showResult(quiz, qs, answers, r, token, note) {
     const pct = r.total ? Math.round((r.score / r.total) * 100) : 0;
 
     const review = (q, i) => {
@@ -1735,6 +1904,7 @@
     };
 
     app.innerHTML =
+      (note ? '<div class="warn" role="status">' + esc(note) + "</div>" : "") +
       '<div class="card"><p class="muted center">نمره‌ی شما</p><div class="score">' + faNum(r.score) + " از " + faNum(r.total) + '</div><p class="muted center">' + faNum(pct) + "٪</p></div>" +
       "<h2>مرور پاسخ‌ها</h2>" + qs.map(review).join("") +
       '<div class="actions"><button class="btn" type="button" id="again">شرکت دوباره</button><a class="btn ghost" href="/create">ساخت آزمون خودم</a></div>';
@@ -1775,6 +1945,7 @@
     app.innerHTML =
       "<h1>" + esc(d.title) + "</h1>" +
       (d.group_name ? groupChip(d.group_name) + '<p class="hint" style="margin-top:-6px">این آزمون فقط برای اعضای گروه باز می‌شود.</p>' : "") +
+      (okDur(d.duration) ? '<p class="dur-badge"><span class="badge">زمان آزمون: ' + fmtDur(d.duration) + "</span></p>" : "") +
       (isNew ? '<div class="card created"><strong>آزمون ساخته شد 🎉</strong><div class="hint">اگر سؤالی یا پاسخ درستی اشتباه است، با دکمه‌ی «ویرایش آزمون» در همین صفحه اصلاحش کنید.</div>' + tkNote + "</div>" : "") +
       (flags.updated ? '<div class="card created"><strong>تغییرات ذخیره شد ✅</strong>' + (flags.cleared ? '<div class="hint">' + faNum(flags.cleared) + " نتیجه‌ی قبلی پاک شد.</div>" : "") + "</div>" : "") +
       '<div class="card"><h2>لینک آزمون</h2>' +
