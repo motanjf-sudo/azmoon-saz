@@ -1382,6 +1382,68 @@
   @media (max-width:420px){
     .site-foot-in{grid-template-columns:1fr}
   }
+  /* ===== آزمایشگاه مدل‌ها (فقط مدیر) ===== */
+  .lab-fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:120;width:56px;height:56px;border-radius:50%;border:1px solid var(--line-2);
+    background:var(--btn-grad);color:var(--on-accent);display:grid;place-items:center;cursor:pointer;padding:0;box-shadow:0 10px 28px -8px rgba(8,50,34,.55);
+    transition:transform .3s var(--ease),box-shadow .3s}
+  .lab-fab[hidden]{display:none}
+  .lab-fab svg{width:26px;height:26px}
+  .lab-fab:hover{transform:translateY(-2px) scale(1.05)}
+  .lab-fab:active{transform:scale(.96)}
+  .lab-fab:focus-visible,.lab-panel button:focus-visible,.lab-panel textarea:focus-visible,.lab-panel input:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+  .lab-dot{position:absolute;top:5px;right:5px;width:11px;height:11px;border-radius:50%;background:var(--on-accent);border:2px solid var(--accent);animation:ttDot 1.1s infinite ease-in-out}
+  .lab-dot[hidden]{display:none}
+  html.tt-page .lab-fab{display:none}
+  .lab-panel{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:130;width:min(430px,calc(100vw - 36px));height:min(660px,calc(100dvh - 36px));
+    display:flex;flex-direction:column;overflow:hidden;background:var(--surface-solid);color:var(--text);border:1px solid var(--line-2);border-radius:22px;
+    box-shadow:0 24px 60px -16px rgba(5,35,24,.55);animation:rise .35s var(--ease)}
+  .lab-panel[hidden]{display:none}
+  .lab-hd{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);flex:none}
+  .lab-model{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:14px;border:1px solid var(--line);background:var(--chip);color:var(--text);
+    font:inherit;font-weight:600;font-size:.92rem;cursor:pointer;text-align:start}
+  .lab-model svg{width:16px;height:16px;flex:none;margin-inline-start:auto;opacity:.7}
+  .lab-mname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;unicode-bidi:plaintext}
+  .lab-mtag{flex:none;font-size:.72rem;font-weight:600;color:var(--accent-2);border:1px solid var(--line-2);border-radius:999px;padding:0 8px}
+  .lab-mtag[hidden]{display:none}
+  .lab-ib{width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:12px;border:1px solid transparent;background:transparent;color:var(--text);cursor:pointer;padding:0}
+  .lab-ib svg{width:18px;height:18px}
+  .lab-ib:hover{background:var(--chip)}
+  .lab-log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 12px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+  .lab-empty{margin:auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.9;padding:0 10px}
+  .lab-m{display:flex;flex-direction:column;max-width:100%;min-width:0}
+  .lab-m.me{align-items:flex-start}
+  .lab-m.me .lab-b{background:var(--btn-grad);color:var(--on-accent);border-radius:16px 16px 16px 5px;white-space:pre-wrap;overflow-wrap:anywhere;max-width:88%}
+  .lab-m.ai{align-items:stretch}
+  .lab-m.ai .lab-b{background:var(--chip);border:1px solid var(--line);border-radius:16px 16px 5px 16px;overflow-wrap:anywhere;min-width:0}
+  .lab-m.ai.warn .lab-b{border-color:var(--bad)}
+  .lab-b{padding:9px 13px;font-size:.95rem;line-height:1.85}
+  .lab-tag{font-size:.74rem;color:var(--muted);margin:0 6px 3px;direction:ltr;unicode-bidi:plaintext;text-align:start}
+  .lab-meta{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--muted);margin:4px 6px 0;line-height:1.6;flex-wrap:wrap}
+  .lab-meta:empty{display:none}
+  .lab-cp{margin-inline-start:auto;width:28px;height:28px;display:grid;place-items:center;border:0;background:transparent;color:var(--muted);border-radius:8px;cursor:pointer;padding:0}
+  .lab-cp svg{width:15px;height:15px}.lab-cp:hover{background:var(--chip);color:var(--text)}
+  .lab-m.err .lab-b{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad);border-radius:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;font-size:.9rem;line-height:1.7}
+  .lab-in{display:flex;align-items:flex-end;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px) * 0);border-top:1px solid var(--line);flex:none}
+  .lab-in textarea{flex:1;min-width:0;min-height:44px;resize:none;overflow-y:auto;max-height:132px;padding:10px 14px;border-radius:16px;border:1px solid var(--line-2);background:var(--surface-solid);color:var(--text);font:inherit;font-size:16px;line-height:1.7;outline:none}
+  .lab-send{width:42px;height:42px;flex:none;border-radius:50%;border:0;background:var(--btn-grad);color:var(--on-accent);display:grid;place-items:center;cursor:pointer;padding:0}
+  .lab-send svg{width:20px;height:20px}
+  .lab-send:disabled{opacity:.4;cursor:default}
+  .lab-pick{position:absolute;inset:0;z-index:2;background:var(--surface-solid);display:flex;flex-direction:column}
+  .lab-pick[hidden]{display:none}
+  .lab-ph{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);flex:none}
+  .lab-ph input{flex:1;min-width:0;padding:9px 14px;border-radius:14px;border:1px solid var(--line-2);background:var(--surface-solid);color:var(--text);font:inherit;font-size:16px;outline:none}
+  .lab-pl{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:6px 8px 12px}
+  .lab-pg{position:sticky;top:0;background:var(--surface-solid);padding:10px 8px 4px;font-size:.78rem;font-weight:700;color:var(--accent-2)}
+  .lab-po{display:block;width:100%;text-align:start;padding:9px 12px;border-radius:12px;border:0;background:transparent;color:var(--text);font:inherit;font-size:.92rem;cursor:pointer;direction:ltr;unicode-bidi:plaintext;overflow-wrap:anywhere}
+  .lab-po:hover{background:var(--chip)}
+  .lab-po[aria-selected="true"]{background:var(--chip);box-shadow:inset 0 0 0 1px var(--line-2);font-weight:700}
+  .lab-pm{padding:26px 14px;text-align:center;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px}
+  @media (max-width:639px){
+    .lab-fab{right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:52px;height:52px}
+    .lab-panel{right:8px;left:8px;width:auto;bottom:var(--lab-b,calc(8px + env(safe-area-inset-bottom,0px)));height:var(--lab-h,calc(100dvh - 16px));max-height:calc(100dvh - 16px);border-radius:20px}
+    .lab-m.me .lab-b{max-width:92%}
+  }
+  @media (prefers-reduced-motion:reduce){.lab-panel,.lab-dot{animation:none}.lab-fab{transition:none}}
 </style>
 </head>
 <body>
