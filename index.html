@@ -26,8 +26,8 @@
   <meta name="twitter:description" content="آزمون تستی و درست/نادرست بسازید، لینک بفرستید و نتایج را ببینید.">
   <script type="application/ld+json">
   {"@context":"https://schema.org","@graph":[
-    {"@type":"Organization","@id":"https://pazmoonak.com/#org","name":"پازمونک","alternateName":"Pazmoonak","url":"https://pazmoonak.com/","logo":{"@type":"ImageObject","url":"https://pazmoonak.com/favicon-512.png","width":512,"height":512}},
-    {"@type":"WebSite","@id":"https://pazmoonak.com/#site","url":"https://pazmoonak.com/","name":"پازمونک","alternateName":["پازمونک آزمون‌ساز","Pazmoonak"],"inLanguage":"fa","publisher":{"@id":"https://pazmoonak.com/#org"}},
+    {"@type":"Organization","@id":"https://pazmoonak.com/#org","name":"پازمونک","url":"https://pazmoonak.com/","logo":{"@type":"ImageObject","url":"https://pazmoonak.com/favicon-512.png","width":512,"height":512}},
+    {"@type":"WebSite","@id":"https://pazmoonak.com/#site","url":"https://pazmoonak.com/","name":"پازمونک","alternateName":["پازمونک آزمون‌ساز"],"inLanguage":"fa","publisher":{"@id":"https://pazmoonak.com/#org"}},
     {"@type":"WebApplication","name":"پازمونک","url":"https://pazmoonak.com/","applicationCategory":"EducationalApplication","operatingSystem":"Web","inLanguage":"fa","description":"پازمونک؛ آزمون‌ساز آنلاین فارسی. آزمون تستی و درست/نادرست بسازید یا با هوش مصنوعی از روی موضوع تولید کنید، لینکش را بفرستید و نتایج را ببینید.","featureList":["ساخت آزمون چندگزینه‌ای","آزمون درست/نادرست","ساخت آزمون با هوش مصنوعی","معلم هوشمند با کتاب‌های درسی پایه‌ی هفتم تا دوازدهم","نتایج و نمره‌ی زنده"],"publisher":{"@id":"https://pazmoonak.com/#org"},"offers":{"@type":"Offer","price":"0","priceCurrency":"IRR"}},
     {"@type":"FAQPage","mainEntity":[
       {"@type":"Question","name":"پازمونک چیست؟","acceptedAnswer":{"@type":"Answer","text":"پازمونک یک آزمون‌ساز آنلاین فارسی است که به شما اجازه می‌دهد آزمون تستی یا درست/نادرست بسازید، لینکش را برای دیگران بفرستید و نمره و نتایج را ببینید."}},
@@ -863,9 +863,31 @@
   /* take page progress + states */
   .ap{position:sticky;top:76px;z-index:40;margin:14px 0;padding:10px 16px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--surface-solid) 82%,transparent);
     -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:var(--shadow)}
-  .ap-top{font-weight:700;font-size:.92rem;margin-bottom:6px}
+  .ap-top{font-weight:700;font-size:.92rem;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px}
   .ap-bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
   .ap-bar i{display:block;height:100%;border-radius:99px;background:var(--btn-grad);transform-origin:right center;transform:scaleX(var(--v,0));transition:transform .6s var(--ease)}
+  .ap-time{display:inline-flex;align-items:center;gap:6px;direction:ltr;font-variant-numeric:tabular-nums;font-weight:800;font-size:.98rem;line-height:1.5;padding:1px 12px;border-radius:999px;background:var(--chip);color:var(--accent-2);border:1px solid var(--line);transition:background .3s,color .3s,border-color .3s}
+  .ap-time svg{width:16px;height:16px;flex:none}
+  .ap-tbar{height:4px;margin-top:8px}
+  .ap-tbar i{background:var(--accent);transition:transform 1s linear,background .3s}
+  .ap[data-t="warn"] .ap-time{background:var(--warn-bg);color:var(--warn-text);border-color:#C4921C}
+  .ap[data-t="warn"] .ap-tbar i{background:#C4921C}
+  .ap[data-t="danger"] .ap-time{background:var(--bad-bg);color:var(--bad);border-color:var(--bad);animation:tmPulse 1s ease-in-out infinite}
+  .ap[data-t="danger"] .ap-tbar i{background:var(--bad)}
+  @keyframes tmPulse{50%{transform:scale(1.06)}}
+  .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .stats.two{grid-template-columns:repeat(2,1fr)}
+  .tk-intro p{margin:0 0 14px;color:var(--muted)}
+  .tk-intro .btn{width:100%}
+  .dur-set{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .dur-set[hidden]{display:none}
+  .dur-unit{color:var(--muted);font-weight:700}
+  .dur-hint{margin:10px 0 0}
+  .dur .seg{width:100%;flex-wrap:wrap}.dur .seg button{flex:1 1 auto;text-align:center;white-space:normal}
+  .dur-card{padding-top:16px}
+  .dur-card label,.ai-form .dur label{display:block}
+  .dur-badge{margin:-4px 0 12px}
+  @media (prefers-reduced-motion:reduce){.ap[data-t="danger"] .ap-time{animation:none}.ap-tbar i{transition:none}}
   .card.unanswered{border-color:var(--bad);box-shadow:0 0 0 4px var(--bad-bg)}
 
   /* results review */
