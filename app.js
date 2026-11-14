@@ -1090,17 +1090,16 @@
     return out.slice(0, LIMITS.questions);
   }
 
-  /* مدل‌های معلم هوشمند (مدل ساخت آزمون جدا، در صفحه‌ی ساخت آزمون انتخاب می‌شود) */
+  /* مدل معلم هوشمند (مدل ساخت آزمون جدا، در صفحه‌ی ساخت آزمون انتخاب می‌شود) */
   const AI_MODELS = [
-    { id: "ds-v41", label: "DeepSeek V4.1", provider: "deepseek", model: "deepseek-flash" },
-    { id: "ds-vision", label: "DeepSeek Vision", provider: "deepseek", model: "deepseek-v4-flash-vision-exp", vision: true },
+    { id: "ds-vision", label: "DeepSeek Flash", provider: "deepseek", model: "deepseek-flash", vision: true },
   ];
   const aiModel = (id) => AI_MODELS.find((m) => m.id === id) || AI_MODELS[0];
 
   /* ---------- پولک: اعتبار ساخت آزمون با هوش مصنوعی (هر پولک = یک سؤال) ---------- */
   const TK_FREE = 20;          /* هدیه‌ی ثبت‌نام؛ فقط برای متن نمایشی (مقدار واقعی را دیتابیس می‌دهد) */
   const TK_MAX_BUY = 10000;
-  const TK_MIN_STEP = 10;
+  const TK_MIN_BUY = 1;
   /* قیمت پلکانی (تومان): تعداد خریداری‌شده در هر بازه باشد، همه‌ی پولک‌ها با نرخ همان بازه حساب می‌شوند */
   const TK_TIERS = [[50, 1000], [100, 950], [250, 900], [500, 850], [1000, 800], [Infinity, 750]];
   const TK_TIER_LBL = ["۱ تا ۵۰ پولک", "۵۱ تا ۱۰۰ پولک", "۱۰۱ تا ۲۵۰ پولک", "۲۵۱ تا ۵۰۰ پولک", "۵۰۱ تا ۱٬۰۰۰ پولک", "بیشتر از ۱٬۰۰۰ پولک"];
@@ -1381,7 +1380,6 @@
   function viewTokens(token) {
     setTitle("خرید پولک");
     tkSync(true);
-    const PRESETS = [50, 100, 250, 500, 1000, 2000];
     let n = 100;
     const quizzes = (v) => Math.floor(v / 10);
     const quizTxt = (v) => (quizzes(v) >= 1 ? "حدود " + faNum(quizzes(v)) + " آزمون ۱۰ سؤاله" : "کمتر از یک آزمون ۱۰ سؤاله");
@@ -1389,27 +1387,18 @@
     app.innerHTML =
       '<a class="back" href="/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
       '<div class="page-head"><h1>خرید پولک</h1><a class="btn small ghost" href="/wallet">' + MENU_IC.wallet + " بخش مالی</a></div>" +
-      '<p class="tkp-lead"><b>۱ پولک = ۱ سؤال</b></p>' +
+      '<p class="tkp-lead"><b>۱ پولک = ۱ سؤال آزمون</b></p>' +
       '<div class="card tkp-res" id="tkRes" role="status" aria-live="polite" hidden></div>' +
       '<div class="card tkp-buy"><h2 class="tkp-h">چند پولک می‌خواهید؟</h2>' +
-      '<div class="tkp-packs" role="group" aria-label="بسته‌های آماده">' +
-      PRESETS.map((p) =>
-        '<button type="button" class="tkp-pack" data-n="' + p + '" aria-pressed="false">' +
-        '<span class="tkp-pn"><b>' + fmtN(p) + "</b> پولک</span>" +
-        '<span class="tkp-pp">' + fmtN(tkPrice(p)) + " <small>تومان</small></span>" +
-        '<span class="tkp-pe">' + quizTxt(p) + "</span>" +
-        (tkOffPct(p) > 0 ? '<span class="tkp-off">' + faNum(tkOffPct(p)) + "٪ ارزان‌تر</span>" : "") +
-        "</button>").join("") + "</div>" +
-
-      '<div class="tkp-or"><span>یا عدد دلخواه</span></div>' +
-      '<div class="tkp-step"><button type="button" class="tkp-sb" id="tkM" aria-label="۱۰ پولک کمتر">−</button>' +
+      '<div class="tkp-step"><button type="button" class="tkp-sb" id="tkM" aria-label="یک پولک کمتر">−</button>' +
       '<label class="tkp-num"><input id="tkN" type="text" inputmode="numeric" autocomplete="off" aria-label="تعداد پولک"><span>پولک</span></label>' +
-      '<button type="button" class="tkp-sb" id="tkP" aria-label="۱۰ پولک بیشتر">+</button></div>' +
+      '<button type="button" class="tkp-sb" id="tkP" aria-label="یک پولک بیشتر">+</button></div>' +
 
-      '<div class="tkp-sum" aria-live="polite">' +
-      '<div class="tkp-line"><span>قیمت هر پولک</span><span><b id="tkRate"></b> <em class="tkp-badge" id="tkOff" hidden></em></span></div>' +
-      '<div class="tkp-line"><span>معادل</span><b id="tkEq"></b></div>' +
+      '<div class="tkp-sum">' +
+      '<div class="tkp-line"><span>قیمت هر پولک</span><span class="tkp-v"><b id="tkRate"></b><em class="tkp-badge" id="tkOff"></em></span></div>' +
+      '<div class="tkp-line"><span>معادل</span><b id="tkEq" class="tkp-v"></b></div>' +
       '<div class="tkp-line tot"><span>مبلغ قابل پرداخت</span><span class="tkp-tot"><b id="tkTot"></b> <small>تومان</small></span></div></div>' +
+      '<div class="sr-only" id="tkSr" role="status" aria-live="polite"></div>' +
       '<div class="err tkp-err" id="tkErr" role="alert" hidden></div>' +
       '<button class="btn wide tkp-pay" id="tkPay" type="button"></button></div>' +
 
@@ -1418,85 +1407,96 @@
 
     const $ = (id) => document.getElementById(id);
     let paying = false, alive = true;
-    const inp = $("tkN"), mBtn = $("tkM"), pBtn = $("tkP");
-    const packs = Array.prototype.slice.call(app.querySelectorAll(".tkp-pack"));
+    const inp = $("tkN"), mBtn = $("tkM"), pBtn = $("tkP"), payB = $("tkPay");
+    const el = { rate: $("tkRate"), off: $("tkOff"), eq: $("tkEq"), tot: $("tkTot"), sr: $("tkSr") };
+    const rows = Array.prototype.slice.call(app.querySelectorAll(".tkp-row"));
     const en = (v) => String(v).replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
-    const anims = {};
-    /* عدد با حرکت نرم عوض می‌شود (در حالت «کاهش حرکت» یکباره) */
-    const tween = (id, to, fmt) => {
-      const e = $(id);
-      if (!e) return;
-      const from = anims[id] ? anims[id].v : null;
-      if (anims[id]) cancelAnimationFrame(anims[id].raf);
-      if (from == null || from === to || reduceMotion()) { e.textContent = fmt(to); anims[id] = { v: to, raf: 0 }; return; }
-      const t0 = performance.now(), D = 320;
-      const rec = { v: from, raf: 0 };
-      anims[id] = rec;
-      const step = (t) => {
-        const k = Math.min(1, (t - t0) / D), v = from + (to - from) * (1 - Math.pow(1 - k, 3));
-        rec.v = v; e.textContent = fmt(v);
-        if (k < 1) rec.raf = requestAnimationFrame(step); else { rec.v = to; e.textContent = fmt(to); }
-      };
-      rec.raf = requestAnimationFrame(step);
-    };
+    const timers = [];
+    let raf = 0, srT = 0, shown = {}, lockInp = false;
 
-    const paint = (fromInput) => {
-      const rate = tkRate(n), off = tkOffPct(n);
-      if (!fromInput) inp.value = faNum(n);
-      packs.forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.n === n)));
-      mBtn.disabled = n <= TK_MIN_STEP;
-      pBtn.disabled = n >= TK_MAX_BUY;
-      $("tkRate").textContent = fmtN(rate) + " تومان";
-      const o = $("tkOff"); o.hidden = off <= 0; o.textContent = faNum(off) + "٪ تخفیف";
-      $("tkEq").textContent = quizTxt(n);
-      tween("tkTot", tkPrice(n), fmtN);
+    /* هر بار فقط چیزی که واقعاً عوض شده نوشته می‌شود، آن هم حداکثر یک بار در هر فریم؛ ارتفاع هیچ بخشی عوض نمی‌شود */
+    const put = (key, node, val, prop) => { if (shown[key] !== val) { shown[key] = val; node[prop || "textContent"] = val; } };
+    const flag = (key, node, cls, on) => { if (shown[key] !== on) { shown[key] = on; node.classList.toggle(cls, on); } };
+    const lim = (key, btn, on) => { if (shown[key] !== on) { shown[key] = on; btn.setAttribute("aria-disabled", on ? "true" : "false"); btn.classList.toggle("off", on); } };
+    const paint = () => {
+      raf = 0;
+      const ok = n >= TK_MIN_BUY;
+      const rate = tkRate(Math.max(n, 1)), off = tkOffPct(Math.max(n, 1));
+      if (!lockInp) put("inp", inp, n ? faNum(n) : "", "value");
+      put("rate", el.rate, fmtN(rate) + " تومان");
+      put("off", el.off, off > 0 ? faNum(off) + "٪ تخفیف" : "");
+      flag("offOn", el.off, "on", off > 0);
+      put("eq", el.eq, ok ? quizTxt(n) : "—");
+      put("tot", el.tot, fmtN(ok ? tkPrice(n) : 0));
+      /* با اینکه دکمه‌ها در حد مجاز غیرفعال می‌شوند، فوکوس و لمس فعلی از دست نمی‌رود (aria-disabled) */
+      lim("m", mBtn, n <= TK_MIN_BUY);
+      lim("p", pBtn, n >= TK_MAX_BUY);
       if (!paying) {
-        const pb = $("tkPay");
-        pb.disabled = n < TK_MIN_STEP;
-        pb.innerHTML = n < TK_MIN_STEP ? "حداقل خرید " + faNum(TK_MIN_STEP) + " پولک است" : ICONS.spark + " پرداخت " + fmtN(tkPrice(n)) + " تومان";
+        payB.disabled = !ok;
+        put("pay", payB, ok ? ICONS.spark + " پرداخت " + fmtN(tkPrice(n)) + " تومان" : "تعداد پولک را وارد کنید", "innerHTML");
       }
-      app.querySelectorAll(".tkp-row").forEach((r) => r.classList.toggle("on", +r.dataset.i === tkTier(n)));
+      const ti = tkTier(Math.max(n, 1));
+      rows.forEach((r, i) => flag("row" + i, r, "on", i === ti));
     };
-    const setN = (v, fromInput) => {
+    const sched = () => { if (!raf) raf = requestAnimationFrame(paint); };
+    /* خواننده‌ی صفحه فقط بعد از توقف عدد، یک بار مبلغ را می‌شنود (نه با هر قدم) */
+    const speak = () => {
+      clearTimeout(srT);
+      srT = setTimeout(() => { if (alive && n >= TK_MIN_BUY) el.sr.textContent = faNum(n) + " پولک، " + fmtN(tkPrice(n)) + " تومان"; }, 700);
+    };
+    const setN = (v, typing) => {
       v = Math.floor(+v);
-      if (!isFinite(v) || v < 1) v = 1;
+      if (!isFinite(v) || v < 0) v = 0;
       if (v > TK_MAX_BUY) v = TK_MAX_BUY;
+      if (!typing && v < TK_MIN_BUY) v = TK_MIN_BUY;
       n = v;
-      paint(fromInput);
+      sched();
+      speak();
     };
-    const stepBy = (dir, mult) => {
-      const k = TK_MIN_STEP;
-      const t = dir > 0 ? (Math.floor(n / k) + mult) * k : (Math.ceil(n / k) - mult) * k;
-      setN(Math.max(k, t));
+    const stepBy = (dir, k) => {
+      const t = dir > 0 ? (Math.floor(n / k) + 1) * k : (Math.ceil(n / k) - 1) * k;
+      setN(Math.max(TK_MIN_BUY, t));
     };
 
-    packs.forEach((b) => b.addEventListener("click", () => setN(+b.dataset.n)));
     inp.addEventListener("input", () => {
-      const t = en(inp.value).replace(/\D/g, "");
-      if (!t) return;
-      const p = parseInt(t.slice(0, 6), 10);
+      const t = en(inp.value).replace(/\D/g, "").slice(0, 6);
+      const p = t ? parseInt(t, 10) : 0;
+      lockInp = true;                       /* وسط تایپ، متن خود کاربر دست‌نخورده می‌ماند */
       setN(p, true);
-      if (n !== p) inp.value = faNum(n);
+      lockInp = false;
+      if (p > TK_MAX_BUY) { shown.inp = null; sched(); }
     });
-    inp.addEventListener("blur", () => setN(n));
+    inp.addEventListener("blur", () => { setN(n); shown.inp = null; sched(); });
     inp.addEventListener("focus", () => { try { inp.select(); } catch (e) { /* ignore */ } });
 
-    /* نگه‌داشتن + و − پشت‌سرهم و تندتر عوض می‌کند */
+    /* نگه‌داشتن + و − پشت‌سرهم و هرچه طولانی‌تر، تندتر عوض می‌کند.
+       دکمه فوکوس نمی‌گیرد و حرکت لمس را نمی‌گیرد: نه صفحه بالا و پایین می‌شود، نه کیبورد باز و بسته می‌شود */
     const hold = (btn, dir) => {
-      let t0 = 0, t1 = 0, cnt = 0, lastDown = 0;
-      const stop = () => { clearTimeout(t0); clearInterval(t1); t0 = t1 = 0; };
-      const tick = () => { cnt++; stepBy(dir, cnt < 10 ? 1 : cnt < 25 ? 5 : 10); if (btn.disabled) stop(); };
+      let t0 = 0, t1 = 0, since = 0, lastDown = 0, pid = null;
+      const stop = () => {
+        clearTimeout(t0); clearTimeout(t1); t0 = t1 = 0;
+        if (pid != null) { try { btn.releasePointerCapture(pid); } catch (e) { /* ignore */ } pid = null; }
+      };
+      const tick = () => {
+        const dt = Date.now() - since;
+        stepBy(dir, dt < 1200 ? 1 : dt < 2400 ? 5 : dt < 3800 ? 10 : 50);
+        if ((dir < 0 && n <= TK_MIN_BUY) || (dir > 0 && n >= TK_MAX_BUY)) { stop(); return; }
+        t1 = setTimeout(tick, dt < 1200 ? 85 : 70);
+      };
       btn.addEventListener("pointerdown", (e) => {
         if (e.button != null && e.button > 0) return;
-        if (btn.disabled) return;
-        lastDown = Date.now(); cnt = 0; stop();
+        if (btn.getAttribute("aria-disabled") === "true" || paying) return;
+        e.preventDefault();                 /* فوکوس و انتخاب متن نگیرد */
+        lastDown = Date.now(); since = lastDown; stop();
+        try { btn.setPointerCapture(e.pointerId); pid = e.pointerId; } catch (er) { pid = null; }
         stepBy(dir, 1);
-        t0 = setTimeout(() => { t1 = setInterval(tick, 90); }, 420);
+        if (!((dir < 0 && n <= TK_MIN_BUY) || (dir > 0 && n >= TK_MAX_BUY))) t0 = setTimeout(tick, 420);
       });
-      ["pointerup", "pointerleave", "pointercancel", "blur"].forEach((ev) => btn.addEventListener(ev, stop));
+      ["pointerup", "pointercancel", "lostpointercapture", "blur"].forEach((ev) => btn.addEventListener(ev, stop));
       btn.addEventListener("contextmenu", (e) => e.preventDefault());
+      btn.addEventListener("mousedown", (e) => e.preventDefault());
       /* کلیک با صفحه‌کلید (Enter/Space): با ماوس و لمس در pointerdown انجام شده است */
-      btn.addEventListener("click", (e) => { if (e.detail === 0 && Date.now() - lastDown > 600) stepBy(dir, 1); });
+      btn.addEventListener("click", (e) => { if (e.detail === 0 && Date.now() - lastDown > 600 && !paying && btn.getAttribute("aria-disabled") !== "true") stepBy(dir, 1); });
     };
     hold(mBtn, -1);
     hold(pBtn, 1);
@@ -1505,26 +1505,26 @@
     const showErr = (m) => { const e = $("tkErr"); if (!e) return; e.hidden = !m; e.textContent = m || ""; };
     const busy = (on) => {
       app.querySelector(".tkp-buy").classList.toggle("busy", on);
-      [inp, mBtn, pBtn].forEach((x) => { x.disabled = on || (x === mBtn && n <= TK_MIN_STEP) || (x === pBtn && n >= TK_MAX_BUY); });
-      packs.forEach((b) => { b.disabled = on; });
+      inp.disabled = on;
     };
     const idle = () => {
       paying = false;
       busy(false);
-      const pb = $("tkPay");
-      if (pb) pb.removeAttribute("aria-busy");
-      paint();
+      payB.removeAttribute("aria-busy");
+      shown.pay = null;
+      sched();
     };
     let goTimer = 0;
     $("tkPay").addEventListener("click", async () => {
-      if (paying || n < TK_MIN_STEP) return;
+      if (paying || n < TK_MIN_BUY) return;
       const count = n, total = tkPrice(n);
       paying = true;
       showErr("");
       busy(true);
-      const pb = $("tkPay");
+      const pb = payB;
       pb.disabled = true;
       pb.setAttribute("aria-busy", "true");
+      shown.pay = null;
       pb.innerHTML = '<span class="spin-s" aria-hidden="true"></span> در حال انتقال به درگاه…';
       const fail = (m) => { if (!alive) return; idle(); showErr(m); };
       let r = null;
@@ -1557,7 +1557,6 @@
     };
     const TEL = '<a class="pay-tel sm" href="tel:+982126378190">۰۲۱-۲۶۳۷۸۱۹۰</a>';
     const sleep = (ms) => new Promise((ok) => { const t = setTimeout(ok, ms); timers.push(t); });
-    const timers = [];
     const resolveOrder = async (order, fromBank) => {
       if (fromBank) showRes("wait", SPIN, "در حال تأیید پرداخت…");
       for (let i = 0; i < 4 && alive; i++) {
@@ -1604,12 +1603,14 @@
     }
 
     setN(n);
+    cancelAnimationFrame(raf); paint();          /* اولین نمایش بدون تأخیر */
     return function cleanup() {
       alive = false;
       clearTimeout(goTimer);
       timers.forEach(clearTimeout);
       window.removeEventListener("pageshow", onShow);
-      Object.keys(anims).forEach((k) => cancelAnimationFrame(anims[k].raf));
+      cancelAnimationFrame(raf);
+      clearTimeout(srT);
     };
   }
 
@@ -2377,7 +2378,7 @@
       try { return t.toLocaleDateString("fa-IR", { timeZone: "Asia/Tehran", year: "numeric", month: "long", day: "numeric" }) + " · " + t.toLocaleTimeString("fa-IR", { timeZone: "Asia/Tehran", hour: "2-digit", minute: "2-digit" }); }
       catch (e) { return t.toLocaleDateString("fa-IR"); }
     };
-    const REASON = { ai: "ساخت آزمون با هوش مصنوعی", refund: "برگشت پولک", admin: "تغییر توسط پشتیبانی", gift: "هدیه" };
+    const REASON = { ai: "ساخت آزمون با هوش مصنوعی", tutor: "پرسش از معلم هوشمند", refund: "برگشت پولک", admin: "تغییر توسط پشتیبانی", gift: "هدیه" };
     const load = async () => {
       const box = document.getElementById("wlBox");
       let r;
@@ -4659,7 +4660,7 @@
       grade: TT_GRADES.indexOf(saved.grade) >= 0 ? saved.grade : "",
       subject: typeof saved.subject === "string" ? saved.subject : "",
       other: typeof saved.other === "string" ? saved.other.slice(0, 40) : "",
-      model: "ds-vision",   /* معلم فقط با DeepSeek Vision کار می‌کند */
+      model: "ds-vision",   /* معلم فقط با DeepSeek Flash (متن و عکس) کار می‌کند */
       book: saved.useBook === false ? "0" : (typeof saved.book === "string" && /^(0|[a-z0-9_-]{1,40})$/.test(saved.book) ? saved.book : ""),   /* "" = اولین کتاب آن درس، "0" = بدون کتاب، یا نام یکی از کتاب‌ها */
       chats: saved.chats && typeof saved.chats === "object" ? saved.chats : {},
     };
@@ -4692,17 +4693,18 @@
       '<button class="btn ghost small tt-ab" id="ttChg" type="button" aria-label="تغییر پایه و درس">' + TT_SWAP + "<span>تغییر</span></button>" +
       '<button class="btn ghost small tt-ab" id="ttNew" type="button" aria-label="گفت‌وگوی جدید">' + TT_NEW + "<span>جدید</span></button></div>" +
       '<div class="tt-box" id="ttBox" hidden><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
-      '<div class="tt-att" id="ttAttBox" hidden><img id="ttAttImg" alt="عکس پیوست‌شده"><span id="ttAttT">عکس پیوست شد؛ همراه همه‌ی پیام‌های این گفت‌وگو فرستاده می‌شود.</span><button type="button" id="ttAttX" aria-label="حذف عکس">' + CI.close + "</button></div>" +
-      '<form class="chat-in tt-in" id="ttForm" autocomplete="off"><button class="tt-clip" type="button" id="ttClip" aria-label="پیوست عکس" title="پیوست عکس" hidden>' + TT_IMG + '</button><input type="file" id="ttFile" accept="image/*" hidden><textarea id="ttTa" rows="1" maxlength="2000" dir="auto" enterkeyhint="send" placeholder="سؤالت را بنویس…" aria-label="سؤال شما"></textarea>' +
+      '<div class="tt-att" id="ttAttBox" hidden><div class="tt-ats" id="ttAts"></div><span id="ttAttT">عکس‌ها همراه پیام‌های این گفت‌وگو فرستاده می‌شود.</span></div>' +
+      '<form class="chat-in tt-in" id="ttForm" autocomplete="off"><button class="tt-clip" type="button" id="ttClip" aria-label="پیوست عکس" title="پیوست عکس" hidden>' + TT_IMG + '</button><input type="file" id="ttFile" accept="image/*" multiple hidden><textarea id="ttTa" rows="1" maxlength="2000" dir="auto" enterkeyhint="send" placeholder="سؤالت را بنویس…" aria-label="سؤال شما"></textarea>' +
       '<button class="chat-send" type="submit" id="ttSend" aria-label="ارسال" disabled>' + CI.send + "</button></form></div>" +
-      '<p class="muted tt-note" id="ttNote" hidden>معلم هوشمند ممکن است گاهی اشتباه کند؛ نکته‌های مهم را با کتاب درسی‌ات مقایسه کن.</p></section>';
+      '<p class="muted tt-note" id="ttNote" hidden>هر سؤال ۲ پولک است. معلم هوشمند ممکن است گاهی اشتباه کند؛ نکته‌های مهم را با کتاب درسی‌ات مقایسه کن.</p></section>';
 
     const $ = (id) => document.getElementById(id);
     const log = $("ttLog"), ta = $("ttTa"), sendBtn = $("ttSend"), box = $("ttBox"), pickEl = $("ttPick");
+    const ATT_MAX = 5;
     let busy = false;
     let alive = true;
     let lastFailed = null;
-    let att = null, attShown = false;   /* عکس پیوست (فقط مدل DeepSeek Vision): data URL کوچک‌شده */
+    let atts = [], attShown = false, reading = false;   /* عکس‌های پیوست: data URL کوچک‌شده */
     const toast = (m) => { if (window.__pzToast) window.__pzToast(m); };
     let follow = true;
     let ctl = null, userStop = false, stopHook = null, autoLeft = 0;
@@ -4927,7 +4929,9 @@
     function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; }
     let sendMode = "";
     function sync() {
-      ["ttChg", "ttNew", "ttClip", "ttAttX"].forEach((id) => { $(id).disabled = busy; });
+      ["ttChg", "ttNew"].forEach((id) => { $(id).disabled = busy; });
+      $("ttClip").disabled = busy || reading || atts.length >= ATT_MAX;
+      $("ttAts").querySelectorAll("button").forEach((b) => { b.disabled = busy; });
       const mode = busy ? "stop" : "send";
       if (mode !== sendMode) {
         sendMode = mode;
@@ -4961,7 +4965,7 @@
           method: "POST",
           signal: ctl ? ctl.signal : undefined,
           headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
-          body: JSON.stringify({ token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), book: curBook() ? curBook().slug : undefined, provider: M.provider, model: M.model, stream: true, image: (M.vision && att) ? att : undefined, messages: history.slice(-16).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
+          body: JSON.stringify({ token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), book: curBook() ? curBook().slug : undefined, provider: M.provider, model: M.model, stream: true, images: (M.vision && atts.length) ? atts : undefined, messages: history.slice(-16).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
         });
       } catch (e) {
         clearTimeout(hdr);
@@ -4972,13 +4976,13 @@
       if (res.ok && /text\/event-stream/i.test(res.headers.get("content-type") || "") && res.body && res.body.getReader) {
         const rd = res.body.getReader();
         const dec = new TextDecoder();
-        let buf = "", txt = "", left, err = "", done = false, trunc = false, stall = false;
+        let buf = "", txt = "", left, left2, err = "", done = false, trunc = false, stall = false;
         const line = (ln) => {
           ln = ln.replace(/\r$/, "");
           if (ln.indexOf("data:") !== 0) return;
           let j; try { j = JSON.parse(ln.slice(5)); } catch (e) { return; }
           if (typeof j.d === "string") { txt += j.d; onText(txt); }
-          else if (j.done) { done = true; left = j.left; trunc = !!j.truncated; }
+          else if (j.done) { done = true; left = j.left; left2 = j.tokens; trunc = !!j.truncated; }
           else if (j.error) err = String(j.error);
         };
         const read = () => new Promise((resolve, reject) => {
@@ -4996,16 +5000,16 @@
           }
           if (buf) line(buf);
         } catch (e) { if (!err && !done && !userStop) err = stall ? "پاسخ دیر رسید و قطع شد." : "اتصال در میانه‌ی پاسخ قطع شد."; }
-        if (txt && done && !err) return { reply: txt, left: left, inc: trunc };
+        if (txt && done && !err) return { reply: txt, left: left, tokens: left2, inc: trunc };
         if (txt) return { reply: txt, inc: true, error: userStop ? "پاسخ را متوقف کردی." : (err || "پاسخ ناقص ماند."), stopped: userStop };
         if (userStop) return { error: "پاسخ متوقف شد.", stopped: true };
         return { error: err || "پاسخ ناقص بود. دوباره تلاش کنید." };
       }
       let d = null;
       try { d = await res.json(); } catch (e) { /* ignore */ }
-      if (res.ok && d && d.reply) return { reply: String(d.reply), left: d.left, inc: false };
+      if (res.ok && d && d.reply) return { reply: String(d.reply), left: d.left, tokens: d.tokens, inc: false };
       if (res.status === 401 && d && d.code === "no_session") { auth.clear(); }
-      return { error: (d && d.error) || "پاسخ دادن ممکن نشد. دوباره تلاش کنید.", code: d && d.code };
+      return { error: (d && d.error) || "پاسخ دادن ممکن نشد. دوباره تلاش کنید.", code: d && d.code, tokens: d && d.tokens };
     }
 
     async function submit(retry, forced) {
@@ -5025,10 +5029,11 @@
         if (!h.length) log.innerHTML = "";
         h.push({ r: "u", c: text });
         const ub = bubble("user", text);
-        if (att && aiModel(st.model).vision && !attShown) {   /* کوچکِ عکس فقط در اولین پیامی که با آن فرستاده می‌شود */
-          const im = document.createElement("img");
-          im.className = "tt-pic"; im.alt = "عکس پیوست‌شده"; im.src = att;
-          ub.querySelector(".tt-b").insertBefore(im, ub.querySelector(".tt-b").firstChild);
+        if (atts.length && aiModel(st.model).vision && !attShown) {   /* کوچکِ عکس‌ها فقط در اولین پیامی که با آن‌ها فرستاده می‌شود */
+          const wrap = document.createElement("div");
+          wrap.className = "tt-pics";
+          atts.forEach((u) => { const im = document.createElement("img"); im.className = "tt-pic"; im.alt = "عکس پیوست‌شده"; im.src = u; wrap.appendChild(im); });
+          ub.querySelector(".tt-b").insertBefore(wrap, ub.querySelector(".tt-b").firstChild);
           attShown = true;
         }
         log.appendChild(ub);
@@ -5125,6 +5130,9 @@
       if (!alive || !ok()) return;
       busy = false;
       ty.remove();
+      /* موجودی پولک: سرور بعد از کسر ۲ پولک موجودی تازه را می‌فرستد؛ اگر نفرستاد، از سرور می‌پرسیم */
+      if (typeof r.tokens === "number") tkSet(r.tokens);
+      else if (!forced) tkSync(true);
       const willAuto = !!(r.reply && r.inc && !r.stopped && !userStop && autoLeft > 0 && key === chatKey());
       if (r.reply) {
         const arr = (st.chats[key] = st.chats[key] || []);
@@ -5145,12 +5153,25 @@
       } else if (key === chatKey()) {
         if (live) live.remove();
         lastFailed = text;
+        const broke = r.code === "insufficient";
+        if (broke) {   /* پولک کافی نبود: پیام برمی‌گردد توی کادر تا بعد از خرید دوباره بفرستد */
+          const arr = st.chats[key] || [];
+          if (arr.length && arr[arr.length - 1].r === "u") arr.pop();
+          persist(); lastFailed = null; attShown = false;
+          if (!forced) { ta.value = text; autosize(); }
+          renderLog();
+        }
         const e = document.createElement("div");
         e.className = "tt-m ai err";
         e.setAttribute("role", "alert");
         e.innerHTML = '<span class="tt-av">!</span><div class="tt-b"></div>';
         e.querySelector(".tt-b").textContent = ttSafe(r.error);
-        if (r.code !== "limit" && r.code !== "no_session") {
+        if (broke) {
+          const bb = document.createElement("a");
+          bb.className = "btn small"; bb.href = "/tokens"; bb.textContent = "خرید پولک";
+          e.querySelector(".tt-b").appendChild(document.createElement("br"));
+          e.querySelector(".tt-b").appendChild(bb);
+        } else if (r.code !== "limit" && r.code !== "no_session") {
           const rb = document.createElement("button");
           rb.type = "button"; rb.className = "btn ghost small"; rb.textContent = "تلاش دوباره";
           rb.addEventListener("click", () => submit(true));
@@ -5174,11 +5195,24 @@
     const clipSync = () => {
       const v = !!aiModel(st.model).vision;
       $("ttClip").hidden = !v;
-      if (!v && att) attReset();
-      ta.placeholder = v && att ? "درباره‌ی عکس بپرس…" : phText();
-      fit();
+      if (!v && atts.length) attReset();
+      ta.placeholder = v && atts.length ? "درباره‌ی عکس بپرس…" : phText();
+      sync(); fit();
     };
-    const attReset = () => { att = null; attShown = false; $("ttAttBox").hidden = true; $("ttAttImg").removeAttribute("src"); ta.placeholder = phText(); };
+    const attDraw = () => {
+      const box = $("ttAts");
+      box.textContent = "";
+      atts.forEach((u, i) => {
+        const w = document.createElement("span");
+        w.className = "tt-at";
+        const im = document.createElement("img"); im.alt = "عکس پیوست‌شده"; im.src = u;
+        const x = document.createElement("button"); x.type = "button"; x.setAttribute("aria-label", "حذف عکس"); x.innerHTML = CI.close; x.disabled = busy;
+        x.addEventListener("click", () => { if (busy) return; atts.splice(i, 1); attShown = false; attDraw(); clipSync(); ta.focus(); });
+        w.appendChild(im); w.appendChild(x); box.appendChild(w);
+      });
+      $("ttAttBox").hidden = !atts.length;
+    };
+    const attReset = () => { atts = []; attShown = false; attDraw(); ta.placeholder = phText(); };
     /* عکس را کوچک می‌کنیم (حداکثر ۱۲۸۰ پیکسل، JPEG) تا سریع بالا برود و روی گوشی‌های ضعیف هم کند نشود */
     const readImg = (file) => new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
@@ -5194,30 +5228,42 @@
           const g = c.getContext("2d");
           g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0, w, h);
           let q = 0.84, out = c.toDataURL("image/jpeg", q);
-          while (out.length > 3000000 && q > 0.4) { q -= 0.12; out = c.toDataURL("image/jpeg", q); }
+          while (out.length > 1600000 && q > 0.4) { q -= 0.12; out = c.toDataURL("image/jpeg", q); }
+          c.width = c.height = 0;
           URL.revokeObjectURL(url); resolve(out);
         } catch (e) { URL.revokeObjectURL(url); reject(e); }
       };
       im.onerror = () => { URL.revokeObjectURL(url); reject(new Error("decode")); };
       im.src = url;
     });
-    $("ttClip").addEventListener("click", () => { if (!busy) $("ttFile").click(); });
+    $("ttClip").addEventListener("click", () => { if (!busy && !reading && atts.length < ATT_MAX) $("ttFile").click(); });
     $("ttFile").addEventListener("change", async () => {
-      const f = $("ttFile").files && $("ttFile").files[0];
+      const all = Array.prototype.slice.call($("ttFile").files || []);
       $("ttFile").value = "";
-      if (!f || busy || !alive) return;
-      if (!/^image\//.test(f.type) && !/\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(f.name)) { toast("فقط فایل عکس را می‌شود پیوست کرد."); return; }
-      if (f.size > 25 * 1024 * 1024) { toast("حجم عکس زیاد است؛ عکس کوچک‌تری انتخاب کنید."); return; }
+      if (!all.length || busy || reading || !alive) return;
+      const isImg = (f) => /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(f.name);
+      const imgs = all.filter(isImg);
+      if (!imgs.length) { toast("فقط فایل عکس را می‌شود پیوست کرد."); return; }
+      const small = imgs.filter((f) => f.size <= 25 * 1024 * 1024);
+      if (!small.length) { toast("حجم عکس زیاد است؛ عکس کوچک‌تری انتخاب کنید."); return; }
+      reading = true; sync();
+      let bad = 0;
       try {
-        const d = await readImg(f);
-        if (!alive || !aiModel(st.model).vision) return;
-        att = d; attShown = false;
-        $("ttAttImg").src = d; $("ttAttBox").hidden = false;
-        ta.placeholder = "درباره‌ی عکس بپرس…";
-        sync(); fit(); ta.focus();
-      } catch (e) { toast("این عکس باز نشد. یک عکس JPG یا PNG انتخاب کنید."); }
+        for (let i = 0; i < small.length && atts.length < ATT_MAX; i++) {
+          try {
+            const d = await readImg(small[i]);
+            if (!alive || !aiModel(st.model).vision) return;
+            if (atts.length < ATT_MAX) atts.push(d);
+          } catch (e) { bad++; }
+        }
+      } finally { reading = false; }
+      if (!alive) return;
+      attShown = false;
+      attDraw();
+      if (bad && !atts.length) toast("این عکس باز نشد. یک عکس JPG یا PNG انتخاب کنید.");
+      ta.placeholder = atts.length ? "درباره‌ی عکس بپرس…" : phText();
+      sync(); fit(); ta.focus();
     });
-    $("ttAttX").addEventListener("click", () => { if (busy) return; attReset(); sync(); fit(); ta.focus(); });
     const newChat = async () => {
       if (!hist().length) { ta.focus(); return; }
       const yes = await askConfirm({ title: "گفت‌وگوی جدید؟", text: "گفت‌وگوی فعلیِ این درس پاک می‌شود.", yes: "پاک کن و شروع کن" });
