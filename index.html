@@ -129,10 +129,8 @@
     overflow-x:hidden; -webkit-font-smoothing:antialiased;
     padding-inline:env(safe-area-inset-right) env(safe-area-inset-left);
   }
-  /* انیمیشن دایره‌ای تغییر حالت روشن/تیره (فقط وقتی کلاس vt-circle روشن است) */
-  html.vt-circle::view-transition-old(root),html.vt-circle::view-transition-new(root){animation:none;mix-blend-mode:normal}
-  html.vt-circle::view-transition-old(root){z-index:1}
-  html.vt-circle::view-transition-new(root){z-index:2}
+  /* تغییر آنیِ حالت روشن/تیره: فقط همان یک لحظه همه‌ی انتقال‌ها خاموش‌اند */
+  html.theme-now *,html.theme-now *::before,html.theme-now *::after{transition:none !important}
   html.theming *,html.theming *::before,html.theming *::after{
     transition:background-color .45s ease,color .45s ease,border-color .45s ease,box-shadow .45s ease !important;
   }
@@ -602,6 +600,48 @@
   }
   @media (max-width:359px){.tt-ctx .tt-ab span{display:none}.tt-ctx .tt-ab{width:40px;height:40px;padding:0;justify-content:center;border-radius:50%}}
   @media (prefers-reduced-motion:reduce){.tp-s.new{animation:none}.tp-skel i{animation:none}.tp-t,.tp-c,.tp-b{transition:none}}
+  /* نوار کناریِ گفت‌وگوها (معلم هوشمند) */
+  .tp{position:relative}
+  .tt-sb{flex:none;width:40px;height:40px;display:inline-grid;place-items:center;padding:0;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .tt-sb svg{width:20px;height:20px}
+  .tt-sb:hover{border-color:var(--accent);background:var(--chip)}
+  .tt-sb[aria-expanded="true"]{background:var(--chip);color:var(--accent-2)}
+  .tp-sb{position:absolute;top:0;left:0;z-index:2}
+  .tt-side{position:fixed;top:0;bottom:0;left:0;z-index:120;width:min(320px,86vw);display:flex;flex-direction:column;gap:10px;padding:14px 12px calc(14px + env(safe-area-inset-bottom,0px));background:var(--surface-solid);color:var(--text);border-right:1px solid var(--line);box-shadow:var(--shadow);transform:translateX(-102%);visibility:hidden;transition:transform .26s var(--ease),visibility 0s linear .26s}
+  .tt-side.on{transform:none;visibility:visible;transition-delay:0s}
+  .ts-ov{position:fixed;inset:0;z-index:119;background:rgba(7,42,32,.5);opacity:0;visibility:hidden;transition:opacity .25s,visibility 0s linear .25s;-webkit-tap-highlight-color:transparent}
+  .ts-ov.on{opacity:1;visibility:visible;transition-delay:0s}
+  .ts-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 4px}
+  .ts-head h2{margin:0;font-size:1.02rem}
+  .ts-x{flex:none;width:36px;height:36px;display:inline-grid;place-items:center;border-radius:11px;border:1px solid var(--line);background:none;color:var(--text);cursor:pointer;padding:0}
+  .ts-x svg{width:15px;height:15px}
+  .ts-new{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px}
+  .ts-new svg{width:18px;height:18px;flex:none}
+  .ts-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:2px;margin-inline:-4px;padding:2px 4px;scrollbar-width:thin}
+  .ts-it{position:relative;display:flex;align-items:stretch;border-radius:12px;transition:background .15s}
+  .ts-it:hover,.ts-it.on{background:var(--chip)}
+  .ts-open{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:7px 10px;border:0;background:none;color:inherit;font:inherit;text-align:start;cursor:pointer;border-radius:12px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+  .ts-open:focus-visible{outline:2px solid var(--accent-2);outline-offset:-2px}
+  .ts-t{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem;font-weight:700}
+  .ts-empty{color:var(--muted);font-weight:600}
+  .ts-it.on .ts-t{color:var(--accent-2)}
+  .ts-open small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:.74rem}
+  .ts-more{flex:none;width:34px;height:34px;align-self:center;margin-inline-end:4px;border:0;border-radius:10px;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0}
+  .ts-more svg{width:18px;height:18px}
+  .ts-more:hover,.ts-more:focus-visible{background:var(--line);color:var(--text)}
+  .ts-more[hidden]{display:none}
+  @media (hover:hover){.ts-more{opacity:0}.ts-it:hover .ts-more,.ts-it:focus-within .ts-more,.ts-it.on .ts-more,.ts-more:focus-visible{opacity:1}}
+  .ts-rn{flex:1;min-width:0;margin:3px 6px;padding:7px 10px;font:inherit;font-size:.92rem;border:1.5px solid var(--accent);border-radius:10px;background:var(--surface-solid);color:var(--text);outline:none}
+  .tt-side.busy .ts-it:not(.on) .ts-open{opacity:.55}
+  @keyframes tsFresh{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+  .ts-t.fresh{animation:tsFresh .45s var(--ease)}
+  @media (max-width:519px){.tt-ctx .tt-ab span{display:none}.tt-ctx .tt-ab{width:40px;height:40px;padding:0;justify-content:center;border-radius:50%}}
+  @media (min-width:1100px){
+    .tt-side{top:var(--ts-top,64px);width:272px;z-index:40;box-shadow:none;padding-top:12px}
+    .ts-x,.ts-ov{display:none !important}
+    html.tt-side-on .wrap{max-width:none;padding-left:calc(272px + 18px)}
+  }
+  @media (prefers-reduced-motion:reduce){.tt-side,.ts-ov{transition:none}.ts-t.fresh{animation:none}}
   .tt-box{display:flex;flex-direction:column;height:calc(100vh - 200px);height:calc(100dvh - 200px);min-height:260px;background:var(--surface-solid);border:1px solid var(--line);border-radius:22px;overflow:hidden}
   .tt-log{position:relative;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 12px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
   .tt-log:focus-visible{outline-offset:-3px}
@@ -1591,10 +1631,6 @@
       var c = mode === 'dark' ? '#05211A' : '#FAF7F0';
       document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.setAttribute('content', c); });
     }
-    /* تغییر حالت روشن/تیره: رنگ از گوشه‌ی دکمه شروع می‌شود و دایره‌وار همه‌جا را می‌گیرد.
-       از View Transitions استفاده می‌شود (روی کارت گرافیک انجام می‌شود، نه روی پردازنده)؛ برای گوشی‌های ضعیف،
-       مرورگرهای قدیمی و کسانی که انیمیشن را خاموش کرده‌اند، تغییر فوری و بدون انیمیشن است. */
-    var themeBusy = false;
     function applyTheme(next) {
       root.setAttribute('data-theme', next);
       try { localStorage.setItem('theme', next); } catch (e) { /* storage blocked */ }
@@ -1636,41 +1672,15 @@
       zibalWrap.appendChild(f);
     }
     window.addEventListener('load', function () { setTimeout(function () { zibalSync('light'); }, 300); });
-    function weakDevice() {
-      return (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
-    }
+    /* تغییر حالت روشن/تیره: همان لحظه‌ی کلیک، بدون انیمیشن و بدون هیچ محو شدنی بین رنگ قدیم و جدید.
+       انتقال‌های رنگیِ CSS فقط برای همین یک تغییر خاموش می‌شوند و بلافاصله به حالت عادی برمی‌گردند. */
     if (themeBtn) themeBtn.addEventListener('click', guard(function () {
-      if (themeBusy) return;
       var next = currentTheme() === 'dark' ? 'light' : 'dark';
-      if (typeof document.startViewTransition !== 'function' || reduce.matches || weakDevice() || document.hidden) { applyTheme(next); return; }
-      var src = (window.__pzThemeSrc && window.__pzThemeSrc.isConnected) ? window.__pzThemeSrc : themeBtn;
       window.__pzThemeSrc = null;
-      var r = src.getBoundingClientRect();
-      var x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
-      var rad = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)));
-      var done = false;
-      var finish = function () {
-        if (done) return; done = true; themeBusy = false;
-        root.classList.remove('vt-circle');
-        root.classList.toggle('paused', document.hidden);
-      };
-      themeBusy = true;
-      root.classList.add('vt-circle', 'paused');
-      var applied = false;
-      var apply = function () { if (!applied) { applied = true; applyTheme(next); } };
-      try {
-        var t = document.startViewTransition(apply);
-        t.ready.then(function () {
-          try {
-            root.animate(
-              { clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + rad + 'px at ' + x + 'px ' + y + 'px)'] },
-              { duration: 700, easing: 'cubic-bezier(.4,0,.2,1)', pseudoElement: '::view-transition-new(root)' }
-            );
-          } catch (e) { /* بدون انیمیشن، تغییر فوری */ }
-        }).catch(function () { apply(); });
-        t.finished.then(finish, function () { apply(); finish(); });
-        setTimeout(function () { apply(); finish(); }, 2500);   /* اگر هر اتفاقی افتاد، قفل نماند */
-      } catch (e) { apply(); finish(); }
+      root.classList.add('theme-now');
+      applyTheme(next);
+      void root.offsetWidth;   /* رنگ‌های جدید همین حالا و بدون انتقال اعمال شوند */
+      requestAnimationFrame(function () { requestAnimationFrame(function () { root.classList.remove('theme-now'); }); });
     }));
 
     /* ---------- hero visibility by route ---------- */
