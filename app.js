@@ -4650,48 +4650,119 @@
   }
 
   const TT_STOP = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>';
+  const TT_SIDE = TT_SVG('<rect x="3" y="4.5" width="18" height="15" rx="3.2"/><path d="M9.5 4.5v15"/>');
+  const TT_DOTS = TT_SVG('<path d="M5 12h.01M12 12h.01M19 12h.01"/>', 3.6);
 
   function viewTutor(token) {
     setTitle("معلم هوشمند");
     const ok = () => token === routeToken;
-    const KEY = "tutor:v1";
-    const saved = store.get(KEY, {}) || {};
-    const st = {
-      grade: TT_GRADES.indexOf(saved.grade) >= 0 ? saved.grade : "",
-      subject: typeof saved.subject === "string" ? saved.subject : "",
-      other: typeof saved.other === "string" ? saved.other.slice(0, 40) : "",
-      model: "ds-vision",   /* معلم فقط با DeepSeek Flash (متن و عکس) کار می‌کند */
-      book: saved.useBook === false ? "0" : (typeof saved.book === "string" && /^(0|[a-z0-9_-]{1,40})$/.test(saved.book) ? saved.book : ""),   /* "" = اولین کتاب آن درس، "0" = بدون کتاب، یا نام یکی از کتاب‌ها */
-      chats: saved.chats && typeof saved.chats === "object" ? saved.chats : {},
+    const KEY = "tutor:v2", OLDKEY = "tutor:v1", SIDEKEY = "tutor:side";
+    const MAX_CHATS = 60, MAX_MSGS = 40;
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const BOOK_RE = /^(0|[a-z0-9_-]{1,40})$/;
+    /* عنوانِ موقت از روی پیام اول، تا وقتی عنوان هوشمند برسد */
+    const provTitle = (t) => {
+      t = String(t || "").replace(/\s+/g, " ").trim();
+      if (t.length <= 30) return t;
+      const c = t.slice(0, 30), i = c.lastIndexOf(" ");
+      return (i > 14 ? c.slice(0, i) : c).trim() + "…";
     };
-    /* درسِ «هدیه‌های آسمان» در متوسطه‌ی اول حالا «دینی» است (پیام‌های آسمان / از من تا خدا) */
-    if (st.subject === "هدیه‌های آسمان" && ["هفتم", "هشتم", "نهم"].indexOf(st.grade) >= 0) {
-      const o = st.grade + "|هدیه‌های آسمان", n = st.grade + "|دینی";
-      if (st.chats[o] && !st.chats[n]) st.chats[n] = st.chats[o];
-      delete st.chats[o]; st.subject = "دینی";
+    const cleanMsgs = (a) => (Array.isArray(a) ? a : []).filter((m) => m && (m.r === "u" || m.r === "a") && typeof m.c === "string" && m.c)
+      .map((m) => (m.r === "a" && m.p ? { r: "a", c: m.c.slice(0, 9000), p: 1 } : { r: m.r, c: m.c.slice(0, 9000) })).slice(-MAX_MSGS);
+    const cleanChat = (c) => {
+      if (!c || typeof c !== "object" || typeof c.id !== "string" || !/^[a-z0-9]{4,40}$/.test(c.id)) return null;
+      const msgs = cleanMsgs(c.msgs);
+      return {
+        id: c.id,
+        title: typeof c.title === "string" ? c.title.replace(/\s+/g, " ").trim().slice(0, 60) : "",
+        ai: !!c.ai, man: !!c.man, seq: 0,
+        grade: TT_GRADES.indexOf(c.grade) >= 0 ? c.grade : "",
+        subj: typeof c.subj === "string" ? c.subj.slice(0, 40) : "",
+        book: typeof c.book === "string" && BOOK_RE.test(c.book) ? c.book : "",
+        t: typeof c.t === "number" && isFinite(c.t) ? c.t : 0,
+        msgs: msgs,
+      };
+    };
+    /* خواندن ذخیره: نسخه‌ی ۲ (چند گفت‌وگو)، یا تبدیلِ گفت‌وگوهای نسخه‌ی قدیمی (هر درس یک گفت‌وگو) */
+    const loadStore = () => {
+      const v2 = store.get(KEY, null);
+      if (v2 && v2.v === 2 && Array.isArray(v2.chats)) {
+        const seenId = {};
+        const chats = v2.chats.map(cleanChat).filter((c) => c && !seenId[c.id] && (seenId[c.id] = 1));
+        return { active: typeof v2.active === "string" ? v2.active : "", sel: v2.sel || {}, chats: chats.slice(-MAX_CHATS * 2), migrated: false };
+      }
+      const old = store.get(OLDKEY, null) || {};
+      const chats = [];
+      const ch = old.chats && typeof old.chats === "object" ? old.chats : {};
+      const keys = Object.keys(ch);
+      keys.forEach((k, i) => {
+        const arr = cleanMsgs(ch[k]);
+        if (!arr.length) return;
+        const j = k.indexOf("|");
+        let g = j < 0 ? "" : k.slice(0, j), sj = j < 0 ? k : k.slice(j + 1);
+        if (sj === "؟") sj = "";
+        /* درسِ «هدیه‌های آسمان» در متوسطه‌ی اول حالا «دینی» است */
+        if (sj === "هدیه‌های آسمان" && ["هفتم", "هشتم", "نهم"].indexOf(g) >= 0) sj = "دینی";
+        const first = arr.filter((m) => m.r === "u")[0];
+        const c = cleanChat({ id: uid() + i, title: provTitle(first ? first.c : ""), grade: g, subj: sj, book: old.useBook === false ? "0" : (typeof old.book === "string" ? old.book : ""), t: Date.now() - (keys.length - i) * 1000, msgs: arr });
+        if (c) chats.push(c);
+      });
+      return { active: "", sel: { grade: old.grade, subject: old.subject, other: old.other, book: old.useBook === false ? "0" : old.book }, chats: chats, migrated: chats.length > 0 };
+    };
+    const saved = loadStore();
+    const sel0 = saved.sel || {};
+    const st = {
+      grade: TT_GRADES.indexOf(sel0.grade) >= 0 ? sel0.grade : "",
+      subject: typeof sel0.subject === "string" ? sel0.subject : "",
+      other: typeof sel0.other === "string" ? sel0.other.slice(0, 40) : "",
+      model: "ds-vision",   /* معلم فقط با DeepSeek Flash (متن و عکس) کار می‌کند */
+      book: typeof sel0.book === "string" && BOOK_RE.test(sel0.book) ? sel0.book : "",   /* "" = اولین کتاب آن درس، "0" = بدون کتاب، یا نام یکی از کتاب‌ها */
+      chats: saved.chats,
+      active: "",
+    };
+    const chatById = (id) => { for (let i = 0; i < st.chats.length; i++) if (st.chats[i].id === id) return st.chats[i]; return null; };
+    const curChat = () => chatById(st.active);
+    const newChatObj = (g, sj, bk) => ({ id: uid(), title: "", ai: false, man: false, seq: 0, grade: g || "", subj: sj || "", book: bk || "", t: Date.now(), msgs: [] });
+    /* گفت‌وگوی فعال: آخرین گفت‌وگوی بازشده، وگرنه تازه‌ترین؛ اگر هیچ گفت‌وگویی نیست یکی تازه ساخته می‌شود */
+    {
+      let a = saved.active && chatById(saved.active);
+      if (!a && st.chats.length) a = st.chats.slice().sort((x, y) => y.t - x.t)[0];
+      if (!a) { a = newChatObj(); st.chats.push(a); }
+      st.active = a.id;
+      if (a.grade && a.subj) { st.grade = a.grade; st.subject = a.subj; st.other = ""; st.book = a.book; }
     }
     const persist = () => {
-      const trim = (n) => { const k = Object.keys(st.chats); if (k.length > n) k.slice(0, k.length - n).forEach((x) => delete st.chats[x]); };
-      trim(14);
-      const pack = () => store.set(KEY, { grade: st.grade, subject: st.subject, other: st.other, model: st.model, book: st.book, chats: st.chats });
-      if (!pack()) { trim(Math.max(1, Math.floor(Object.keys(st.chats).length / 2))); pack(); }   /* حافظه‌ی مرورگر پر بود: قدیمی‌ترین گفت‌وگوها پاک می‌شوند */
+      st.chats = st.chats.filter((c) => c.id === st.active || c.msgs.length);   /* گفت‌وگوی خالیِ غیرفعال نگه داشته نمی‌شود */
+      const trim = (n) => {
+        if (st.chats.length <= n) return;
+        const keep = {};
+        st.chats.slice().sort((x, y) => y.t - x.t).slice(0, n).forEach((c) => { keep[c.id] = 1; });
+        keep[st.active] = 1;
+        st.chats = st.chats.filter((c) => keep[c.id]);
+      };
+      trim(MAX_CHATS);
+      const pack = () => store.set(KEY, { v: 2, active: st.active, sel: { grade: st.grade, subject: st.subject, other: st.other, book: st.book }, chats: st.chats.map((c) => ({ id: c.id, title: c.title, ai: c.ai, man: c.man, grade: c.grade, subj: c.subj, book: c.book, t: c.t, msgs: c.msgs })) });
+      let okk = pack();
+      if (!okk) { trim(Math.max(2, Math.floor(st.chats.length / 2))); okk = pack(); }   /* حافظه‌ی مرورگر پر بود: قدیمی‌ترین گفت‌وگوها پاک می‌شوند */
+      if (okk && saved.migrated) { saved.migrated = false; store.del(OLDKEY); }
     };
     loadKatex();   /* فرمول‌ها از همین حالا آماده می‌شوند تا اولین پاسخ معطل نماند */
     document.documentElement.classList.add("tt-page");
     const subjName = () => (st.subject === TT_OTHER ? st.other.trim() : st.subject);
-    const chatKey = () => st.grade + "|" + (subjName() || "؟");
-    const hist = () => (Array.isArray(st.chats[chatKey()]) ? st.chats[chatKey()] : []);
+    const hist = () => { const c = curChat(); return c ? c.msgs : []; };
 
     app.innerHTML =
       '<section class="tt" aria-label="معلم هوشمند">' +
       '<div class="tp" id="ttPick" hidden>' +
+      '<button class="tt-sb tp-sb" id="ttSb2" type="button" aria-label="فهرست گفت‌وگوها" aria-controls="ttSide" aria-expanded="false" title="گفت‌وگوها">' + TT_SIDE + "</button>" +
       '<button class="tp-back" id="ttBack" type="button" hidden>' + TT_BACK + "<span>بازگشت به گفت‌وگو</span></button>" +
       '<div class="tp-hero"><span class="tt-ic big">' + TT_CAP + '</span><h1 id="ttH">معلم هوشمند</h1><p>پایه و درس را انتخاب کن؛ کتاب درسی خودکار می‌آید و هر چه نفهمیدی بپرس.</p></div>' +
       '<section class="tp-s" id="tpG" aria-label="پایه"></section><section class="tp-s" id="tpS" aria-label="درس" hidden></section><section class="tp-s" id="tpB" aria-label="کتاب" hidden></section>' +
       '<div class="tp-bar" id="tpGo"></div></div>' +
       '<div class="tt-ctx" id="ttCtx" hidden><span class="tt-ic">' + TT_CAP + '</span><div class="tt-ctx-t"><strong id="ttCtxT"></strong><small>' + TT_BOOK + '<span id="ttCtxS"></span></small></div>' +
-      '<button class="btn ghost small tt-ab" id="ttChg" type="button" aria-label="تغییر پایه و درس">' + TT_SWAP + "<span>تغییر</span></button>" +
-      '<button class="btn ghost small tt-ab" id="ttNew" type="button" aria-label="گفت‌وگوی جدید">' + TT_NEW + "<span>جدید</span></button></div>" +
+      '<button class="btn ghost small tt-ab" id="ttChg" type="button" aria-label="تغییر پایه و درس" title="تغییر پایه و درس">' + TT_SWAP + "<span>تغییر</span></button>" +
+      '<button class="btn ghost small tt-ab" id="ttNew" type="button" aria-label="گفت‌وگوی جدید" title="گفت‌وگوی جدید">' + TT_NEW + "<span>جدید</span></button>" +
+      '<button class="tt-sb" id="ttSb1" type="button" aria-label="فهرست گفت‌وگوها" aria-controls="ttSide" aria-expanded="false" title="گفت‌وگوها">' + TT_SIDE + "</button></div>" +
       '<div class="tt-box" id="ttBox" hidden><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
       '<div class="tt-att" id="ttAttBox" hidden><div class="tt-ats" id="ttAts"></div><span id="ttAttT">عکس‌ها همراه پیام‌های این گفت‌وگو فرستاده می‌شود.</span></div>' +
       '<form class="chat-in tt-in" id="ttForm" autocomplete="off"><button class="tt-clip" type="button" id="ttClip" aria-label="پیوست عکس" title="پیوست عکس" hidden>' + TT_IMG + '</button><input type="file" id="ttFile" accept="image/*" multiple hidden><textarea id="ttTa" rows="1" maxlength="2000" dir="auto" enterkeyhint="send" placeholder="سؤالت را بنویس…" aria-label="سؤال شما"></textarea>' +
@@ -4708,7 +4779,7 @@
     const toast = (m) => { if (window.__pzToast) window.__pzToast(m); };
     let follow = true;
     let ctl = null, userStop = false, stopHook = null, autoLeft = 0;
-    let mode = st.grade && subjName() && hist().length ? "chat" : "pick";   /* گفت‌وگوی قبلی دارد: مستقیم به چت؛ وگرنه صفحه‌ی انتخاب */
+    let mode = curChat().grade && curChat().subj ? "chat" : "pick";   /* گفت‌وگوی فعال پایه و درس دارد: مستقیم به چت؛ وگرنه صفحه‌ی انتخاب */
     let prevSel = null;   /* اگر «تغییر» را بزند و پشیمان شود، به همین انتخاب برمی‌گردد */
 
     /* ارتفاع جعبه‌ی چت = همه‌ی جای خالیِ صفحه (بدون اسکرولِ اضافه‌ی صفحه؛ با کیبورد موبایل هم درست می‌شود) */
@@ -4721,7 +4792,7 @@
       const avail = H - top - $("ttNote").offsetHeight - 12 - pad - 2;
       box.style.height = Math.max(260, Math.floor(avail)) + "px";
     };
-    const onResize = () => { fit(); if (follow) log.scrollTop = log.scrollHeight; };
+    const onResize = () => { fit(); setTop(); if (follow) log.scrollTop = log.scrollHeight; };
     window.addEventListener("resize", onResize);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
 
@@ -4794,7 +4865,7 @@
     const renderGo = () => {
       const ready = subjReady();
       const cb = ready ? curBook() : null;
-      const has = ready && Array.isArray(st.chats[chatKey()]) && st.chats[chatKey()].length > 0;
+      const has = ready && hist().length > 0;
       $("tpGo").innerHTML = '<span class="tp-sm">' + (ready ? "<b>" + esc((st.grade === "عمومی" ? "" : st.grade + " · ") + subjName()) + "</b><small>" + (cb ? "با کتاب درسی" : "بدون کتاب") + "</small>" : "<b>" + (st.grade ? "حالا درس را انتخاب کن" : "پایه‌ات را انتخاب کن") + "</b>") + "</span>" +
         '<button type="button" class="btn tp-go" id="ttGo"' + (ready ? "" : " disabled") + ">" + (has ? "ادامه‌ی گفت‌وگو" : "شروع گفت‌وگو") + TT_GO + "</button>";
     };
@@ -4837,11 +4908,18 @@
       $("ttCtxS").textContent = cb ? (() => { const p = bookParts(cb); return p.n + (p.t ? " · " + p.t : ""); })() : (booksState === 0 && st.book !== "0" ? "…" : "بدون کتاب");
       fit();
     };
+    /* درسی که از فهرست نیست («درس دیگر») در صفحه‌ی انتخاب با همان نام نمایش داده شود */
+    const fitSubject = () => {
+      if (st.subject && st.subject !== TT_OTHER && subjectsOf(st.grade).indexOf(st.subject) < 0) { st.other = st.subject.slice(0, 40); st.subject = TT_OTHER; }
+    };
     const startChat = () => {
       if (!subjReady()) return;
       mode = "chat"; prevSel = null;
+      const c = curChat();
+      c.grade = st.grade; c.subj = subjName(); c.book = st.book;   /* پایه، درس و کتابِ همین گفت‌وگو */
+      st.subject = c.subj; st.other = "";
       persist(); lastFailed = null; attReset();
-      renderLog(); applyCfg(); sync(); clipSync();
+      renderLog(); applyCfg(); sync(); clipSync(); renderSide();
       try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
       requestAnimationFrame(fit);
       if (fine.matches) { try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
@@ -4849,17 +4927,18 @@
     const openPick = () => {
       if (busy) return;
       prevSel = { grade: st.grade, subject: st.subject, other: st.other, book: st.book };
+      fitSubject();
       mode = "pick"; seen.s = true; seen.b = true;
-      renderPick(); applyCfg();
+      renderPick(); applyCfg(); closeDrawer(true);
       try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
     };
     const backToChat = () => {
       if (!prevSel) return;
       Object.assign(st, prevSel); prevSel = null; mode = "chat";
-      persist(); lastFailed = null; renderLog(); applyCfg(); sync(); clipSync();
+      persist(); lastFailed = null; renderLog(); applyCfg(); sync(); clipSync(); renderSide();
       requestAnimationFrame(fit);
     };
-    rpc("books_list", {}).then((r) => { if (!alive) return; if (Array.isArray(r)) books = r.filter((b) => b && typeof b.slug === "string" && typeof b.grade === "string" && typeof b.subject === "string" && typeof b.title === "string"); booksState = Array.isArray(r) ? 1 : 2; renderPick(); applyCfg(); if (!hist().length) renderLog(); clipSync(); }).catch(() => { if (!alive) return; booksState = 2; renderPick(); });
+    rpc("books_list", {}).then((r) => { if (!alive) return; if (Array.isArray(r)) books = r.filter((b) => b && typeof b.slug === "string" && typeof b.grade === "string" && typeof b.subject === "string" && typeof b.title === "string"); booksState = Array.isArray(r) ? 1 : 2; if (mode === "pick" && st.subject === TT_OTHER && st.other && subjectsOf(st.grade).indexOf(st.other.trim()) >= 0) { st.subject = st.other.trim(); st.other = ""; } renderPick(); applyCfg(); if (!hist().length) renderLog(); clipSync(); }).catch(() => { if (!alive) return; booksState = 2; renderPick(); });
 
     /* یادداشتِ «پاسخ ناقص» با دکمه‌ی ادامه */
     const incNote = (el, msg, withBtn) => {
@@ -4929,7 +5008,8 @@
     function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; }
     let sendMode = "";
     function sync() {
-      ["ttChg", "ttNew"].forEach((id) => { $(id).disabled = busy; });
+      ["ttChg"].forEach((id) => { $(id).disabled = busy; });
+      side.classList.toggle("busy", busy);
       $("ttClip").disabled = busy || reading || atts.length >= ATT_MAX;
       $("ttAts").querySelectorAll("button").forEach((b) => { b.disabled = busy; });
       const mode = busy ? "stop" : "send";
@@ -5020,9 +5100,12 @@
       else { text = ta.value.trim(); if (!text || !subjName()) return; }
       lastFailed = null;
       if (!forced && !retry) autoLeft = 1;   /* اگر پاسخ وسط کار قطع شد، یک بار خودکار «ادامه بده» می‌فرستیم */
-      const key = chatKey();
-      const h = Array.isArray(st.chats[key]) ? st.chats[key] : [];
-      delete st.chats[key]; st.chats[key] = h;   /* تازه‌ترین گفت‌وگو آخر لیست می‌ماند (برای پاک‌کردن قدیمی‌ها) */
+      const chat = curChat();
+      if (!chat) return;
+      const key = chat.id;
+      const h = chat.msgs;
+      const firstMsg = !retry && !forced && !h.length;
+      chat.t = Date.now();   /* تازه‌ترین گفت‌وگو بالای فهرست */
       log.querySelectorAll(".tt-m.err").forEach((n) => n.remove());
       log.querySelectorAll(".tt-inc .btn").forEach((n) => n.remove());
       if (!retry) {
@@ -5039,7 +5122,9 @@
         log.appendChild(ub);
         if (!forced) { ta.value = ""; autosize(); }
       }
+      if (firstMsg) nameChat(chat, text);   /* همان لحظه‌ی اولین پیام، نام‌گذاری شروع می‌شود (موازی با پاسخ) */
       persist();
+      renderSide();
       busy = true; sync();
       const ty = typing();
       log.appendChild(ty);
@@ -5107,7 +5192,7 @@
       log.setAttribute("aria-busy", "true");
       log.setAttribute("aria-live", "off");
       const r = await ask(h, (t) => {
-        if (!alive || !ok() || key !== chatKey()) return;
+        if (!alive || !ok() || key !== st.active) return;
         cur = t;
         if (document.hidden) shown = cur.length;
         if (!live) {
@@ -5133,13 +5218,14 @@
       /* موجودی پولک: سرور بعد از کسر ۲ پولک موجودی تازه را می‌فرستد؛ اگر نفرستاد، از سرور می‌پرسیم */
       if (typeof r.tokens === "number") tkSet(r.tokens);
       else if (!forced) tkSync(true);
-      const willAuto = !!(r.reply && r.inc && !r.stopped && !userStop && autoLeft > 0 && key === chatKey());
+      const willAuto = !!(r.reply && r.inc && !r.stopped && !userStop && autoLeft > 0 && key === st.active);
       if (r.reply) {
-        const arr = (st.chats[key] = st.chats[key] || []);
-        arr.push(r.inc ? { r: "a", c: r.reply, p: 1 } : { r: "a", c: r.reply });
-        if (arr.length > 40) st.chats[key] = arr.slice(-40);
+        chat.msgs.push(r.inc ? { r: "a", c: r.reply, p: 1 } : { r: "a", c: r.reply });
+        if (chat.msgs.length > MAX_MSGS) chat.msgs = chat.msgs.slice(-MAX_MSGS);
+        chat.t = Date.now();
         persist();
-        if (key === chatKey()) {
+        renderSide();
+        if (key === st.active) {
           if (live && live.isConnected) {
             finish(r.reply);
             if (r.inc && !willAuto) incNote(live, ttSafe(r.error), true);
@@ -5150,14 +5236,15 @@
             scrollToEl(el);
           }
         }
-      } else if (key === chatKey()) {
+      } else if (key === st.active) {
         if (live) live.remove();
         lastFailed = text;
         const broke = r.code === "insufficient";
         if (broke) {   /* پولک کافی نبود: پیام برمی‌گردد توی کادر تا بعد از خرید دوباره بفرستد */
-          const arr = st.chats[key] || [];
+          const arr = chat.msgs;
           if (arr.length && arr[arr.length - 1].r === "u") arr.pop();
-          persist(); lastFailed = null; attShown = false;
+          if (!arr.length && !chat.man) { chat.title = ""; chat.ai = false; chat.seq++; }   /* پیامی نمانده؛ عنوان هم پاک می‌شود تا با پیام بعدی دوباره ساخته شود */
+          persist(); renderSide(); lastFailed = null; attShown = false;
           if (!forced) { ta.value = text; autosize(); }
           renderLog();
         }
@@ -5264,17 +5351,275 @@
       ta.placeholder = atts.length ? "درباره‌ی عکس بپرس…" : phText();
       sync(); fit(); ta.focus();
     });
-    const newChat = async () => {
-      if (!hist().length) { ta.focus(); return; }
-      const yes = await askConfirm({ title: "گفت‌وگوی جدید؟", text: "گفت‌وگوی فعلیِ این درس پاک می‌شود.", yes: "پاک کن و شروع کن" });
-      if (!yes || !ok()) return;
-      st.chats[chatKey()] = [];
-      attReset();
-      persist(); lastFailed = null; renderLog(); applyCfg(); sync(); ta.focus();
+    /* ---------- نوار کناریِ گفت‌وگوها (چند گفت‌وگوی مستقل) ---------- */
+    const NEWT = "گفت‌وگوی جدید";
+    const wide = window.matchMedia("(min-width: 1100px)");   /* عریض: نوار همیشه کنار صفحه است؛ باریک: کشویی */
+    const hdrEl = document.querySelector(".top");
+    const side = document.createElement("aside");
+    side.className = "tt-side";
+    side.id = "ttSide";
+    side.setAttribute("aria-label", "گفت‌وگوها");
+    side.innerHTML = '<div class="ts-head"><h2>گفت‌وگوها</h2><button class="ts-x" id="tsX" type="button" aria-label="بستن فهرست">' + CI.close + "</button></div>" +
+      '<button class="btn ts-new" id="tsNew" type="button">' + TT_NEW + "<span>" + NEWT + "</span></button>" +
+      '<nav class="ts-list" id="tsList" aria-label="فهرست گفت‌وگوها"></nav>';
+    const sideOv = document.createElement("div");
+    sideOv.className = "ts-ov";
+    document.body.appendChild(sideOv);
+    document.body.appendChild(side);
+    let collapsed = store.get(SIDEKEY, "") === "1";   /* فقط در حالت عریض */
+    let drawer = false;                               /* فقط در حالت باریک */
+    let renaming = "", menuEl = null;
+    const isOpen = () => (wide.matches ? !collapsed : drawer);
+    const sbs = () => [$("ttSb1"), $("ttSb2")];
+    const visibleSb = () => sbs().filter((b) => b && b.offsetParent !== null)[0] || null;
+    const setTop = () => { side.style.setProperty("--ts-top", (hdrEl ? Math.round(hdrEl.getBoundingClientRect().bottom) : 64) + "px"); };
+    function applySide() {
+      const open = isOpen();
+      side.classList.toggle("on", open);
+      sideOv.classList.toggle("on", !wide.matches && drawer);
+      document.documentElement.classList.toggle("tt-side-on", wide.matches && !collapsed);
+      sbs().forEach((b) => { if (b) b.setAttribute("aria-expanded", String(open)); });
+      if ("inert" in side) side.inert = !open;
+      setTop();
+    }
+    function closeDrawer(noFocus) {
+      if (wide.matches || !drawer) return;
+      drawer = false;
+      applySide();
+      if (!noFocus) { const b = visibleSb(); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } }
+    }
+    function toggleSide() {
+      if (wide.matches) { collapsed = !collapsed; store.set(SIDEKEY, collapsed ? "1" : "0"); applySide(); fit(); return; }
+      drawer = !drawer;
+      applySide();
+      if (drawer) { try { $("tsNew").focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+      else { const b = visibleSb(); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } }
+    }
+    const subLine = (c) => ((c.grade && c.grade !== "عمومی") ? c.grade + " · " : "") + (c.subj || "");
+    const titleOf = (c) => c.title || NEWT;
+
+    function renderSide(flashId) {
+      if (!alive || renaming) return;   /* وسط تغییر نام، فهرست دوباره ساخته نمی‌شود */
+      const list = $("tsList");
+      if (!list) return;
+      const sc = list.scrollTop;
+      list.textContent = "";
+      st.chats.slice().sort((x, y) => y.t - x.t).forEach((c) => {
+        const it = document.createElement("div");
+        it.className = "ts-it" + (c.id === st.active ? " on" : "");
+        it.setAttribute("data-id", c.id);
+        const op = document.createElement("button");
+        op.type = "button"; op.className = "ts-open";
+        if (c.id === st.active) op.setAttribute("aria-current", "true");
+        const t = document.createElement("span");
+        t.className = "ts-t" + (c.title ? "" : " ts-empty") + (c.id === flashId ? " fresh" : "");
+        t.textContent = titleOf(c);
+        op.appendChild(t);
+        const sl = subLine(c);
+        if (sl) { const sm = document.createElement("small"); sm.textContent = sl; op.appendChild(sm); }
+        const mo = document.createElement("button");
+        mo.type = "button"; mo.className = "ts-more";
+        mo.setAttribute("aria-haspopup", "menu");
+        mo.setAttribute("aria-label", "گزینه‌های «" + titleOf(c) + "»");
+        mo.innerHTML = TT_DOTS;
+        it.appendChild(op); it.appendChild(mo);
+        list.appendChild(it);
+      });
+      list.scrollTop = sc;
+      side.classList.toggle("busy", busy);
+    }
+
+    const closeMenu = () => { if (menuEl) { menuEl.remove(); menuEl = null; } };
+    const openChatMenu = (id, anchor, x, y, fromKey) => {
+      closeMenu();
+      if (!chatById(id)) return;
+      menuEl = document.createElement("div");
+      menuEl.className = "cmenu" + (fromKey ? " kb" : "");
+      menuEl.setAttribute("role", "menu");
+      menuEl.setAttribute("aria-label", "گزینه‌های گفت‌وگو");
+      menuEl.innerHTML = '<button type="button" role="menuitem" data-a="rn">' + CI.edit + "<span>تغییر نام</span></button>" +
+        '<button type="button" role="menuitem" class="dng" data-a="del">' + CI.trash + "<span>حذف</span></button>";
+      document.body.appendChild(menuEl);
+      const ar = anchor ? anchor.getBoundingClientRect() : null;
+      const px = ar ? ar.left : x, py = ar ? ar.bottom + 4 : y;
+      const w = menuEl.offsetWidth, h = menuEl.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight;
+      menuEl.style.left = Math.max(8, Math.min(px, vw - w - 8)) + "px";
+      menuEl.style.top = Math.max(8, py + h + 8 > vh ? (ar ? ar.top - h - 4 : py - h) : py) + "px";
+      const back = () => { if (anchor && anchor.isConnected) { try { anchor.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } };
+      menuEl.addEventListener("click", (e) => {
+        const bt = e.target.closest ? e.target.closest("button[data-a]") : null;
+        if (!bt) return;
+        const a = bt.getAttribute("data-a");
+        closeMenu();
+        if (a === "rn") startRename(id); else delChat(id);
+      });
+      menuEl.addEventListener("keydown", (e) => {
+        const bs = Array.prototype.slice.call(menuEl.querySelectorAll("button")), i = bs.indexOf(document.activeElement);
+        if (e.key === "ArrowDown") { e.preventDefault(); bs[(i + 1) % bs.length].focus(); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); bs[(i - 1 + bs.length) % bs.length].focus(); }
+        else if (e.key === "Escape" || e.key === "Tab") { e.preventDefault(); e.stopPropagation(); closeMenu(); back(); }
+      });
+      menuEl.querySelector("button").focus({ preventScroll: true });
     };
+
+    function startRename(id) {
+      const c = chatById(id);
+      const it = c && $("tsList").querySelector('.ts-it[data-id="' + id + '"]');
+      if (!it || renaming) return;
+      renaming = id;
+      const op = it.querySelector(".ts-open");
+      const inp = document.createElement("input");
+      inp.type = "text"; inp.className = "ts-rn"; inp.maxLength = 60; inp.value = c.title; inp.placeholder = NEWT;
+      inp.setAttribute("dir", "auto"); inp.setAttribute("aria-label", "نام گفت‌وگو"); inp.autocomplete = "off";
+      op.replaceWith(inp);
+      it.classList.add("rn");
+      it.querySelector(".ts-more").hidden = true;
+      inp.focus(); inp.select();
+      let done = false;
+      const end = (save) => {
+        if (done) return;
+        done = true; renaming = "";
+        if (save) {
+          const v = inp.value.replace(/\s+/g, " ").trim().slice(0, 60);
+          if (v && v !== c.title) { c.title = v; c.man = true; c.ai = false; c.seq++; persist(); }
+        }
+        renderSide();
+        const nb = $("tsList") && $("tsList").querySelector('.ts-it[data-id="' + id + '"] .ts-open');
+        if (nb && document.activeElement === document.body) { try { nb.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+      };
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); end(true); }
+        else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); end(false); }
+      });
+      inp.addEventListener("blur", () => end(true));
+    }
+
+    /* رفتن به یک گفت‌وگو (بدون هیچ شرطی؛ شرط‌ها در صدازننده‌هاست) */
+    function activate(id) {
+      const c = chatById(id);
+      if (!c) return;
+      st.active = id; prevSel = null; lastFailed = null; attReset();
+      if (c.grade && c.subj) { st.grade = c.grade; st.subject = c.subj; st.other = ""; st.book = c.book; mode = "chat"; }
+      else mode = "pick";
+      persist(); renderLog(); renderPick(); applyCfg(); sync(); clipSync(); renderSide();
+      try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+      requestAnimationFrame(fit);
+    }
+    const busyToast = () => toast("تا تمام شدن پاسخ صبر کن، یا آن را متوقف کن.");
+    const switchTo = (id) => {
+      if (id === st.active && mode === "chat") { closeDrawer(); return; }
+      if (busy) { busyToast(); return; }
+      activate(id);
+      closeDrawer(true);
+      if (mode === "chat" && fine.matches) { try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    };
+    const newChat = () => {
+      if (busy) { busyToast(); return; }
+      const c = curChat();
+      if (c && !c.msgs.length && mode === "chat") { closeDrawer(true); if (fine.matches) ta.focus(); return; }   /* همین الان یک گفت‌وگوی خالی باز است */
+      const base = c && c.grade && c.subj ? c : null;
+      const d = newChatObj(base ? base.grade : "", base ? base.subj : "", base ? base.book : "");
+      st.chats.push(d);
+      activate(d.id);
+      closeDrawer(true);
+      if (mode === "chat" && fine.matches) { try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    };
+    async function delChat(id) {
+      const c = chatById(id);
+      if (!c) return;
+      if (busy && id === st.active) { toast("اول پاسخ را متوقف کن، یا صبر کن تمام شود."); return; }
+      const yes = await askConfirm({ title: "حذف گفت‌وگو؟", text: "«" + titleOf(c) + "» برای همیشه پاک می‌شود.", yes: "حذف", danger: true });
+      if (!yes || !alive || !ok() || !chatById(id)) return;
+      if (busy && id === st.active) return;   /* وسط پرسیدنِ تأیید، پاسخی شروع شده */
+      const was = id === st.active;
+      st.chats = st.chats.filter((x) => x.id !== id);
+      if (was) {
+        const nx = st.chats.slice().sort((x, y) => y.t - x.t)[0];
+        if (nx) activate(nx.id);
+        else { const d = newChatObj(c.grade, c.subj, c.book); st.chats.push(d); activate(d.id); }
+      } else { persist(); renderSide(); }
+    }
+
+    /* نام‌گذاری خودکار: همان لحظه‌ی اولین پیام یک درخواست کوتاه می‌رود؛ تا برسد، خودِ پیام (کوتاه‌شده) عنوان است. پولک کم نمی‌شود. */
+    async function titleCall(text, grade, subj) {
+      const s = auth.get();
+      if (!s) return "";
+      const c2 = window.AbortController ? new AbortController() : null;
+      const tm = setTimeout(() => { try { if (c2) c2.abort(); } catch (e) { /* ignore */ } }, 15000);
+      try {
+        const res = await fetch(cfg.SUPABASE_URL + "/functions/v1/tutor", {
+          method: "POST",
+          signal: c2 ? c2.signal : undefined,
+          headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+          body: JSON.stringify({ token: s.token, action: "title", text: String(text).slice(0, 400), grade: grade === "عمومی" ? "" : grade, subject: subj }),
+        });
+        if (!res.ok) return "";
+        const d = await res.json();
+        return d && typeof d.title === "string" ? d.title : "";
+      } catch (e) { return ""; } finally { clearTimeout(tm); }
+    }
+    function nameChat(chat, text) {
+      if (chat.man) return;
+      const prov = provTitle(text);
+      chat.title = prov; chat.ai = false;
+      const seq = ++chat.seq, id = chat.id;
+      titleCall(text, chat.grade, chat.subj).then((t) => {
+        t = String(t || "").replace(/\s+/g, " ").trim().slice(0, 60);
+        if (!t) return;
+        if (alive) {
+          const c = chatById(id);
+          if (!c || c.man || c.seq !== seq || !c.msgs.length) return;
+          c.title = t; c.ai = true;
+          persist(); renderSide(id);
+        } else {   /* صفحه بسته شده: فقط همین عنوان در حافظه به‌روز می‌شود */
+          const v2 = store.get(KEY, null);
+          const c = v2 && Array.isArray(v2.chats) ? v2.chats.filter((x) => x && x.id === id)[0] : null;
+          if (!c || c.man || !c.msgs || !c.msgs.length || c.title !== prov) return;
+          c.title = t; c.ai = true;
+          store.set(KEY, v2);
+        }
+      });
+    }
+
+    /* رویدادها */
+    $("tsList").addEventListener("click", (e) => {
+      const t = e.target.closest ? e.target.closest("button") : null;
+      const it = t && t.closest(".ts-it");
+      if (!t || !it) return;
+      const id = it.getAttribute("data-id");
+      if (t.classList.contains("ts-open")) switchTo(id);
+      else if (t.classList.contains("ts-more")) openChatMenu(id, t, 0, 0, e.detail === 0);
+    });
+    $("tsList").addEventListener("dblclick", (e) => {
+      const t = e.target.closest ? e.target.closest(".ts-open") : null;
+      if (t) startRename(t.closest(".ts-it").getAttribute("data-id"));
+    });
+    $("tsList").addEventListener("contextmenu", (e) => {
+      const it = e.target.closest ? e.target.closest(".ts-it") : null;
+      if (!it || it.classList.contains("rn")) return;
+      e.preventDefault();
+      openChatMenu(it.getAttribute("data-id"), null, e.clientX, e.clientY, false);
+    });
+    $("tsList").addEventListener("scroll", closeMenu, { passive: true });
+    $("tsNew").addEventListener("click", newChat);
+    $("tsX").addEventListener("click", () => closeDrawer());
+    sideOv.addEventListener("click", () => closeDrawer());
+    sbs().forEach((b) => b.addEventListener("click", toggleSide));
     $("ttNew").addEventListener("click", newChat);
+    const onDocDown = (e) => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); };
+    const onDocKey = (e) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (drawer && !wide.matches && !document.querySelector(".modal")) { e.preventDefault(); closeDrawer(); }
+    };
+    const onWide = () => { drawer = false; closeMenu(); applySide(); fit(); };
+    document.addEventListener("pointerdown", onDocDown, true);
+    document.addEventListener("keydown", onDocKey);
+    window.addEventListener("resize", closeMenu);
+    if (wide.addEventListener) wide.addEventListener("change", onWide); else if (wide.addListener) wide.addListener(onWide);
     $("ttBack").addEventListener("click", backToChat);
 
+    if (saved.migrated) persist();   /* گفت‌وگوهای نسخه‌ی قدیمی همین حالا به قالب جدید ذخیره می‌شوند */
+    applySide(); renderSide();
     renderPick(); renderLog(); applyCfg(); sync(); autosize(); clipSync();
     requestAnimationFrame(fit);
     setTimeout(fit, 700);
@@ -5284,7 +5629,13 @@
       try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ }
       window.removeEventListener("resize", onResize);
       if (window.visualViewport) window.visualViewport.removeEventListener("resize", onResize);
-      document.documentElement.classList.remove("tt-page");
+      document.documentElement.classList.remove("tt-page", "tt-side-on");
+      document.removeEventListener("pointerdown", onDocDown, true);
+      document.removeEventListener("keydown", onDocKey);
+      window.removeEventListener("resize", closeMenu);
+      if (wide.removeEventListener) wide.removeEventListener("change", onWide); else if (wide.removeListener) wide.removeListener(onWide);
+      closeMenu();
+      side.remove(); sideOv.remove();
     };
   }
 
