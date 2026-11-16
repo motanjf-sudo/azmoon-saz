@@ -2099,9 +2099,12 @@
   async function doLogout(btn) {
     if (btn) { btn.disabled = true; btn.classList.add("loading"); }
     const cur = auth.get();
+    /* گفت‌وگوهای معلم که هنوز به سرور نرسیده‌اند، پیش از خروج (حداکثر ۲ ثانیه) فرستاده می‌شوند */
+    if (cur && TCS.pending()) { try { await Promise.race([TCS.flush(), new Promise((r) => setTimeout(r, 2000))]); } catch (e) { /* ignore */ } }
     /* خروج فوری: نشست روی دستگاه همین حالا پاک می‌شود و ابطال سمت سرور در پس‌زمینه انجام می‌شود */
     if (cur) { try { authCall({ action: "logout", token: cur.token }).catch(() => {}); } catch (e) { /* بی‌اهمیت */ } }
     auth.clear();
+    TCS.wipe();   /* گفت‌وگوهای این کاربر از روی این دستگاه پاک می‌شود (روی حساب می‌ماند) */
     go("/");
   }
 
@@ -4653,63 +4656,251 @@
   const TT_SIDE = TT_SVG('<rect x="3" y="4.5" width="18" height="15" rx="3.2"/><path d="M9.5 4.5v15"/>');
   const TT_DOTS = TT_SVG('<path d="M5 12h.01M12 12h.01M19 12h.01"/>', 3.6);
 
-  function viewTutor(token) {
-    setTitle("معلم هوشمند");
-    const ok = () => token === routeToken;
-    const KEY = "tutor:v2", OLDKEY = "tutor:v1", SIDEKEY = "tutor:side";
-    const MAX_CHATS = 60, MAX_MSGS = 40;
-    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    const BOOK_RE = /^(0|[a-z0-9_-]{1,40})$/;
-    /* عنوانِ موقت از روی پیام اول، تا وقتی عنوان هوشمند برسد */
-    const provTitle = (t) => {
-      t = String(t || "").replace(/\s+/g, " ").trim();
-      if (t.length <= 30) return t;
-      const c = t.slice(0, 30), i = c.lastIndexOf(" ");
-      return (i > 14 ? c.slice(0, i) : c).trim() + "…";
+  /* ---------- گفت‌وگوهای معلم روی حساب ----------
+     نسخه‌ی اصلی روی سرور است و هر کاربر روی همین دستگاه یک کش جدا دارد. تغییرها کم‌کم به سرور می‌روند و با باز شدن صفحه
+     (یا برگشتن به برنامه) تغییرهای دستگاه‌های دیگر گرفته و ادغام می‌شوند. چیزی بدون دکمه‌ی «حذف» پاک نمی‌شود. */
+  const TT_BOOK_RE = /^(0|[a-z0-9_-]{1,40})$/;
+  /* عنوانِ موقت از روی پیام اول، تا وقتی عنوان هوشمند برسد */
+  const ttProv = (t) => {
+    t = String(t || "").replace(/\s+/g, " ").trim();
+    if (t.length <= 30) return t;
+    const c = t.slice(0, 30), i = c.lastIndexOf(" ");
+    return (i > 14 ? c.slice(0, i) : c).trim() + "…";
+  };
+  const ttUid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const ttCleanMsgs = (a) => (Array.isArray(a) ? a : []).filter((m) => m && (m.r === "u" || m.r === "a") && typeof m.c === "string" && m.c)
+    .map((m) => (m.r === "a" && m.p ? { r: "a", c: m.c.slice(0, 9000), p: 1 } : { r: m.r, c: m.c.slice(0, 9000) })).slice(-40);
+  const ttCleanChat = (c) => {
+    if (!c || typeof c !== "object" || typeof c.id !== "string" || !/^[a-z0-9]{4,40}$/.test(c.id)) return null;
+    return {
+      id: c.id,
+      title: typeof c.title === "string" ? c.title.replace(/\s+/g, " ").trim().slice(0, 60) : "",
+      ai: !!c.ai, man: !!c.man, seq: 0,
+      grade: TT_GRADES.indexOf(c.grade) >= 0 ? c.grade : "",
+      subj: typeof c.subj === "string" ? c.subj.slice(0, 40) : "",
+      book: typeof c.book === "string" && TT_BOOK_RE.test(c.book) ? c.book : "",
+      t: typeof c.t === "number" && isFinite(c.t) ? c.t : 0,
+      msgs: ttCleanMsgs(c.msgs),
     };
-    const cleanMsgs = (a) => (Array.isArray(a) ? a : []).filter((m) => m && (m.r === "u" || m.r === "a") && typeof m.c === "string" && m.c)
-      .map((m) => (m.r === "a" && m.p ? { r: "a", c: m.c.slice(0, 9000), p: 1 } : { r: m.r, c: m.c.slice(0, 9000) })).slice(-MAX_MSGS);
-    const cleanChat = (c) => {
-      if (!c || typeof c !== "object" || typeof c.id !== "string" || !/^[a-z0-9]{4,40}$/.test(c.id)) return null;
-      const msgs = cleanMsgs(c.msgs);
-      return {
-        id: c.id,
-        title: typeof c.title === "string" ? c.title.replace(/\s+/g, " ").trim().slice(0, 60) : "",
-        ai: !!c.ai, man: !!c.man, seq: 0,
-        grade: TT_GRADES.indexOf(c.grade) >= 0 ? c.grade : "",
-        subj: typeof c.subj === "string" ? c.subj.slice(0, 40) : "",
-        book: typeof c.book === "string" && BOOK_RE.test(c.book) ? c.book : "",
-        t: typeof c.t === "number" && isFinite(c.t) ? c.t : 0,
-        msgs: msgs,
-      };
+  };
+  const TCS = (() => {
+    const PFX = "tutor:c:", LEG2 = "tutor:v2", LEG1 = "tutor:v1";
+    const PUSH_CHARS = 50000;
+    let rec = null, recKey = "", timer = 0, retryT = 0, tries = 0, flushing = null, again = false, pulling = null, lastPull = 0;
+    const who = () => { const s = auth.get(); return s ? String(s.phone || s.email || "u" + s.token.slice(0, 16)) : ""; };
+    const sigOf = (c) => {
+      let n = 0;
+      for (let i = 0; i < c.msgs.length; i++) n += c.msgs[i].c.length;
+      const l = c.msgs[c.msgs.length - 1];
+      return [c.t, c.title, c.ai ? 1 : 0, c.man ? 1 : 0, c.grade, c.subj, c.book, c.msgs.length, n, l ? l.r + l.c.length : ""].join("|");
     };
-    /* خواندن ذخیره: نسخه‌ی ۲ (چند گفت‌وگو)، یا تبدیلِ گفت‌وگوهای نسخه‌ی قدیمی (هر درس یک گفت‌وگو) */
-    const loadStore = () => {
-      const v2 = store.get(KEY, null);
+    const plain = (c) => ({ id: c.id, title: c.title, ai: !!c.ai, man: !!c.man, grade: c.grade, subj: c.subj, book: c.book, t: c.t, msgs: c.msgs.slice() });
+    const packChat = (c) => {
+      let n = 0, i = c.msgs.length;
+      while (i > 0 && c.msgs.length - i < 40 && n + c.msgs[i - 1].c.length <= PUSH_CHARS) { n += c.msgs[i - 1].c.length; i--; }
+      return { id: c.id, title: c.title, ai: !!c.ai, man: !!c.man, grade: c.grade, subj: c.subj, book: c.book, t: c.t, msgs: c.msgs.slice(i) };
+    };
+    const blank = () => ({ v: 3, active: "", sel: {}, chats: [], ss: {}, base: {}, gone: {} });
+    const mapOf = (o, f) => { const r = {}; if (o && typeof o === "object") Object.keys(o).forEach((k) => { if (/^[a-z0-9]{4,40}$/.test(k) && f(o[k])) r[k] = o[k]; }); return r; };
+    const read = (k) => {
+      const v = store.get(k, null);
+      if (!v || v.v !== 3 || !Array.isArray(v.chats)) return null;
+      const seen = {}, r = blank();
+      r.active = typeof v.active === "string" ? v.active : "";
+      r.sel = v.sel && typeof v.sel === "object" ? v.sel : {};
+      r.chats = v.chats.map(ttCleanChat).filter((c) => c && !seen[c.id] && (seen[c.id] = 1));
+      r.ss = mapOf(v.ss, (x) => typeof x === "string");
+      r.base = mapOf(v.base, (x) => typeof x === "number" && isFinite(x));
+      r.gone = mapOf(v.gone, (x) => x === 1);
+      return r;
+    };
+    /* گفت‌وگوهای نسخه‌های قبلی (که برای همه‌ی کاربرانِ این مرورگر مشترک بود) یک بار به اولین کاربرِ واردشده می‌رسد */
+    const legacy = () => {
+      const v2 = store.get(LEG2, null);
       if (v2 && v2.v === 2 && Array.isArray(v2.chats)) {
-        const seenId = {};
-        const chats = v2.chats.map(cleanChat).filter((c) => c && !seenId[c.id] && (seenId[c.id] = 1));
-        return { active: typeof v2.active === "string" ? v2.active : "", sel: v2.sel || {}, chats: chats.slice(-MAX_CHATS * 2), migrated: false };
+        const seen = {};
+        return { active: typeof v2.active === "string" ? v2.active : "", sel: v2.sel || {}, chats: v2.chats.map(ttCleanChat).filter((c) => c && !seen[c.id] && (seen[c.id] = 1)).slice(-100) };
       }
-      const old = store.get(OLDKEY, null) || {};
-      const chats = [];
-      const ch = old.chats && typeof old.chats === "object" ? old.chats : {};
-      const keys = Object.keys(ch);
+      const old = store.get(LEG1, null);
+      if (!old || typeof old !== "object") return null;
+      const chats = [], ch = old.chats && typeof old.chats === "object" ? old.chats : {}, keys = Object.keys(ch);
       keys.forEach((k, i) => {
-        const arr = cleanMsgs(ch[k]);
+        const arr = ttCleanMsgs(ch[k]);
         if (!arr.length) return;
         const j = k.indexOf("|");
         let g = j < 0 ? "" : k.slice(0, j), sj = j < 0 ? k : k.slice(j + 1);
         if (sj === "؟") sj = "";
-        /* درسِ «هدیه‌های آسمان» در متوسطه‌ی اول حالا «دینی» است */
-        if (sj === "هدیه‌های آسمان" && ["هفتم", "هشتم", "نهم"].indexOf(g) >= 0) sj = "دینی";
+        if (sj === "هدیه‌های آسمان" && ["هفتم", "هشتم", "نهم"].indexOf(g) >= 0) sj = "دینی";   /* درسِ «هدیه‌های آسمان» در متوسطه‌ی اول حالا «دینی» است */
         const first = arr.filter((m) => m.r === "u")[0];
-        const c = cleanChat({ id: uid() + i, title: provTitle(first ? first.c : ""), grade: g, subj: sj, book: old.useBook === false ? "0" : (typeof old.book === "string" ? old.book : ""), t: Date.now() - (keys.length - i) * 1000, msgs: arr });
+        const c = ttCleanChat({ id: ttUid() + i, title: ttProv(first ? first.c : ""), grade: g, subj: sj, book: old.useBook === false ? "0" : (typeof old.book === "string" ? old.book : ""), t: Date.now() - (keys.length - i) * 1000, msgs: arr });
         if (c) chats.push(c);
       });
-      return { active: "", sel: { grade: old.grade, subject: old.subject, other: old.other, book: old.useBook === false ? "0" : old.book }, chats: chats, migrated: chats.length > 0 };
+      return chats.length ? { active: "", sel: { grade: old.grade, subject: old.subject, other: old.other, book: old.useBook === false ? "0" : old.book }, chats: chats } : null;
     };
-    const saved = loadStore();
+    const write = (r, k) => store.set(k, r);
+    const load = () => {
+      const u = who();
+      if (!u) { rec = null; recKey = ""; return null; }
+      if (rec && recKey === PFX + u) return rec;
+      recKey = PFX + u;
+      rec = read(recKey);
+      if (!rec) {
+        rec = blank();
+        const lg = legacy();
+        if (lg) {
+          rec.active = lg.active; rec.sel = lg.sel; rec.chats = lg.chats.map(plain);
+          if (write(rec, recKey)) { store.del(LEG2); store.del(LEG1); }
+        }
+      }
+      return rec;
+    };
+    const dirtyOf = (r) => r.chats.filter((c) => c.msgs.length && r.ss[c.id] !== sigOf(c));
+    const schedule = (ms) => { clearTimeout(timer); timer = setTimeout(flush, ms == null ? 500 : ms); };
+    const retryLater = () => { clearTimeout(retryT); if (tries >= 8) return; retryT = setTimeout(flush, [4000, 10000, 30000, 90000][Math.min(tries++, 3)]); };
+
+    async function drain() {
+      for (let guard = 0; guard < 500; guard++) {
+        const r = load(), s = auth.get();
+        if (!r || !s) return;
+        const key = recKey, tk = s.token, gid = Object.keys(r.gone)[0];
+        try {
+          if (gid) {
+            const res = await rpc("tutor_chat_del", { p_token: tk, p_id: gid });
+            if (rec !== r) return;
+            if (res && res.ok) { delete r.gone[gid]; delete r.ss[gid]; delete r.base[gid]; write(r, key); tries = 0; continue; }
+            if (res && res.error === "no_session") return;
+            if (res && res.error === "bad_chat") { delete r.gone[gid]; write(r, key); continue; }
+            throw new Error("del");
+          }
+          const c = dirtyOf(r)[0];
+          if (!c) { tries = 0; return; }
+          const sg = sigOf(c);
+          const res = await rpc("tutor_chat_put", { p_token: tk, p_chat: packChat(c) });
+          if (rec !== r) return;
+          if (res && res.ok) { r.ss[c.id] = sg; r.base[c.id] = res.rev; write(r, key); tries = 0; continue; }
+          if (res && res.error === "no_session") return;
+          if (res && res.error === "bad_chat") { r.ss[c.id] = sg; write(r, key); continue; }
+          throw new Error("put");
+        } catch (e) { retryLater(); return; }
+      }
+    }
+    function flush() {
+      clearTimeout(timer);
+      if (flushing) { again = true; return flushing; }
+      flushing = (async () => { try { do { again = false; await drain(); } while (again); } finally { flushing = null; } })();
+      return flushing;
+    }
+
+    return {
+      owner: () => who(),
+      /* کش این کاربر: نسخه‌ی مستقلی از گفت‌وگوها (یا خالی اگر کسی وارد نشده) */
+      open() {
+        const r = load();
+        if (!r) return { owner: "", active: "", sel: {}, chats: [] };
+        return { owner: who(), active: r.active, sel: r.sel, chats: r.chats.map((c) => ttCleanChat(c)) };
+      },
+      save(owner, active, sel, chats) {
+        const r = load();
+        if (!r || who() !== owner) return true;
+        r.active = active; r.sel = sel; r.chats = chats.map(plain);
+        const okk = write(r, recKey);
+        schedule();
+        return okk;
+      },
+      del(owner, c) {
+        const r = load();
+        if (!r || who() !== owner) return;
+        r.chats = r.chats.filter((x) => x.id !== c.id);
+        if (c.msgs.length || r.ss[c.id] !== undefined || r.base[c.id] !== undefined) r.gone[c.id] = 1;
+        delete r.ss[c.id]; delete r.base[c.id];
+        write(r, recKey);
+        schedule();
+      },
+      /* عنوانِ هوشمند وقتی رسید که صفحه بسته شده بود */
+      setTitle(owner, id, prov, t) {
+        const r = load();
+        if (!r || who() !== owner) return;
+        const c = r.chats.filter((x) => x.id === id)[0];
+        if (!c || c.man || !c.msgs.length || c.title !== prov) return;
+        c.title = t; c.ai = true;
+        write(r, recKey);
+        schedule();
+      },
+      pending() { const r = load(); return !!r && (Object.keys(r.gone).length > 0 || dirtyOf(r).length > 0); },
+      kick() { tries = 0; if (load()) schedule(50); },
+      flush,
+      wipe() {
+        clearTimeout(timer); clearTimeout(retryT);
+        rec = null; recKey = ""; tries = 0;
+        const hit = (k) => k.indexOf(PFX) === 0 || k === LEG2 || k === LEG1;
+        Object.keys(memStore).forEach((k) => { if (hit(k)) delete memStore[k]; });
+        try {
+          const ks = [];
+          for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && hit(k)) ks.push(k); }
+          ks.forEach((k) => localStorage.removeItem(k));
+        } catch (e) { /* ignore */ }
+      },
+      /* گرفتن تغییرهای سرور و ادغام با گفت‌وگوهای فعلیِ صفحه.
+         view: { chats(): آرایه‌ی گفت‌وگوهای صفحه، skip(): {id:true} گفت‌وگوهایی که الان نباید دست بخورند، done(out, info) } */
+      pull(owner, view, force) {
+        if (pulling) return pulling;
+        if (!force && Date.now() - lastPull < 4000) return Promise.resolve(false);
+        const r0 = load(), s = auth.get();
+        if (!r0 || !s || who() !== owner) return Promise.resolve(false);
+        pulling = (async () => {
+          try {
+            const known = {};
+            view.chats().forEach((c) => { if (r0.base[c.id] !== undefined) known[c.id] = r0.base[c.id]; });
+            const res = await rpc("tutor_chats_list", { p_token: s.token, p_known: known });
+            lastPull = Date.now();
+            if (rec !== r0 || who() !== owner || !res || !res.ok || !Array.isArray(res.chats)) return false;
+            const L = view.chats(), skip = view.skip(), by = {}, here = {}, out = [], removed = [], changed = [], added = [];
+            res.chats.forEach((x) => { if (x && typeof x.id === "string") by[x.id] = x; });
+            L.forEach((c) => {
+              here[c.id] = 1;
+              const x = by[c.id];
+              if (skip[c.id]) { out.push(c); return; }
+              if (!x) {
+                if (r0.ss[c.id] !== undefined && r0.ss[c.id] === sigOf(c)) { removed.push(c.id); delete r0.ss[c.id]; delete r0.base[c.id]; }   /* در دستگاه دیگری حذف شده */
+                else out.push(c);
+                return;
+              }
+              if (x.same) { out.push(c); return; }
+              const sv = ttCleanChat(x);
+              if (!sv || typeof x.rev !== "number") { out.push(c); return; }
+              const dirty = r0.ss[c.id] === undefined || r0.ss[c.id] !== sigOf(c);
+              if (!dirty || c.t < sv.t) { r0.ss[c.id] = sigOf(sv); r0.base[c.id] = x.rev; out.push(sv); changed.push(c.id); }
+              else { r0.base[c.id] = x.rev; out.push(c); }
+            });
+            res.chats.forEach((x) => {
+              if (!x || x.same || typeof x.id !== "string" || here[x.id] || r0.gone[x.id] || typeof x.rev !== "number") return;
+              const sv = ttCleanChat(x);
+              if (!sv) return;
+              r0.ss[sv.id] = sigOf(sv); r0.base[sv.id] = x.rev; out.push(sv); added.push(sv.id);
+            });
+            r0.chats = out.map(plain);
+            write(r0, recKey);
+            view.done(out, { removed: removed, changed: changed, added: added });
+            schedule(100);
+            return true;
+          } catch (e) { return false; } finally { pulling = null; }
+        })();
+        return pulling;
+      },
+    };
+  })();
+  window.addEventListener("authchange", () => TCS.kick());
+
+  function viewTutor(token) {
+    setTitle("معلم هوشمند");
+    const ok = () => token === routeToken;
+    const SIDEKEY = "tutor:side";
+    const MAX_CHATS = 100, MAX_MSGS = 40;
+    const uid = ttUid;
+    const BOOK_RE = TT_BOOK_RE;
+    const provTitle = ttProv;
+    const saved = TCS.open();
+    const owner = saved.owner;
     const sel0 = saved.sel || {};
     const st = {
       grade: TT_GRADES.indexOf(sel0.grade) >= 0 ? sel0.grade : "",
@@ -4741,10 +4932,9 @@
         st.chats = st.chats.filter((c) => keep[c.id]);
       };
       trim(MAX_CHATS);
-      const pack = () => store.set(KEY, { v: 2, active: st.active, sel: { grade: st.grade, subject: st.subject, other: st.other, book: st.book }, chats: st.chats.map((c) => ({ id: c.id, title: c.title, ai: c.ai, man: c.man, grade: c.grade, subj: c.subj, book: c.book, t: c.t, msgs: c.msgs })) });
+      const pack = () => TCS.save(owner, st.active, { grade: st.grade, subject: st.subject, other: st.other, book: st.book }, st.chats);
       let okk = pack();
-      if (!okk) { trim(Math.max(2, Math.floor(st.chats.length / 2))); okk = pack(); }   /* حافظه‌ی مرورگر پر بود: قدیمی‌ترین گفت‌وگوها پاک می‌شوند */
-      if (okk && saved.migrated) { saved.migrated = false; store.del(OLDKEY); }
+      if (!okk) { trim(Math.max(2, Math.floor(st.chats.length / 2))); okk = pack(); }   /* حافظه‌ی مرورگر پر بود: قدیمی‌ترین نسخه‌های این دستگاه کنار می‌روند (روی حساب می‌مانند) */
     };
     loadKatex();   /* فرمول‌ها از همین حالا آماده می‌شوند تا اولین پاسخ معطل نماند */
     document.documentElement.classList.add("tt-page");
@@ -5480,8 +5670,8 @@
         if (done) return;
         done = true; renaming = "";
         if (save) {
-          const v = inp.value.replace(/\s+/g, " ").trim().slice(0, 60);
-          if (v && v !== c.title) { c.title = v; c.man = true; c.ai = false; c.seq++; persist(); }
+          const v = inp.value.replace(/\s+/g, " ").trim().slice(0, 60), cc = chatById(id);
+          if (cc && v && v !== cc.title) { cc.title = v; cc.man = true; cc.ai = false; cc.seq++; persist(); }
         }
         renderSide();
         const nb = $("tsList") && $("tsList").querySelector('.ts-it[data-id="' + id + '"] .ts-open');
@@ -5532,7 +5722,9 @@
       if (!yes || !alive || !ok() || !chatById(id)) return;
       if (busy && id === st.active) return;   /* وسط پرسیدنِ تأیید، پاسخی شروع شده */
       const was = id === st.active;
+      const gone = chatById(id);
       st.chats = st.chats.filter((x) => x.id !== id);
+      if (gone) TCS.del(owner, gone);
       if (was) {
         const nx = st.chats.slice().sort((x, y) => y.t - x.t)[0];
         if (nx) activate(nx.id);
@@ -5572,11 +5764,7 @@
           c.title = t; c.ai = true;
           persist(); renderSide(id);
         } else {   /* صفحه بسته شده: فقط همین عنوان در حافظه به‌روز می‌شود */
-          const v2 = store.get(KEY, null);
-          const c = v2 && Array.isArray(v2.chats) ? v2.chats.filter((x) => x && x.id === id)[0] : null;
-          if (!c || c.man || !c.msgs || !c.msgs.length || c.title !== prov) return;
-          c.title = t; c.ai = true;
-          store.set(KEY, v2);
+          TCS.setTitle(owner, id, prov, t);
         }
       });
     }
@@ -5618,14 +5806,48 @@
     if (wide.addEventListener) wide.addEventListener("change", onWide); else if (wide.addListener) wide.addListener(onWide);
     $("ttBack").addEventListener("click", backToChat);
 
-    if (saved.migrated) persist();   /* گفت‌وگوهای نسخه‌ی قدیمی همین حالا به قالب جدید ذخیره می‌شوند */
     applySide(); renderSide();
     renderPick(); renderLog(); applyCfg(); sync(); autosize(); clipSync();
     requestAnimationFrame(fit);
     setTimeout(fit, 700);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+
+    /* همگام‌سازی با حساب: همین حالا، و هر بار که به برنامه برمی‌گردیم یا اینترنت وصل می‌شود */
+    const mergeFromServer = (out, info) => {
+      if (!alive || !ok()) return;
+      const prev = st.active;
+      st.chats = out;
+      const c = curChat();
+      if (!c) {   /* گفت‌وگوی بازِ این صفحه در دستگاه دیگری حذف شده */
+        const nx = st.chats.slice().sort((x, y) => y.t - x.t)[0];
+        if (nx) activate(nx.id);
+        else { const d = newChatObj(); st.chats.push(d); activate(d.id); }
+        return;
+      }
+      if (info.changed.indexOf(prev) >= 0) {   /* همین گفت‌وگو در دستگاه دیگری ادامه پیدا کرده */
+        if (c.grade && c.subj) { st.grade = c.grade; st.subject = c.subj; st.other = ""; st.book = c.book; if (mode !== "pick") mode = "chat"; }
+        renderLog(); renderPick(); applyCfg(); sync(); clipSync();
+      }
+      persist(); renderSide();
+    };
+    const pullView = {
+      chats: () => st.chats,
+      skip: () => { const k = {}; if (busy) k[st.active] = 1; if (renaming) k[renaming] = 1; return k; },
+      done: mergeFromServer,
+    };
+    const doPull = (force) => { if (alive && ok() && !document.hidden) TCS.pull(owner, pullView, force); };
+    const onVis = () => doPull(false);
+    const onOnline = () => { TCS.kick(); doPull(true); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    window.addEventListener("online", onOnline);
+    TCS.kick();
+    doPull(true);
     return function () {
       alive = false;
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+      window.removeEventListener("online", onOnline);
       try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ }
       window.removeEventListener("resize", onResize);
       if (window.visualViewport) window.visualViewport.removeEventListener("resize", onResize);
