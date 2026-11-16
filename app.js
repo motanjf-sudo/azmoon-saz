@@ -2144,7 +2144,7 @@
       (s.phone && s.email ? '<div class="prof-phone prof-2" dir="ltr" data-em>' + esc(showPhone(s.email)) + "</div>"
         : '<button class="prof-add" id="profAdd" type="button">+ ' + (s.phone ? "افزودن ایمیل" : "افزودن شماره‌ی موبایل") + "</button>") +
       '<a class="prof-tk" id="profTk" href="/tokens">' + COIN + '<span>پولک‌های من</span><b data-tk>' + tkTxt() + "</b></a>" +
-      '<a class="prof-tk" id="profWl" href="/wallet">' + MENU_IC.wallet + "<span>بخش مالی</span></a>" +
+      '<a class="prof-tk prof-wl" id="profWl" href="/wallet"><span>بخش مالی</span></a>' +
       '<button class="btn ghost small wide" id="profOut" type="button">خروج از حساب</button></div>';
     document.getElementById("profBtn").addEventListener("click", (e) => {
       e.stopPropagation();
