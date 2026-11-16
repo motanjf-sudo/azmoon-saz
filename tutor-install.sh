@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pazmoonak: tutor = 2 puluk per question (DeepSeek Flash, up to 5 photos), minimum purchase 1 puluk.
+# Pazmoonak: tutor = 2 puluk per question (DeepSeek Flash, up to 5 photos), minimum purchase 1 puluk, tutor chats saved on the account.
 # Run as root:  bash tutor-install.sh      Safe to run more than once. Does not touch data, secrets or settings.
 set -u
 APP="${PZ_APP:-/opt/pazmoonak}"
@@ -19,7 +19,7 @@ echo "OK"
 echo "[2/5] updating database"
 cat > "$T/m.sql" <<'PZSQL_END'
 begin;
--- migration (generated from schema.sql): tutor 2 puluk per question, minimum purchase 1 puluk, chat auto-title session check
+-- migration: tutor 2 puluk per question, minimum purchase 1 puluk, chat auto-title session check, tutor chats stored on the account
 
 alter table public.payments drop constraint if exists payments_tokens_check;
 alter table public.payments add constraint payments_tokens_check check (tokens between 1 and 10000);
@@ -87,6 +87,102 @@ language sql security definer set search_path = public stable as $$
   select public.session_uid(p_token) is not null;
 $$;
 
+-- tutor chats stored on the account (so they follow the user to any device)
+create sequence if not exists public.tutor_chats_rev_seq;
+
+create table if not exists public.tutor_chats (
+  user_id uuid not null references public.users(id) on delete cascade,
+  id      text not null,
+  title   text not null default '',
+  ai      boolean not null default false,
+  man     boolean not null default false,
+  grade   text not null default '',
+  subj    text not null default '',
+  book    text not null default '',
+  t       bigint not null default 0,
+  msgs    jsonb not null default '[]'::jsonb,
+  rev     bigint not null default nextval('public.tutor_chats_rev_seq'),
+  primary key (user_id, id)
+);
+alter table public.tutor_chats enable row level security;
+revoke all on table public.tutor_chats from public, anon, authenticated;
+create index if not exists tutor_chats_user_t on public.tutor_chats (user_id, t desc);
+
+create or replace function public.tutor_chats_list(p_token text, p_known jsonb default '{}'::jsonb)
+returns jsonb
+language plpgsql security definer set search_path = public stable as $$
+declare uid uuid := session_uid(p_token); kn jsonb := case when jsonb_typeof(p_known) = 'object' then p_known else '{}'::jsonb end;
+begin
+  if uid is null then return jsonb_build_object('ok', false, 'error', 'no_session'); end if;
+  return jsonb_build_object('ok', true, 'chats', coalesce((
+    select jsonb_agg(
+      case when jsonb_typeof(kn -> c.id) = 'number' and (kn ->> c.id) = c.rev::text
+        then jsonb_build_object('id', c.id, 'rev', c.rev, 'same', true)
+        else jsonb_build_object('id', c.id, 'rev', c.rev, 'title', c.title, 'ai', c.ai, 'man', c.man, 'grade', c.grade, 'subj', c.subj, 'book', c.book, 't', c.t, 'msgs', c.msgs)
+      end order by c.t desc, c.id)
+    from (select * from tutor_chats where user_id = uid order by t desc, id limit 100) c), '[]'::jsonb));
+end $$;
+
+create or replace function public.tutor_chat_put(p_token text, p_chat jsonb)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := session_uid(p_token);
+  cid text; ttl text; gr text; sj text; bk text; tt numeric; rv bigint;
+  src jsonb; arr jsonb := '[]'::jsonb; el jsonb; rl text; ct text; nowms numeric := extract(epoch from now()) * 1000;
+begin
+  if uid is null then return jsonb_build_object('ok', false, 'error', 'no_session'); end if;
+  if p_chat is null or jsonb_typeof(p_chat) <> 'object' then return jsonb_build_object('ok', false, 'error', 'bad_chat'); end if;
+  cid := case when jsonb_typeof(p_chat -> 'id') = 'string' then p_chat ->> 'id' end;
+  if cid is null or cid !~ '^[a-z0-9]{4,40}$' then return jsonb_build_object('ok', false, 'error', 'bad_chat'); end if;
+  ttl := left(btrim(regexp_replace(case when jsonb_typeof(p_chat -> 'title') = 'string' then p_chat ->> 'title' else '' end, '\s+', ' ', 'g')), 60);
+  gr  := left(case when jsonb_typeof(p_chat -> 'grade') = 'string' then p_chat ->> 'grade' else '' end, 40);
+  sj  := left(case when jsonb_typeof(p_chat -> 'subj') = 'string' then p_chat ->> 'subj' else '' end, 40);
+  bk  := case when jsonb_typeof(p_chat -> 'book') = 'string' and (p_chat ->> 'book') ~ '^(0|[a-z0-9_-]{1,40})$' then p_chat ->> 'book' else '' end;
+  tt  := case when jsonb_typeof(p_chat -> 't') = 'number' then (p_chat ->> 't')::numeric else 0 end;
+  tt  := greatest(0, least(floor(tt), nowms + 86400000));
+  src := case when jsonb_typeof(p_chat -> 'msgs') = 'array' then p_chat -> 'msgs' else '[]'::jsonb end;
+  if jsonb_array_length(src) > 400 then return jsonb_build_object('ok', false, 'error', 'bad_chat'); end if;
+  for el in select e from jsonb_array_elements(src) e loop
+    continue when jsonb_typeof(el) <> 'object';
+    rl := case when jsonb_typeof(el -> 'r') = 'string' then el ->> 'r' end;
+    ct := case when jsonb_typeof(el -> 'c') = 'string' then left(el ->> 'c', 9000) end;
+    continue when rl is null or rl not in ('u', 'a') or ct is null or ct = '';
+    arr := arr || jsonb_build_array(case when rl = 'a' and (el -> 'p') in ('true'::jsonb, '1'::jsonb) then jsonb_build_object('r', 'a', 'c', ct, 'p', 1) else jsonb_build_object('r', rl, 'c', ct) end);
+  end loop;
+  /* فقط ۴۰ پیامِ آخر؛ و اگر از حد مجازِ حجم بزرگ‌تر بود، قدیمی‌ترین پیام‌ها کنار می‌روند */
+  while jsonb_array_length(arr) > 40 or (jsonb_array_length(arr) > 1 and octet_length(arr::text) > 120000) loop
+    arr := arr - 0;
+  end loop;
+  insert into tutor_chats as c (user_id, id, title, ai, man, grade, subj, book, t, msgs, rev)
+  values (uid, cid, ttl, coalesce((p_chat ->> 'ai') = 'true', false), coalesce((p_chat ->> 'man') = 'true', false), gr, sj, bk, tt::bigint, arr, nextval('public.tutor_chats_rev_seq'))
+  on conflict (user_id, id) do update set title = excluded.title, ai = excluded.ai, man = excluded.man, grade = excluded.grade, subj = excluded.subj,
+    book = excluded.book, t = excluded.t, msgs = excluded.msgs, rev = excluded.rev
+  returning c.rev into rv;
+  /* بیش از ۱۰۰ گفت‌وگو: قدیمی‌ترین‌ها (به‌جز همین یکی) پاک می‌شوند */
+  delete from tutor_chats d where d.user_id = uid and d.id <> cid and d.id in (
+    select x.id from tutor_chats x where x.user_id = uid order by x.t desc, x.id limit 100000 offset 100);
+  return jsonb_build_object('ok', true, 'rev', rv);
+end $$;
+
+create or replace function public.tutor_chat_del(p_token text, p_id text)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare uid uuid := session_uid(p_token);
+begin
+  if uid is null then return jsonb_build_object('ok', false, 'error', 'no_session'); end if;
+  if p_id is null or p_id !~ '^[a-z0-9]{4,40}$' then return jsonb_build_object('ok', false, 'error', 'bad_chat'); end if;
+  delete from tutor_chats where user_id = uid and id = p_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.tutor_chats_list(text, jsonb) from public;
+revoke all on function public.tutor_chat_put(text, jsonb) from public;
+revoke all on function public.tutor_chat_del(text, text) from public;
+grant execute on function public.tutor_chats_list(text, jsonb) to anon, authenticated;
+grant execute on function public.tutor_chat_put(text, jsonb) to anon, authenticated;
+grant execute on function public.tutor_chat_del(text, text) to anon, authenticated;
+
 revoke all on function public.tutor_charge(text,int) from public, anon, authenticated;
 grant execute on function public.tutor_charge(text,int) to service_role;
 revoke all on function public.tutor_session_ok(text) from public, anon, authenticated;
@@ -101,7 +197,9 @@ PSQL < "$T/m.sql" >/dev/null 2>"$T/m.err" || { echo "ERR: database update failed
 r=$(echo "select public.tutor_charge('x',2)::text" | PSQL 2>/dev/null)
 case "$r" in *no_session*) ;; *) echo "ERR: tutor_charge did not answer as expected: $r"; exit 1;; esac
 r=$(echo "select public.tutor_session_ok('x')::text" | PSQL 2>/dev/null)
-[ "$r" = "false" ] && echo "OK" || { echo "ERR: tutor_session_ok did not answer as expected: $r"; exit 1; }
+[ "$r" = "false" ] || { echo "ERR: tutor_session_ok did not answer as expected: $r"; exit 1; }
+r=$(echo "select public.tutor_chats_list('x')::text" | PSQL 2>/dev/null)
+case "$r" in *no_session*) echo "OK";; *) echo "ERR: tutor_chats_list did not answer as expected: $r"; exit 1;; esac
 
 echo "[3/5] installing functions"
 install_fn() {
@@ -1122,4 +1220,6 @@ else
 fi
 c=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{"token":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff","action":"start","tokens":1,"expect":1000}' "$API/functions/v1/pay")
 case "$c" in 401) echo "OK pay answers (401)";; *) echo "WARN pay answered $c (expected 401)";; esac
+b=$(curl -s -X POST -H 'content-type: application/json' -d '{"p_token":"x","p_known":{}}' "$API/rest/v1/rpc/tutor_chats_list")
+case "$b" in *no_session*) echo "OK chats answer";; *) echo "WARN chats answered: $(echo "$b" | head -c 120)";; esac
 echo "DONE"
