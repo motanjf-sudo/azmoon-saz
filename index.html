@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>پازمونک | ساخت آزمون آنلاین با هوش مصنوعی</title>
   <meta name="description" content="پازمونک؛ آزمون‌ساز آنلاین فارسی. آزمون تستی و درست/نادرست بسازید یا با هوش مصنوعی از روی موضوع تولید کنید، لینکش را بفرستید و نتایج را ببینید.">
+  <meta name="application-name" content="پازمونک">
+  <meta name="apple-mobile-web-app-title" content="پازمونک">
   <link rel="canonical" href="https://pazmoonak.com/">
   <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
   <meta name="theme-color" content="#FAF7F0" media="(prefers-color-scheme: light)">
@@ -26,8 +28,8 @@
   <meta name="twitter:description" content="آزمون تستی و درست/نادرست بسازید، لینک بفرستید و نتایج را ببینید.">
   <script type="application/ld+json">
   {"@context":"https://schema.org","@graph":[
-    {"@type":"Organization","@id":"https://pazmoonak.com/#org","name":"پازمونک","url":"https://pazmoonak.com/","logo":{"@type":"ImageObject","url":"https://pazmoonak.com/favicon-512.png","width":512,"height":512}},
-    {"@type":"WebSite","@id":"https://pazmoonak.com/#site","url":"https://pazmoonak.com/","name":"پازمونک","alternateName":["پازمونک آزمون‌ساز"],"inLanguage":"fa","publisher":{"@id":"https://pazmoonak.com/#org"}},
+    {"@type":"Organization","@id":"https://pazmoonak.com/#org","name":"پازمونک","alternateName":["Pazmoonak","پازمونک آزمون‌ساز"],"url":"https://pazmoonak.com/","logo":{"@type":"ImageObject","url":"https://pazmoonak.com/favicon-512.png","width":512,"height":512},"contactPoint":{"@type":"ContactPoint","telephone":"+98-21-26378190","contactType":"customer support","availableLanguage":"fa"}},
+    {"@type":"WebSite","@id":"https://pazmoonak.com/#site","url":"https://pazmoonak.com/","name":"پازمونک","alternateName":["Pazmoonak","پازمونک آزمون‌ساز"],"inLanguage":"fa","publisher":{"@id":"https://pazmoonak.com/#org"}},
     {"@type":"WebApplication","name":"پازمونک","url":"https://pazmoonak.com/","applicationCategory":"EducationalApplication","operatingSystem":"Web","inLanguage":"fa","description":"پازمونک؛ آزمون‌ساز آنلاین فارسی. آزمون تستی و درست/نادرست بسازید یا با هوش مصنوعی از روی موضوع تولید کنید، لینکش را بفرستید و نتایج را ببینید.","featureList":["ساخت آزمون چندگزینه‌ای","آزمون درست/نادرست","ساخت آزمون با هوش مصنوعی","معلم هوشمند با کتاب‌های درسی پایه‌ی هفتم تا دوازدهم","نتایج و نمره‌ی زنده"],"publisher":{"@id":"https://pazmoonak.com/#org"},"offers":{"@type":"Offer","price":"0","priceCurrency":"IRR"}},
     {"@type":"FAQPage","mainEntity":[
       {"@type":"Question","name":"پازمونک چیست؟","acceptedAnswer":{"@type":"Answer","text":"پازمونک یک آزمون‌ساز آنلاین فارسی است که به شما اجازه می‌دهد آزمون تستی یا درست/نادرست بسازید، لینکش را برای دیگران بفرستید و نمره و نتایج را ببینید."}},
@@ -1385,6 +1387,9 @@
     grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:26px 44px;align-items:start}
   .ft-brand{grid-column:1 / -1;display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.35rem;color:#fff;line-height:1.4}
   .ft-logo{height:32px;width:auto;filter:none;display:block}
+  .ft-brand{flex-wrap:wrap;row-gap:4px}
+  .ft-en{margin-inline-start:6px;padding-inline-start:14px;border-inline-start:1px solid rgba(255,255,255,.28);font-size:.82rem;font-weight:600;letter-spacing:.3px;color:rgba(255,255,255,.72);line-height:1.4}
+  @media (max-width:420px){.ft-en{flex-basis:100%;margin:0;padding:0;border:0;text-align:right}}
   .ft-seal{display:flex;justify-content:flex-start;align-items:center;flex-wrap:wrap;gap:10px;margin-top:20px}
   #zibal{display:flex;align-items:center;justify-content:center;line-height:0;max-width:100%;position:relative}
   #zibal iframe{border:0;display:block;max-width:100%;background:transparent}
@@ -1526,7 +1531,7 @@
           <span class="ln"><span>لینکش را بفرست،</span></span>
           <span class="ln"><span class="grad">نتیجه را ببین.</span></span>
         </h1>
-        <p class="lead">در چند دقیقه یک آزمون چندگزینه‌ای بسازید، لینکش را برای هر کسی بفرستید و نمره و نتایج را به‌صورت زنده ببینید.</p>
+        <p class="lead">با پازمونک در چند دقیقه یک آزمون چندگزینه‌ای بسازید، لینکش را برای هر کسی بفرستید و نمره و نتایج را به‌صورت زنده ببینید.</p>
         <div class="cta">
           <a class="btn" href="/create">ساخت آزمون</a>
           <button class="btn ghost" type="button" data-scroll="steps">چطور کار می‌کند؟</button>
@@ -1581,7 +1586,7 @@
 
   <main id="app" class="wrap" tabindex="-1"></main>
   <footer class="site-foot" id="siteFoot"><div class="site-foot-in">
-    <div class="ft-brand" aria-label="پازمونک"><span>پازمونک</span><img class="logo ft-logo" src="/logo/mark.png" width="45" height="32" alt="" decoding="async"></div>
+    <div class="ft-brand" aria-label="پازمونک"><span>پازمونک</span><img class="logo ft-logo" src="/logo/mark.png" width="45" height="32" alt="" decoding="async"><span class="ft-en" lang="en" dir="ltr">Pazmoonak · pazmoonak.com</span></div>
     <section class="ft-col ft-about" aria-labelledby="ftAbout">
       <h3 id="ftAbout">درباره‌ی ما</h3>
       <p>پازمونک جایی است برای ساختن آزمون آنلاین در چند دقیقه. آزمونت را می‌سازی، لینکش را برای دوستان یا دانش‌آموزهایت می‌فرستی و نتیجه‌ی همه را همان لحظه می‌بینی؛ ساده و سریع.</p>
