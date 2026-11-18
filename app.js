@@ -592,7 +592,7 @@
       '<div class="seg" role="group" aria-label="مخاطب آزمون"><button type="button" data-aud="pub" aria-pressed="' + (!createGroup) + '">همه (عمومی)</button><button type="button" data-aud="grp" aria-pressed="' + (!!createGroup) + '">فقط یک گروه</button></div>' +
       '<p class="hint" id="audHint" style="margin:6px 0 0"></p><div id="audSel" hidden></div></div>' +
       '<div class="types" id="typesBox"><a class="card type-card ai-card" href="' + withG("/create/ai") + '" data-base="/create/ai"><span class="ti">' + ICONS.spark + '</span><h3>ساخت با هوش مصنوعی <span class="soon-badge ai-badge">جدید</span></h3>' +
-      "<p>فقط موضوع را بنویسید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید. هر سؤال ۱ پولک است.</p></a>" +
+      "<p>موضوع را بنویسید یا فایل جزوه‌تان را بدهید؛ آزمون خودکار ساخته می‌شود و لینکش را همان‌جا می‌گیرید. هر سؤال ۱ پولک است.</p></a>" +
       ["tf", "mcq", "essay", "mixed"].map(card).join("") + "</div>";
     const dropBtn = document.getElementById("dropDraft");
     if (dropBtn) dropBtn.addEventListener("click", () => { store.del("quizDraft"); viewChoose(); });
@@ -1181,9 +1181,10 @@
 
   function viewAI() {
     setTitle("ساخت آزمون با هوش مصنوعی");
+    fzCss();
     setTimeout(fillGroupChip, 0);
     tkSync(true);
-    const st = { mode: "mixed", level: "medium", count: 10, model: "deepseek" };
+    const st = { mode: "mixed", level: "medium", count: 10, model: "deepseek" };   /* مدل ثابت است: DeepSeek V4.1 */
     let busy = false;
     let ctl = null;
     let gone = false;
@@ -1196,11 +1197,11 @@
     app.innerHTML =
       '<a class="back" href="' + withG("/create") + '">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
       "<h1>ساخت آزمون با هوش مصنوعی</h1>" + (createGroup ? '<div id="grpChipBox">' + groupChip(groupName(createGroup)) + "</div>" : "") +
+      (typeof fzSwitch === "function" ? fzSwitch("ai") : "") +
       '<p class="muted">موضوع را بنویسید و تنظیمات را انتخاب کنید. آزمون ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج را می‌گیرید.</p>' +
       '<div class="card ai-form">' +
       '<div class="tk-strip">' + COIN + '<span class="tk-strip-t">موجودی شما: <b data-tk>' + tkTxt() + '</b> پولک</span><a class="tk-strip-a" href="/tokens">خرید پولک</a></div>' +
       '<label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off">' +
-      '<label>هوش مصنوعی</label>' + seg("model", [["deepseek", "DeepSeek V4.1"], ["glm-flash", "GLM 5.3 Flash"], ["glm", "GLM 5.3"]]) +
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
       '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
       '<label for="count">تعداد سؤال</label><div class="stepper"><button type="button" id="cm" aria-label="کمتر">−</button><input id="count" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="cp" aria-label="بیشتر">+</button><span class="hint">از ۱ تا ۳۰</span></div>' +
@@ -1355,6 +1356,827 @@
       setGenLock(false);
       window.removeEventListener("tkchange", onTk);
       if (ctl) ctl.abort();
+    };
+  }
+
+  /* ---------- ساخت آزمون از روی فایل ---------- */
+  /* متن فایل‌ها داخل مرورگر استخراج می‌شود و برای ساخت به دیتابیس می‌رود؛ ساخت روی سرور انجام می‌شود (fj_* و سرویس pazmoonak-files). */
+  const FZ = {
+    maxFiles: 15,
+    maxBytes: 20 * 1024 * 1024,
+    maxChars: 3000000,      /* سقف کل متن همه‌ی فایل‌ها */
+    maxExams: 15,
+    maxQ: 50,               /* سؤال در هر آزمون */
+    perCall: 25,            /* سؤال در هر درخواست به سرور */
+    chunk: 24000,           /* اندازه‌ی هر تکه‌ی ارسالی به سرور */
+    cap: 48000,             /* سقف کاراکتر متن در هر درخواست */
+    minChars: 300,          /* کمترین متن برای ساختن آزمون */
+    secPerCall: 35,         /* فقط برای تخمین زمان */
+  };
+  const FZ_EXT = { pdf: "PDF", docx: "DOCX", txt: "TXT", md: "TXT", text: "TXT" };
+  const fzExt = (n) => { const m = /\.([a-z0-9]+)$/i.exec(String(n || "")); return m ? m[1].toLowerCase() : ""; };
+  const fzBase = (n) => String(n || "").replace(/\.[a-z0-9]+$/i, "").replace(/[_]+/g, " ").trim();
+  const fzSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const fzSize = (b) => (b < 1048576 ? faNum(Math.max(1, Math.round(b / 1024))) + " کیلوبایت" : faNum((b / 1048576).toFixed(1)).replace(".", "٫") + " مگابایت");
+
+  /* ---- استایل (فقط یک بار به صفحه اضافه می‌شود) ---- */
+  function fzCss() {
+    if (document.getElementById("pzFzCss")) return;
+    const st = document.createElement("style");
+    st.id = "pzFzCss";
+    st.textContent =
+      ".fz-sw{display:flex;gap:4px;padding:4px;margin:14px 0 6px;border:1px solid var(--line);border-radius:16px;background:var(--field)}" +
+      ".fz-sw a{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;border-radius:12px;font-weight:700;font-size:.95rem;color:var(--muted);text-decoration:none;text-align:center;transition:background .25s,color .25s,transform .2s}" +
+      ".fz-sw a:hover{color:var(--text)}.fz-sw a:active{transform:scale(.97)}" +
+      ".fz-sw a[aria-current=page]{background:var(--btn-grad);color:var(--on-accent);box-shadow:0 8px 16px -10px var(--accent)}" +
+      ".fz-sw .soon-badge{font-size:.68rem;padding:0 8px}" +
+      ".fz-drop{display:flex;flex-direction:column;align-items:center;gap:6px;padding:26px 16px;border:2px dashed var(--line-2);border-radius:18px;background:var(--field);text-align:center;cursor:pointer;color:var(--muted);transition:border-color .25s,background .25s,transform .25s}" +
+      ".fz-drop svg{width:38px;height:38px;color:var(--accent);transition:transform .3s var(--spring)}" +
+      ".fz-drop strong{color:var(--text);font-size:1rem}.fz-drop small{font-size:.8rem;color:var(--muted);line-height:1.8}" +
+      ".fz-drop:hover,.fz-drop.over,.fz-drop:focus-visible{border-color:var(--accent);background:var(--chip)}" +
+      ".fz-drop.over{transform:scale(1.01)}.fz-drop.over svg,.fz-drop:hover svg{transform:translateY(-3px)}" +
+      ".fz-drop:focus-visible{outline:2px solid var(--accent);outline-offset:3px}" +
+      ".fz-drop.off{opacity:.55;pointer-events:none}" +
+      ".fz-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}" +
+      ".fz-list:empty{display:none}" +
+      ".fz-it{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--field);animation:fzIn .35s var(--ease) both}" +
+      "@keyframes fzIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}" +
+      ".fz-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:.66rem;font-weight:800;letter-spacing:.4px;direction:ltr;color:#fff;background:var(--accent)}" +
+      ".fz-ic.pdf{background:linear-gradient(135deg,#C8553D,#A23B2F)}.fz-ic.docx{background:linear-gradient(135deg,#3C78C9,#2B5FA8)}.fz-ic.txt{background:linear-gradient(135deg,#1C8059,#0F5132)}.fz-ic.er{background:linear-gradient(135deg,#8D9A93,#6B7973)}" +
+      ".fz-n{display:block;font-weight:700;font-size:.93rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;unicode-bidi:plaintext}" +
+      ".fz-m{display:block;font-size:.8rem;color:var(--muted);line-height:1.7}.fz-m.er{color:var(--bad);font-weight:600}" +
+      ".fz-pg{height:4px;margin-top:6px;border-radius:9px;background:var(--line);overflow:hidden}.fz-pg i{display:block;height:100%;width:100%;border-radius:9px;background:var(--btn-grad);transform-origin:right center;transform:scaleX(var(--v,.05));transition:transform .25s}" +
+      ".fz-x{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:1.15rem;line-height:1;cursor:pointer;transition:color .2s,border-color .2s,background .2s}" +
+      ".fz-x:hover{color:var(--bad);border-color:var(--bad);background:var(--bad-bg)}" +
+      ".fz-sum{margin:10px 2px 0;font-size:.88rem;color:var(--muted)}.fz-sum b{color:var(--accent-2)}" +
+      ".fz-multi{margin-top:18px;border:1px solid var(--line);border-radius:14px;background:var(--field);overflow:hidden}" +
+      ".fz-multi>summary{cursor:pointer;padding:12px 14px;font-weight:700;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px}" +
+      ".fz-multi>summary::-webkit-details-marker{display:none}" +
+      ".fz-multi>summary::after{content:\"\";width:9px;height:9px;border-inline-end:2.4px solid var(--muted);border-bottom:2.4px solid var(--muted);transform:rotate(45deg);transition:transform .25s;margin-top:-4px;flex:none}" +
+      ".fz-multi[open]>summary::after{transform:rotate(-135deg);margin-top:4px}" +
+      ".fz-multi-b{padding:2px 14px 14px;border-top:1px solid var(--line)}" +
+      ".fz-multi-b label{margin-top:14px !important}" +
+      ".fz-chk{display:flex !important;align-items:center;gap:10px;font-weight:600 !important;cursor:pointer}" +
+      ".fz-multi+.dur{margin-top:18px}" +
+      ".fz-chk input{width:20px;height:20px;accent-color:var(--accent);flex:none}" +
+      ".fz-warn{margin:10px 0 0;padding:10px 14px;border-radius:14px;background:var(--warn-bg);color:var(--warn-text);font-size:.88rem;line-height:1.9;font-weight:600}" +
+      ".fz-run{padding:20px}.fz-run h2{margin:0 0 4px;font-size:1.15rem}" +
+      ".fz-bar{height:10px;margin:14px 0 8px;border-radius:99px;background:var(--line);overflow:hidden}" +
+      ".fz-bar i{display:block;height:100%;width:100%;border-radius:99px;background:var(--btn-grad);transform-origin:right center;transform:scaleX(var(--v,0));transition:transform .6s var(--ease)}" +
+      ".fz-stat{margin:0;color:var(--muted);font-size:.9rem;line-height:1.9}.fz-stat b{color:var(--text)}" +
+      ".fz-ex{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px;max-height:min(52vh,460px);overflow:auto}" +
+      ".fz-e{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:var(--field);font-size:.9rem}" +
+      ".fz-e.run{border-color:var(--accent);background:var(--chip)}" +
+      ".fz-e .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;unicode-bidi:plaintext}.fz-e .t small{display:block;font-weight:400;color:var(--muted);font-size:.78rem}.fz-e .t small.er{color:var(--bad)}" +
+      ".fz-e a.btn{padding:4px 12px;min-height:0;font-size:.8rem}" +
+      ".fz-st{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;flex:none;border:2px solid var(--line-2);color:#fff;font-size:.8rem;font-weight:800}" +
+      ".fz-st.ok{background:var(--ok);border-color:var(--ok)}.fz-st.fail{background:var(--bad);border-color:var(--bad)}" +
+      ".fz-st.run{border-color:var(--line);border-top-color:var(--accent);animation:fzSp .8s linear infinite}" +
+      "@keyframes fzSp{to{transform:rotate(360deg)}}" +
+      ".fz-pill{position:fixed;z-index:90;inset-inline-start:16px;bottom:16px;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line-2);border-radius:999px;background:color-mix(in srgb,var(--surface-solid) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:var(--shadow);font-size:.88rem;font-weight:700;animation:fzIn .35s var(--ease) both}" +
+      ".fz-pill a{color:var(--accent);text-decoration:none;font-weight:800;white-space:nowrap}.fz-pill button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:1.1rem;line-height:1;cursor:pointer;padding:0 2px}" +
+      ".fz-pill .fz-st{width:20px;height:20px;font-size:.7rem}" +
+      "@media (prefers-reduced-motion:reduce){.fz-it,.fz-pill{animation:none}.fz-st.run{animation-duration:2s}.fz-bar i,.fz-pg i{transition:none}}";
+    document.head.appendChild(st);
+  }
+
+  /* ---- پاک‌سازی و خواندن متن فایل‌ها ---- */
+  const fzClean = (s) => String(s || "")
+    .normalize("NFKC")
+    .replace(/ك/g, "ک").replace(/[يى]/g, "ی")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F​‎‏‪-‮⁦-⁩﻿­]/g, "")
+    .replace(/\r\n?/g, "\n").replace(/[ \t ]+/g, " ").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+
+  function fzDecodeText(buf) {
+    const u = new Uint8Array(buf);
+    if (u.length >= 2 && u[0] === 0xFF && u[1] === 0xFE) return new TextDecoder("utf-16le").decode(u.subarray(2));
+    if (u.length >= 2 && u[0] === 0xFE && u[1] === 0xFF) return new TextDecoder("utf-16be").decode(u.subarray(2));
+    try { return new TextDecoder("utf-8", { fatal: true }).decode(u); } catch (e) { /* قدیمی: ویندوز-۱۲۵۶ */ }
+    try { return new TextDecoder("windows-1256").decode(u); } catch (e) { return new TextDecoder("utf-8").decode(u); }
+  }
+
+  /* بازکردن یک فایلِ داخل zip (برای docx) */
+  async function fzUnzip(buf, want) {
+    const dv = new DataView(buf), u8 = new Uint8Array(buf);
+    let e = -1;
+    for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) { if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; } }
+    if (e < 0) throw new Error("zip");
+    const n = dv.getUint16(e + 10, true);
+    let p = dv.getUint32(e + 16, true);
+    for (let k = 0; k < n; k++) {
+      if (p + 46 > u8.length || dv.getUint32(p, true) !== 0x02014b50) break;
+      const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+      const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+      const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nl));
+      if (name === want) {
+        const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+        const data = u8.subarray(start, start + csize);
+        if (method === 0) return data;
+        if (method === 8) {
+          if (typeof DecompressionStream !== "function") throw new Error("old");
+          const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+          return new Uint8Array(await new Response(stream).arrayBuffer());
+        }
+        throw new Error("zip");
+      }
+      p += 46 + nl + xl + cl;
+    }
+    return null;
+  }
+
+  async function fzReadDocx(buf) {
+    const xml = await fzUnzip(buf, "word/document.xml");
+    if (!xml) throw new Error("docx");
+    const doc = new DOMParser().parseFromString(new TextDecoder("utf-8").decode(xml), "application/xml");
+    if (doc.getElementsByTagName("parsererror").length) throw new Error("docx");
+    const out = [];
+    const paras = doc.getElementsByTagName("w:p");
+    for (let i = 0; i < paras.length; i++) {
+      let line = "";
+      const walk = (node) => {
+        for (let c = node.firstChild; c; c = c.nextSibling) {
+          if (c.nodeType !== 1) continue;
+          const t = c.nodeName;
+          if (t === "w:t") line += c.textContent;
+          else if (t === "w:tab") line += " ";
+          else if (t === "w:br" || t === "w:cr") line += "\n";
+          else if (t === "w:p") continue;
+          else walk(c);
+        }
+      };
+      walk(paras[i]);
+      out.push(line);
+    }
+    return { text: out.join("\n"), pages: 0 };
+  }
+
+  let fzPdfP = null;
+  function fzLoadPdf() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (fzPdfP) return fzPdfP;
+    fzPdfP = new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = "/logo/pdf.min.js?v=1";
+      s.async = true;
+      s.onload = () => {
+        if (window.pdfjsLib) { window.pdfjsLib.GlobalWorkerOptions.workerSrc = "/logo/pdf.worker.min.js?v=1"; res(window.pdfjsLib); } else { fzPdfP = null; rej(new Error("pdf")); }
+      };
+      s.onerror = () => { fzPdfP = null; s.remove(); rej(new Error("pdf")); };
+      document.head.appendChild(s);
+    });
+    return fzPdfP;
+  }
+  const FZ_RTL = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/g;
+  const FZ_LTR = /^[0-9\u06F0-\u06F9\u0660-\u0669A-Za-z.,:\/%+\-\u066B\u066C]+$/;
+  /* متن یک صفحه‌ی PDF: آیتم‌ها را به خط‌ها گروه می‌کند. در PDFهای فارسی ترتیب آیتم‌ها «بصری» (چپ به راست) است؛ پس خط راست‌به‌چپ از راست خوانده می‌شود، ولی عددها و متن لاتین سر جای خود (چپ به راست) می‌مانند. */
+  function fzPageText(items) {
+    const its = items.filter((it) => it && typeof it.str === "string" && it.str !== "" && it.transform);
+    if (!its.length) return "";
+    const rows = [];
+    its.slice().sort((a, b) => b.transform[5] - a.transform[5]).forEach((it) => {
+      const h = Math.max(it.height || 0, Math.abs(it.transform[3]) || 0, 6);
+      const last = rows[rows.length - 1];
+      if (last && Math.abs(last.y - it.transform[5]) <= Math.max(2, Math.min(last.h, h) * 0.5)) { last.items.push(it); last.h = Math.max(last.h, h); }
+      else rows.push({ y: it.transform[5], h: h, items: [it] });
+    });
+    const lines = rows.map((r) => {
+      const all = r.items.map((i) => i.str).join("");
+      const rtl = (all.match(FZ_RTL) || []).length * 2 >= all.replace(/\s/g, "").length;
+      let arr = r.items.slice().sort((a, b) => a.transform[4] - b.transform[4]);
+      if (rtl) {
+        arr.reverse();
+        /* عددها و لاتین: دوباره چپ به راست */
+        const f = arr.map((it) => FZ_LTR.test(it.str.trim()) && it.str.trim() !== "");
+        for (let i = 1; i < arr.length - 1; i++) if (!f[i] && arr[i].str.trim() === "" && f[i - 1] && f[i + 1]) f[i] = "sp";
+        const out = [];
+        for (let i = 0; i < arr.length;) {
+          if (!f[i]) { out.push(arr[i]); i++; continue; }
+          let j = i;
+          while (j < arr.length && f[j]) j++;
+          for (let k = j - 1; k >= i; k--) out.push(arr[k]);
+          i = j;
+        }
+        arr = out;
+      }
+      let s = "";
+      let prev = null;
+      arr.forEach((it) => {
+        if (prev) {
+          const a = prev.transform[4], b = it.transform[4];
+          const gap = b >= a ? b - (a + (prev.width || 0)) : a - (b + (it.width || 0));
+          if (gap > r.h * 0.18 && !/\s$/.test(s) && !/^\s/.test(it.str)) s += " ";
+        }
+        s += it.str;
+        prev = it;
+      });
+      return s.trim();
+    }).filter((l) => l && !(l.length <= 5 && /^[\d\u06F0-\u06F9\u0660-\u0669\s\-\u2013]+$/.test(l)));
+    return lines.join("\n");
+  }
+  async function fzReadPdf(buf, onProg) {
+    const lib = await fzLoadPdf();
+    const doc = await lib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise;
+    const n = doc.numPages, out = [];
+    let chars = 0;
+    try {
+      for (let p = 1; p <= n; p++) {
+        const page = await doc.getPage(p);
+        const tc = await page.getTextContent();
+        const t = fzPageText(tc.items);
+        out.push(t);
+        chars += t.length;
+        try { page.cleanup(); } catch (e) { /* ignore */ }
+        if (onProg) onProg(p / n);
+        if (chars > FZ.maxChars) break;
+      }
+    } finally { try { doc.destroy(); } catch (e) { /* ignore */ } }
+    return { text: out.join("\n\n"), pages: n };
+  }
+
+  /* یک فایل را می‌خواند و { text, pages } برمی‌گرداند؛ در خطا Error با پیام فارسی می‌اندازد */
+  async function fzReadFile(file, onProg) {
+    const ext = fzExt(file.name);
+    if (ext === "doc") throw new Error("فایل doc قدیمی پشتیبانی نمی‌شود؛ آن را به صورت docx یا PDF ذخیره کنید.");
+    if (!FZ_EXT[ext]) throw new Error("این نوع فایل پشتیبانی نمی‌شود؛ PDF، docx یا متن بدهید.");
+    if (file.size > FZ.maxBytes) throw new Error("حجم فایل بیشتر از " + faNum(Math.round(FZ.maxBytes / 1048576)) + " مگابایت است.");
+    if (!file.size) throw new Error("فایل خالی است.");
+    let buf;
+    try { buf = await file.arrayBuffer(); } catch (e) { throw new Error("خواندن فایل ممکن نشد."); }
+    let r;
+    try {
+      if (ext === "pdf") r = await fzReadPdf(buf, onProg);
+      else if (ext === "docx") r = await fzReadDocx(buf);
+      else r = { text: fzDecodeText(buf), pages: 0 };
+    } catch (e) {
+      const m = String((e && e.message) || "");
+      if (ext === "pdf" && /password/i.test(String(e && e.name) + m)) throw new Error("این PDF رمز دارد.");
+      if (ext === "pdf" && m === "pdf") throw new Error("بخش خواندن PDF بارگذاری نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
+      if (ext === "docx" && m === "old") throw new Error("مرورگر شما قدیمی است و docx را نمی‌خواند؛ از PDF یا متن استفاده کنید.");
+      if (ext === "docx") throw new Error("این فایل docx خوانده نشد. شاید خراب باشد.");
+      if (ext === "pdf") throw new Error("این PDF خوانده نشد. شاید خراب باشد.");
+      throw new Error("خواندن فایل ممکن نشد.");
+    }
+    const text = fzClean(r.text);
+    const letters = (text.match(/[؀-ۿA-Za-z]/g) || []).length;
+    const body = text.replace(/\s/g, "").length;
+    if (text.length < FZ.minChars || letters < body * 0.35) {
+      throw new Error(ext === "pdf" ? "متنی در این PDF پیدا نشد. اگر اسکن (عکسِ صفحه) است، فعلاً پشتیبانی نمی‌شود." : "متن کافی در این فایل نیست.");
+    }
+    return { text: text, pages: r.pages || Math.max(1, Math.round(text.length / 1800)) };
+  }
+
+  /* ---- تقسیم متن بین آزمون‌ها و درخواست‌ها ---- */
+  function fzSnap(text, i, dir) {
+    /* نزدیک‌ترین مرز بند یا فاصله به i (در بازه‌ی کوچک) */
+    const lim = Math.min(400, Math.floor(text.length / 20));
+    for (let d = 0; d <= lim; d++) {
+      const a = i + (dir > 0 ? d : -d);
+      if (a > 0 && a < text.length && (text[a] === "\n" || (d > 0 && text[a] === " "))) return a;
+    }
+    return i;
+  }
+  function fzSplit(text, n) {
+    if (n <= 1) return [text];
+    const out = [];
+    let a = 0;
+    for (let k = 1; k <= n; k++) {
+      const b = k === n ? text.length : fzSnap(text, Math.round((text.length * k) / n), 1);
+      out.push(text.slice(a, Math.max(a, b)).trim());
+      a = Math.max(a, b);
+    }
+    return out;
+  }
+  function fzSample(text, cap) {
+    if (text.length <= cap) return text;
+    const k = 6, w = Math.floor(cap / k) - 8, parts = [];
+    for (let i = 0; i < k; i++) {
+      const s0 = Math.floor((i * (text.length - w)) / (k - 1));
+      const s = i === 0 ? 0 : fzSnap(text, s0, 1);
+      parts.push(text.slice(s, s + w).trim());
+    }
+    return parts.join("\n…\n");
+  }
+  /* سؤال‌های یک آزمون به چند درخواست تقسیم می‌شود (هر درخواست حداکثر ۲۵ سؤال) */
+  function fzCalls(slice, count) {
+    const n = Math.max(1, Math.ceil(count / FZ.perCall));
+    const base = Math.floor(count / n), extra = count % n;
+    const parts = fzSplit(slice, n);
+    const calls = [];
+    for (let i = 0; i < n; i++) calls.push({ count: base + (i < extra ? 1 : 0), text: fzSample((parts[i] && parts[i].length >= 200) ? parts[i] : slice, FZ.cap) });
+    return calls;
+  }
+  function fzPlan(files, nExams, byFile, count) {
+    const slices = byFile ? files.map((f) => f.text) : fzSplit(files.map((f) => f.text).join("\n\n"), nExams);
+    return slices.map((s, i) => ({ n: i + 1, count: count, fileName: byFile ? fzBase(files[i].name) : "", calls: fzCalls(s, count) }));
+  }
+
+  /* ---- وضعیت ساخت: همه‌چیز روی سرور (دیتابیس) است. مرورگر فقط می‌پرسد و نشان می‌دهد و چیزی در حافظه‌ی مرورگر نگه نمی‌دارد. ---- */
+  const FJ = { data: null, subs: new Set(), pill: null, timer: 0, busy: null, hide: new Set(), marked: new Set(), up: false };
+  const fjActive = (j) => !!j && (j.status === "queued" || j.status === "running");
+  const fzStats = (d) => {
+    const ex = (d && d.exams) || [];
+    const ok = ex.filter((e) => e.status === "ok").length;
+    const fail = ex.filter((e) => e.status === "fail" || e.status === "cancelled").length;
+    return { ok: ok, fail: fail, total: ex.length, left: ex.filter((e) => e.status === "wait" || e.status === "run").length };
+  };
+  const fzOnLeave = (e) => { e.preventDefault(); e.returnValue = ""; return ""; };
+  const fzHere = () => /^\/create\/files(\/|$)/.test(curPath().split("?")[0]);
+
+  function fzEmit(prev) {
+    FJ.subs.forEach((f) => { try { f(FJ.data, prev); } catch (e) { console.error("fz sub", e); } });
+    fzPillPaint();
+  }
+  async function fzPoll() {
+    const t = tokenOf();
+    if (!t) { const had = FJ.data; FJ.data = null; if (had) fzEmit(had); return null; }
+    if (FJ.busy) return FJ.busy;
+    FJ.busy = rpc("fj_status", { p_token: t }).then((r) => {
+      if (tokenOf() !== t || !r || !r.ok) return FJ.data;
+      const prev = FJ.data;
+      FJ.data = r;
+      if (typeof r.tokens === "number") tkSet(r.tokens);
+      fzEmit(prev);
+      return FJ.data;
+    }).catch(() => FJ.data).then((v) => { FJ.busy = null; return v; });
+    return FJ.busy;
+  }
+  function fzSchedule() {
+    clearTimeout(FJ.timer);
+    FJ.timer = 0;
+    if (!tokenOf()) return;
+    const act = fjActive(FJ.data && FJ.data.job);
+    const ms = act ? (fzHere() ? 3000 : 6000) : (document.hidden ? 90000 : 30000);
+    FJ.timer = setTimeout(async () => { await fzPoll(); fzSchedule(); }, ms);
+  }
+  async function fzSync() {
+    clearTimeout(FJ.timer);
+    FJ.timer = 0;
+    if (!tokenOf()) { FJ.data = null; fzPillPaint(); return; }
+    await fzPoll();
+    fzSchedule();
+  }
+  function fzMarkSeen(d) {
+    const j = d && d.job;
+    if (!j || fjActive(j) || j.seen || FJ.marked.has(j.id) || !tokenOf()) return;
+    FJ.marked.add(j.id);
+    rpc("fj_seen", { p_token: tokenOf(), p_job: j.id }).then(() => { if (FJ.data && FJ.data.job && FJ.data.job.id === j.id) FJ.data.job.seen = true; fzPillPaint(); }).catch(() => FJ.marked.delete(j.id));
+  }
+
+  /* ---- نوار کوچک پیشرفت روی صفحه‌های دیگر ---- */
+  function fzPillPaint() {
+    const d = FJ.data, j = d && d.job;
+    let el = FJ.pill;
+    const show = j && !fzHere() && (fjActive(j) || (!j.seen && !FJ.hide.has(j.id)));
+    if (!show) { if (el) { el.remove(); FJ.pill = null; } return; }
+    fzCss();
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "fz-pill";
+      el.setAttribute("role", "status");
+      document.body.appendChild(el);
+      FJ.pill = el;
+      el.addEventListener("click", (e) => {
+        if (!e.target.closest("[data-x]")) return;
+        const cur = FJ.data && FJ.data.job;
+        if (!cur) return;
+        FJ.hide.add(cur.id);
+        rpc("fj_seen", { p_token: tokenOf(), p_job: cur.id }).catch(() => {});
+        fzPillPaint();
+      });
+    }
+    const s = fzStats(d);
+    const running = fjActive(j);
+    const bad = !running && s.fail > 0;
+    el.innerHTML = (running ? '<span class="fz-st run" aria-hidden="true"></span>' : '<span class="fz-st ' + (bad ? "fail" : "ok") + '" aria-hidden="true">' + (bad ? "!" : "✓") + "</span>") +
+      "<span>" + (running ? "در حال ساخت آزمون‌ها: " + faNum(s.ok) + " از " + faNum(s.total) : faNum(s.ok) + " از " + faNum(s.total) + " آزمون ساخته شد") + "</span>" +
+      '<a href="/create/files">' + (running ? "مشاهده" : "نتیجه") + "</a>" + (running ? "" : '<button type="button" data-x aria-label="بستن">×</button>');
+  }
+  window.addEventListener("pz:nav", () => setTimeout(() => { fzPillPaint(); fzSchedule(); }, 0));
+  window.addEventListener("authchange", () => { FJ.hide.clear(); FJ.marked.clear(); fzSync(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && tokenOf()) fzSync(); });
+
+  /* ---- نمایش پیوند «از روی موضوع / از روی فایل» بالای هر دو صفحه ---- */
+  function fzSwitch(cur) {
+    const a = (id, t, extra) => '<a href="' + withG("/create/" + id) + '" data-base="/create/' + id + '"' + (cur === id ? ' aria-current="page"' : "") + ">" + t + (extra || "") + "</a>";
+    return '<nav class="fz-sw" aria-label="روش ساخت">' + a("ai", "از روی موضوع") + a("files", "از روی فایل", ' <span class="soon-badge ai-badge">جدید</span>') + "</nav>";
+  }
+
+  const FZ_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 7.97"/><path d="M12 20v-8m0 0-3 3m3-3 3 3"/></svg>';
+
+  function viewFiles() {
+    setTitle("ساخت آزمون از روی فایل");
+    setTimeout(fillGroupChip, 0);
+    tkSync(true);
+    fzCss();
+    const st = { mode: "mixed", level: "medium", count: 20, exams: 1, byFile: false };
+    const files = [];
+    let gone = false, sending = false, uid = 0, qChain = Promise.resolve();
+    const $ = (id) => document.getElementById(id);
+
+    const seg = (name, items) =>
+      '<div class="seg" role="group" data-seg="' + name + '">' +
+      items.map((i) => '<button type="button" data-v="' + i[0] + '" aria-pressed="' + String(st[name] === i[0]) + '">' + i[1] + "</button>").join("") + "</div>";
+
+    app.innerHTML =
+      '<a class="back" href="' + withG("/create") + '">' + ICONS.back + " بازگشت به انتخاب مدل</a>" +
+      "<h1>ساخت آزمون با هوش مصنوعی</h1>" + (createGroup ? '<div id="grpChipBox">' + groupChip(groupName(createGroup)) + "</div>" : "") +
+      fzSwitch("files") +
+      '<p class="muted">جزوه یا کتابتان را بدهید؛ سؤال‌ها فقط از روی همان ساخته می‌شود و مثل بقیه‌ی آزمون‌ها لینک شرکت و لینک نتایج می‌گیرید.</p>' +
+      '<div id="fzRun" hidden></div>' +
+      '<div id="fzFormBox">' +
+      '<div class="card ai-form fz-form">' +
+      '<div class="tk-strip">' + COIN + '<span class="tk-strip-t">موجودی شما: <b data-tk>' + tkTxt() + '</b> پولک</span><a class="tk-strip-a" href="/tokens">خرید پولک</a></div>' +
+      '<label id="fzFl">فایل‌ها</label>' +
+      '<div class="fz-drop" id="fzDrop" tabindex="0" role="button" aria-labelledby="fzFl fzDt">' + FZ_UP +
+      '<strong id="fzDt">فایل‌ها را اینجا رها کنید یا برای انتخاب بزنید</strong>' +
+      "<small>PDF، Word (docx) یا متن · تا " + faNum(FZ.maxFiles) + " فایل · هر فایل تا " + faNum(Math.round(FZ.maxBytes / 1048576)) + " مگابایت</small></div>" +
+      '<input type="file" id="fzIn" multiple accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" hidden>' +
+      '<ul class="fz-list" id="fzList" aria-live="polite"></ul>' +
+      '<p class="fz-sum" id="fzSum" hidden></p>' +
+      '<p class="hint" style="margin:10px 2px 0">متن فایل‌ها داخل مرورگر شما استخراج و برای ساخت به سرور فرستاده می‌شود (خود فایل ذخیره نمی‌شود و متن ۲۴ ساعت بعد از پایان ساخت پاک می‌شود). بعد از شروع ساخت می‌توانید مرورگر را ببندید؛ ساخت روی سرور ادامه پیدا می‌کند. PDF اسکن‌شده (عکس) فعلاً پشتیبانی نمی‌شود.</p>' +
+      '<label for="fzName">نام آزمون <small class="hint">(اختیاری)</small></label><input id="fzName" type="text" maxlength="120" autocomplete="off" placeholder="اگر خالی بماند، هوش مصنوعی نام می‌گذارد">' +
+      '<label for="fzFocus">روی کدام بخش تمرکز کنیم؟ <small class="hint">(اختیاری)</small></label><input id="fzFocus" type="text" maxlength="200" autocomplete="off" placeholder="مثلاً: فقط فصل ۲ و ۳">' +
+      '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
+      '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
+      '<label for="fzCount">تعداد سؤال در هر آزمون</label><div class="stepper"><button type="button" id="fzCm" aria-label="کمتر">−</button><input id="fzCount" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="fzCp" aria-label="بیشتر">+</button></div>' +
+      '<details class="fz-multi" id="fzMulti"><summary>ساخت چند آزمون از این فایل‌ها</summary><div class="fz-multi-b">' +
+      '<label for="fzEx">تعداد آزمون</label><div class="stepper"><button type="button" id="fzEm" aria-label="کمتر">−</button><input id="fzEx" type="text" inputmode="numeric" value="' + faNum(st.exams) + '" aria-label="تعداد آزمون"><button type="button" id="fzEp" aria-label="بیشتر">+</button></div>' +
+      '<label class="fz-chk" id="fzByW" hidden><input type="checkbox" id="fzBy"><span id="fzByT">هر فایل یک آزمون جدا</span></label>' +
+      '<p class="hint" style="margin:10px 0 0">متن به بخش‌های مساوی تقسیم می‌شود و هر آزمون از بخش خودش ساخته می‌شود تا سؤال‌ها تکراری نباشند. ساخت چند آزمون چند دقیقه طول می‌کشد.</p>' +
+      "</div></details>" +
+      durHtml(["none", "auto", "set"], "none", 15) +
+      '<p class="tk-cost" id="fzCost" aria-live="polite"></p><p class="fz-warn" id="fzWarn" hidden></p>' +
+      "</div>" +
+      '<div id="fzMsg"></div>' +
+      '<div class="actions"><a class="btn ghost" href="' + withG("/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="fzGo" type="button" disabled>' + ICONS.spark + ' <span id="fzGoT">ساخت آزمون و دریافت لینک</span><span class="go-cost" id="fzGoCost"></span></button></div>' +
+      "</div>";
+
+    const msg = $("fzMsg");
+    const fail = (t, extra) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + (extra || "") + "</div>"; };
+    const durCtl = durBind(app, "none", 15, null);
+    app.querySelectorAll(".seg[data-seg]").forEach((g) => {
+      g.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        st[g.dataset.seg] = b.dataset.v;
+        g.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      });
+    });
+
+    /* ---- فایل‌ها ---- */
+    const okFiles = () => files.filter((f) => f.status === "ok");
+    const numOf = (el, dflt) => {
+      const t = el.value.replace(/[۰-۹]/g, (d) => String(FA.indexOf(d))).replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g, "");
+      return t ? parseInt(t, 10) : dflt;
+    };
+    const listEl = $("fzList"), sumEl = $("fzSum"), drop = $("fzDrop"), fin = $("fzIn");
+
+    const rowHtml = (f) => {
+      const ext = FZ_EXT[fzExt(f.name)] || "؟";
+      const cls = f.status === "err" ? "er" : ext === "PDF" ? "pdf" : ext === "DOCX" ? "docx" : "txt";
+      const meta = f.status === "read" ? "در حال خواندن…" : f.status === "err" ? esc(f.err) : fzSize(f.size) + " · " + fmtN(f.text.length) + " کاراکتر · حدود " + faNum(f.pages) + " صفحه";
+      return '<li class="fz-it" data-id="' + f.id + '"><span class="fz-ic ' + cls + '" aria-hidden="true">' + (f.status === "err" ? "!" : ext) + "</span>" +
+        '<span><span class="fz-n" dir="auto">' + esc(f.name) + '</span><span class="fz-m' + (f.status === "err" ? " er" : "") + '">' + meta + "</span>" +
+        (f.status === "read" ? '<span class="fz-pg"><i style="--v:' + (f.prog || 0.05) + '"></i></span>' : "") + "</span>" +
+        '<button type="button" class="fz-x" data-rm="' + f.id + '" aria-label="حذف ' + esc(f.name) + '">×</button></li>';
+    };
+    const paintList = () => {
+      listEl.innerHTML = files.map(rowHtml).join("");
+      drop.classList.toggle("off", files.length >= FZ.maxFiles);
+      paint();
+    };
+    const paintProg = (f) => {
+      const li = listEl.querySelector('[data-id="' + f.id + '"] .fz-pg i');
+      if (li) li.style.setProperty("--v", String(Math.max(0.05, f.prog || 0)));
+    };
+
+    const addFiles = (list) => {
+      msg.innerHTML = "";
+      const arr = Array.prototype.slice.call(list || []);
+      let skipped = 0, dup = 0;
+      arr.forEach((file) => {
+        if (files.length >= FZ.maxFiles) { skipped++; return; }
+        if (files.some((f) => f.name === file.name && f.size === file.size)) { dup++; return; }
+        const f = { id: "f" + (++uid), name: file.name, size: file.size, status: "read", text: "", pages: 0, err: "", prog: 0.05 };
+        files.push(f);
+        qChain = qChain.then(async () => {
+          if (gone || files.indexOf(f) < 0) return;
+          try {
+            const r = await fzReadFile(file, (p) => { f.prog = p; paintProg(f); });
+            if (gone || files.indexOf(f) < 0) return;
+            const total = okFiles().reduce((s, x) => s + x.text.length, 0) + r.text.length;
+            if (total > FZ.maxChars) throw new Error("حجم کل متن فایل‌ها بیش از حد است؛ فایل کمتری بدهید.");
+            f.text = r.text; f.pages = r.pages; f.status = "ok";
+          } catch (e) {
+            f.status = "err"; f.err = (e && e.message) || "خواندن فایل ممکن نشد.";
+          }
+          if (!gone) paintList();
+        });
+      });
+      if (skipped) fail("حداکثر " + faNum(FZ.maxFiles) + " فایل می‌شود داد.");
+      else if (dup) fail("این فایل قبلاً اضافه شده است.");
+      paintList();
+    };
+    drop.addEventListener("click", () => { if (files.length < FZ.maxFiles) fin.click(); });
+    drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); drop.click(); } });
+    fin.addEventListener("change", () => { addFiles(fin.files); fin.value = ""; });
+    ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+    drop.addEventListener("drop", (e) => { if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+    const onWinDrop = (e) => { if (e.target && e.target.closest && !e.target.closest("#fzDrop") && document.getElementById("fzDrop")) e.preventDefault(); };
+    window.addEventListener("dragover", onWinDrop);
+    window.addEventListener("drop", onWinDrop);
+    listEl.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-rm]");
+      if (!b) return;
+      const i = files.findIndex((f) => f.id === b.dataset.rm);
+      if (i >= 0) { files.splice(i, 1); msg.innerHTML = ""; paintList(); }
+    });
+
+    /* ---- هزینه و آماده‌بودن ---- */
+    const exCount = () => (st.byFile ? okFiles().length : Math.min(FZ.maxExams, Math.max(1, st.exams)));
+    let canGo = false;
+    function paint() {
+      const ok = okFiles(), reading = files.some((f) => f.status === "read");
+      const chars = ok.reduce((s, f) => s + f.text.length, 0);
+      sumEl.hidden = !ok.length;
+      if (ok.length) sumEl.innerHTML = "مجموع متن: <b>" + fmtN(chars) + " کاراکتر</b> (حدود " + faNum(Math.max(1, Math.round(chars / 1800))) + " صفحه) از " + faNum(ok.length) + " فایل";
+      /* گزینه‌ی «هر فایل یک آزمون» فقط وقتی دو فایل یا بیشتر هست */
+      const byW = $("fzByW");
+      byW.hidden = ok.length < 2;
+      if (ok.length < 2 && st.byFile) { st.byFile = false; $("fzBy").checked = false; }
+      $("fzByT").textContent = "هر فایل یک آزمون جدا (" + faNum(ok.length) + " آزمون)";
+      $("fzEx").disabled = st.byFile; $("fzEm").disabled = st.byFile; $("fzEp").disabled = st.byFile;
+      $("fzEx").value = faNum(exCount());
+      const n = exCount(), c = st.count, total = n * c, b = tk.bal;
+      const calls = n * Math.ceil(c / FZ.perCall);
+      const mins = Math.max(1, Math.ceil((calls * FZ.secPerCall) / 60));
+      const low = b != null && b < total;
+      const cost = $("fzCost");
+      cost.className = "tk-cost" + (low ? " low" : "");
+      cost.innerHTML = low
+        ? "برای " + faNum(total) + " سؤال، " + faNum(total) + " پولک لازم است و موجودی شما " + faNum(b) + " پولک است. تعداد سؤال یا آزمون را کمتر کنید یا " + '<a href="/tokens">پولک بخرید</a>.'
+        : (n > 1 ? faNum(n) + " آزمون × " + faNum(c) + " سؤال = <b>" + faNum(total) + " پولک</b>" : "هر سؤال ۱ پولک است؛ این آزمون <b>" + faNum(c) + " پولک</b> مصرف می‌کند.") +
+          (ok.length ? " زمان ساخت: حدود " + faNum(mins) + " دقیقه (تخمینی)." : "");
+      /* هشدار اگر متن برای این تعداد سؤال کم است */
+      const warn = $("fzWarn");
+      let w = "";
+      if (ok.length) {
+        const per = st.byFile ? Math.min.apply(null, ok.map((f) => f.text.length)) : chars / n;
+        if (per < FZ.minChars) w = "متنِ هر آزمون خیلی کم است؛ تعداد آزمون‌ها را کمتر کنید یا فایل بیشتری بدهید.";
+        else if (per < c * 150) w = "متن برای " + faNum(c) + " سؤال در هر آزمون کم است (حدود " + fmtN(Math.round(per)) + " کاراکتر)؛ ممکن است سؤال‌ها تکراری یا ضعیف شوند. تعداد سؤال یا آزمون را کمتر کنید.";
+        if (!w && chars > FZ.cap * 1.2 * n) w = "متن شما از حدی که در هر آزمون استفاده می‌شود بلندتر است؛ از سراسر متن نمونه‌هایی برداشته می‌شود. برای پوشش کامل‌تر، چند آزمون بسازید.";
+      }
+      warn.hidden = !w; warn.textContent = w;
+      const blocked = !ok.length || reading || (ok.length && (st.byFile ? Math.min.apply(null, ok.map((f) => f.text.length)) : chars / n) < FZ.minChars);
+      canGo = !blocked;
+      const go = $("fzGo");
+      go.disabled = blocked || sending;
+      if (!sending) {
+        $("fzGoCost").textContent = " · " + faNum(total) + " پولک";
+        $("fzGoT").textContent = n > 1 ? "ساخت " + faNum(n) + " آزمون" : "ساخت آزمون و دریافت لینک";
+      }
+    }
+    const setCount = (v) => { st.count = Math.min(FZ.maxQ, Math.max(1, v)); $("fzCount").value = faNum(st.count); paint(); };
+    const setEx = (v) => { st.exams = Math.min(FZ.maxExams, Math.max(1, v)); $("fzEx").value = faNum(st.exams); paint(); };
+    $("fzCm").addEventListener("click", () => setCount(numOf($("fzCount"), st.count) - 1));
+    $("fzCp").addEventListener("click", () => setCount(numOf($("fzCount"), st.count) + 1));
+    $("fzCount").addEventListener("blur", () => setCount(numOf($("fzCount"), st.count)));
+    $("fzCount").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } });
+    $("fzEm").addEventListener("click", () => setEx(numOf($("fzEx"), st.exams) - 1));
+    $("fzEp").addEventListener("click", () => setEx(numOf($("fzEx"), st.exams) + 1));
+    $("fzEx").addEventListener("blur", () => setEx(numOf($("fzEx"), st.exams)));
+    $("fzEx").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } });
+    $("fzBy").addEventListener("change", (e) => { st.byFile = e.target.checked; paint(); });
+    const onTk = () => paint();
+    window.addEventListener("tkchange", onTk);
+
+    /* ---- نمایش پیشرفت/نتیجه (از روی وضعیتی که سرور می‌دهد) ---- */
+    const runBox = $("fzRun"), formBox = $("fzFormBox");
+    const view = { showId: "", decided: false, dismissed: "", sig: "" };
+    const retryable = (d) => {
+      const j = d && d.job;
+      if (!j || fjActive(j) || !fzStats(d).fail) return false;
+      return j.finished && Date.now() - new Date(j.finished).getTime() < 86400000;
+    };
+    const exRow = (ex, d) => {
+      const multi = d.exams.length > 1;
+      const label = ex.status === "ok" && ex.title ? esc(ex.title) : (multi ? "آزمون " + faNum(ex.n) + (ex.file ? " — " + esc(ex.file) : "") : "آزمون");
+      let sub = "";
+      if (ex.status === "run") sub = "در حال ساخت… (بخش " + faNum(Math.min(ex.done + 1, ex.calls)) + " از " + faNum(ex.calls) + ")";
+      else if (ex.status === "ok") sub = faNum(ex.got) + " سؤال" + (ex.partial ? " (از " + faNum(ex.count) + " خواسته‌شده؛ پولک مابقی برگشت)" : "");
+      else if (ex.status === "wait") sub = "در صف";
+      else if (ex.status === "cancelled") sub = "لغو شد؛ پولکش برگشت";
+      const mk = ex.status === "ok" ? '<span class="fz-st ok" aria-hidden="true">✓</span>' : (ex.status === "fail" || ex.status === "cancelled") ? '<span class="fz-st fail" aria-hidden="true">!</span>' : ex.status === "run" ? '<span class="fz-st run" aria-hidden="true"></span>' : '<span class="fz-st" aria-hidden="true"></span>';
+      const right = ex.status === "ok" && ex.id ? '<a class="btn small ghost" href="/m/' + encodeURIComponent(ex.id) + '">نتایج و لینک</a>' : "";
+      const subHtml = ex.status === "fail" ? '<small class="er">' + esc(ex.err || "ساخته نشد") + " (پولکش برگشت)</small>" : "<small>" + sub + "</small>";
+      return '<li class="fz-e ' + ex.status + '">' + mk + '<span class="t">' + label + subHtml + "</span>" + right + "</li>";
+    };
+    const hold = (t) => { runBox.hidden = false; formBox.hidden = true; runBox.innerHTML = '<div class="card fz-run"><p class="muted" style="margin:0">' + t + "</p></div>"; };
+    function paintRun(d, note) {
+      if (gone) return;
+      const j = d && d.job;
+      if (!j || view.showId !== j.id) { view.sig = ""; runBox.hidden = true; formBox.hidden = false; return; }
+      runBox.hidden = false; formBox.hidden = true;
+      const sig = JSON.stringify([view.showId, d.job, d.exams]);
+      if (!note && view.sig === sig && $("fzNote")) return;
+      view.sig = sig;
+      const s = fzStats(d);
+      const running = fjActive(j);
+      const pct = s.total ? s.ok / s.total : 0;
+      let title;
+      if (running) title = j.cancel ? "در حال توقف…" : "در حال ساخت آزمون" + (s.total > 1 ? "‌ها" : "") + "…";
+      else if (j.status === "cancelled" || (j.cancel && s.fail)) title = "ساخت متوقف شد";
+      else if (s.fail && !s.ok) title = "ساخت آزمون ناموفق بود";
+      else if (s.fail) title = faNum(s.ok) + " آزمون ساخته شد و " + faNum(s.fail) + " ناموفق بود";
+      else title = s.total > 1 ? "همه‌ی " + faNum(s.total) + " آزمون آماده شد" : "آزمون آماده شد";
+      const keepOpen = runBox.querySelector("#fzNote");
+      runBox.innerHTML =
+        '<div class="card fz-run"><h2>' + title + "</h2>" +
+        '<div class="fz-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(pct * 100) + '"><i style="--v:' + pct + '"></i></div>' +
+        '<p class="fz-stat"><b>' + faNum(s.ok) + "</b> از " + faNum(s.total) + " آزمون آماده است · " + faNum(j.spent) + " پولک مصرف شد</p>" +
+        '<div id="fzNote">' + (note || (keepOpen ? keepOpen.innerHTML : "")) + "</div>" +
+        '<ul class="fz-ex">' + d.exams.map((ex) => exRow(ex, d)).join("") + "</ul>" +
+        (running ? '<p class="hint" style="margin:12px 0 0">ساخت روی سرور انجام می‌شود. می‌توانید به بخش‌های دیگر بروید یا مرورگر را ببندید و بعداً برگردید؛ هیچ چیزی از بین نمی‌رود.</p>' : "") +
+        '<div class="actions" style="margin-top:14px">' +
+        (running ? '<button class="btn ghost danger" id="fzStop" type="button"' + (j.cancel ? " disabled" : "") + ">توقف ساخت</button>"
+          : (s.fail && retryable(d) ? '<button class="btn" id="fzRetry" type="button">تلاش دوباره برای ' + faNum(s.fail) + " آزمون</button>" : "") +
+            '<a class="btn ghost" href="/">آزمون‌های من</a><button class="btn ghost" id="fzNew" type="button">ساخت آزمون تازه</button>') +
+        "</div></div>";
+      const noteBox = $("fzNote");
+      const say = (t, extra) => { noteBox.innerHTML = '<div class="err" role="alert" style="margin:12px 0 0">' + esc(t) + (extra || "") + "</div>"; };
+      const stop = $("fzStop");
+      if (stop) stop.addEventListener("click", async () => {
+        stop.disabled = true;
+        try { await rpc("fj_cancel", { p_token: tokenOf(), p_job: j.id }); } catch (e) { say((e && e.message) || "توقف انجام نشد."); stop.disabled = false; return; }
+        fzPoll();
+      });
+      const retry = $("fzRetry");
+      if (retry) retry.addEventListener("click", async () => {
+        retry.disabled = true;
+        let r;
+        try { r = await rpc("fj_retry", { p_token: tokenOf(), p_job: j.id }); } catch (e) { say((e && e.message) || "خطا در ارتباط با سرور."); retry.disabled = false; return; }
+        if (r && r.ok) { if (typeof r.tokens === "number") tkSet(r.tokens); fzSync(); return; }
+        retry.disabled = false;
+        const er = r && r.error;
+        if (er === "insufficient") { if (typeof r.tokens === "number") tkSet(r.tokens); say("پولک شما کافی نیست؛ این کار " + faNum(r.need) + " پولک می‌خواهد و موجودی شما " + faNum(r.tokens) + " است.", ' <a class="err-a" href="/tokens">خرید پولک</a>'); }
+        else if (er === "expired") say("متن فایل‌ها از سرور پاک شده است؛ لطفاً فایل‌ها را دوباره بدهید و از اول بسازید.");
+        else if (er === "busy") say("یک ساخت دیگر در جریان است.");
+        else if (er === "no_session") say("نشست شما تمام شده است؛ دوباره وارد حساب شوید.");
+        else say("تلاش دوباره ممکن نشد.");
+      });
+      const nw = $("fzNew");
+      if (nw) nw.addEventListener("click", () => { view.dismissed = j.id; view.showId = ""; paintRun(FJ.data); window.scrollTo({ top: 0 }); });
+    }
+    const sub = (d, prev) => {
+      if (gone) return;
+      const j = d && d.job;
+      if (!view.decided) {
+        view.decided = true;
+        if (j && (fjActive(j) || !j.seen || retryable(d)) && view.dismissed !== j.id) view.showId = j.id;
+      }
+      if (j && view.showId === j.id && !fjActive(j)) {
+        /* اگر فقط یک آزمون بود و جلوی چشم ما تمام شد، مثل ساخت عادی مستقیم به صفحه‌ی آزمون می‌رویم */
+        const was = prev && prev.job && prev.job.id === j.id && fjActive(prev.job);
+        if (was && d.exams.length === 1 && d.exams[0].status === "ok" && d.exams[0].id) {
+          tkLast = { used: j.spent, bal: tk.bal };
+          fzMarkSeen(d);
+          go("/m/" + encodeURIComponent(d.exams[0].id) + "?new=1");
+          return;
+        }
+        fzMarkSeen(d);
+      }
+      paintRun(d);
+    };
+    FJ.subs.add(sub);
+
+    /* ---- شروع: ارسال متن به دیتابیس و سپردن کار به سرور ---- */
+    const goBtn = $("fzGo");
+    async function startJob() {
+      msg.innerHTML = "";
+      if (sending || FJ.up || !canGo) return;
+      const ok = okFiles();
+      if (!ok.length) return fail("اول یک فایل بدهید.");
+      st.count = Math.min(FZ.maxQ, Math.max(1, numOf($("fzCount"), st.count)));
+      const n = exCount(), total = n * st.count;
+      if (tk.bal != null && tk.bal < total) return fail("پولک شما کافی نیست؛ موجودی شما " + faNum(tk.bal) + " پولک است و این کار " + faNum(total) + " پولک می‌خواهد.", ' <a class="err-a" href="/tokens">خرید پولک</a>');
+      if (fjActive(FJ.data && FJ.data.job)) { view.showId = FJ.data.job.id; paintRun(FJ.data); return; }
+      const dm = durCtl.mode();
+      const plan = fzPlan(ok, n, st.byFile, st.count);
+      const params = {
+        mode: st.mode, level: st.level, focus: $("fzFocus").value.trim().slice(0, 200), name: $("fzName").value.trim().slice(0, 120),
+        fallback: ok.length === 1 ? fzBase(ok[0].name) || "آزمون" : "آزمون از روی فایل‌ها",
+        by_file: st.byFile, group: createGroup || "", dur_mode: dm, dur_min: dm === "set" ? durCtl.min() : 0,
+      };
+      const exams = plan.map((ex) => ({
+        count: ex.count, file_name: ex.fileName || "",
+        calls: ex.calls.map((c) => ({ count: c.count, parts: Math.max(1, Math.ceil(c.text.length / FZ.chunk)) })),
+      }));
+      const tasks = [];
+      plan.forEach((ex) => ex.calls.forEach((c, ci) => {
+        const np = Math.max(1, Math.ceil(c.text.length / FZ.chunk));
+        for (let p = 0; p < np; p++) tasks.push({ n: ex.n, call: ci, part: p, text: c.text.slice(p * FZ.chunk, (p + 1) * FZ.chunk) });
+      }));
+      const explain = (er, r) => {
+        if (er === "no_session") return "نشست شما تمام شده است؛ دوباره وارد حساب شوید.";
+        if (er === "busy") return "یک ساخت دیگر در جریان است.";
+        if (er === "group") return "گروه پیدا نشد یا شما مالک یا مدیر آن نیستید.";
+        if (er === "incomplete") return "ارسال متن کامل نشد؛ دوباره تلاش کنید.";
+        if (er === "bad_text" || er === "bad_request") return "درخواست نامعتبر بود؛ فایل‌ها یا تنظیمات را بررسی کنید.";
+        return "ساخت شروع نشد. دوباره تلاش کنید.";
+      };
+      sending = true; FJ.up = true;
+      window.addEventListener("beforeunload", fzOnLeave);
+      goBtn.disabled = true;
+      const setGo = (t) => { $("fzGoT").textContent = t; $("fzGoCost").textContent = ""; };
+      setGo("در حال ارسال فایل‌ها…");
+      const dis = [drop, listEl];
+      dis.forEach((e) => e.style.pointerEvents = "none");
+      try {
+        const t0 = tokenOf();
+        if (!t0) throw { soft: "نشست شما تمام شده است؛ دوباره وارد حساب شوید." };
+        const cr = await rpc("fj_create", { p_token: t0, p_params: params, p_exams: exams });
+        if (!cr || !cr.ok) {
+          if (cr && cr.error === "busy") fzPoll();
+          throw { soft: explain(cr && cr.error, cr) };
+        }
+        let next = 0, done = 0, bad = null;
+        const put = async (t) => {
+          let last = "";
+          for (let a = 0; a < 4; a++) {
+            if (bad) return;
+            try {
+              const r = await rpc("fj_put", { p_token: tokenOf(), p_job: cr.id, p_n: t.n, p_call: t.call, p_part: t.part, p_text: t.text });
+              if (r && r.ok) return;
+              last = (r && r.error) || "";
+              if (last === "no_session" || last === "not_found" || last === "bad_request" || last === "bad_text") break;
+            } catch (e) { last = "net"; }
+            await fzSleep(900 * (a + 1));
+          }
+          bad = bad || (last === "net" ? "ارتباط با سرور قطع شد؛ اتصال اینترنت را بررسی و دوباره تلاش کنید." : explain(last));
+        };
+        const worker = async () => {
+          while (!bad && next < tasks.length) {
+            const t = tasks[next++];
+            await put(t);
+            done++;
+            setGo("در حال ارسال فایل‌ها… " + faNum(Math.round((done / tasks.length) * 100)) + "٪");
+          }
+        };
+        await Promise.all([worker(), worker(), worker()]);
+        if (bad) throw { soft: bad };
+        setGo("در حال شروع ساخت…");
+        let sr = null;
+        for (let a = 0; a < 3 && !sr; a++) {
+          try { sr = await rpc("fj_start", { p_token: tokenOf(), p_job: cr.id }); } catch (e) { if (a === 2) throw { soft: "ارتباط با سرور قطع شد؛ دوباره تلاش کنید." }; await fzSleep(1000 * (a + 1)); }
+        }
+        if (!sr || !sr.ok) {
+          if (sr && sr.error === "insufficient") {
+            if (typeof sr.tokens === "number") tkSet(sr.tokens);
+            throw { soft: "پولک شما کافی نیست؛ این کار " + faNum(sr.need) + " پولک می‌خواهد و موجودی شما " + faNum(sr.tokens) + " است.", extra: ' <a class="err-a" href="/tokens">خرید پولک</a>' };
+          }
+          if (sr && sr.error === "busy") fzPoll();
+          throw { soft: explain(sr && sr.error, sr) };
+        }
+        if (typeof sr.tokens === "number") tkSet(sr.tokens);
+        view.decided = true;
+        view.showId = sr.id;
+        await fzSync();
+        paintRun(FJ.data);
+        window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" });
+      } catch (e) {
+        if (e && e.soft) fail(e.soft, e.extra);
+        else fail((e && e.message) || "خطایی رخ داد؛ دوباره تلاش کنید.");
+      } finally {
+        sending = false; FJ.up = false;
+        window.removeEventListener("beforeunload", fzOnLeave);
+        dis.forEach((e) => e.style.pointerEvents = "");
+        if (!gone) paint();
+      }
+    }
+    goBtn.addEventListener("click", startJob);
+
+    /* ---- شروع نمایش: اول از سرور می‌پرسیم کار نیمه‌تمام یا نتیجه‌ی ندیده‌ای هست یا نه ---- */
+    paintList();
+    hold("در حال بررسی ساخت‌های قبلی…");
+    let first = true;
+    Promise.race([fzPoll(), fzSleep(6000)]).then(() => {
+      if (gone || !first) return;
+      first = false;
+      if (!view.decided) { view.decided = true; const d = FJ.data, j = d && d.job; if (j && (fjActive(j) || !j.seen || retryable(d))) view.showId = j.id; }
+      paintRun(FJ.data);
+      if (FJ.data && FJ.data.job && view.showId === FJ.data.job.id && !fjActive(FJ.data.job)) fzMarkSeen(FJ.data);
+      fzSchedule();
+    });
+    fzPillPaint();
+
+    return function cleanup() {
+      gone = true;
+      FJ.subs.delete(sub);
+      window.removeEventListener("tkchange", onTk);
+      window.removeEventListener("dragover", onWinDrop);
+      window.removeEventListener("drop", onWinDrop);
+      setTimeout(fzPillPaint, 0);
     };
   }
 
@@ -5966,6 +6788,7 @@
       cleanup = viewGate(parts.slice(0, 2).join("/"), token);
     } else if (parts[0] === "create") {
       if (parts[1] === "ai") cleanup = viewAI();
+      else if (parts[1] === "files") cleanup = viewFiles();
       else if (ACTIVE_MODES.indexOf(parts[1]) >= 0) cleanup = viewBuild(parts[1], /(^|&)draft=1(&|$)/.test(query));
       else viewChoose();
     } else {
@@ -6003,4 +6826,5 @@
   route();
   syncInviteWatch();
   validateSession();
+  fzSync();
 })();
