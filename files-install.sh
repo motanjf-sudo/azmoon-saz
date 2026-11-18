@@ -6,8 +6,9 @@
 set -u
 APP="${PZ_APP:-/opt/pazmoonak}"
 DB="${PZ_DB:-pazmoonak}"
-API="${PZ_API:-http://127.0.0.1:8787}"
 ENVF="${PZ_ENV:-/etc/pazmoonak/env}"
+PORTV=$(grep -m1 "^PORT=" "$ENVF" 2>/dev/null | cut -d= -f2- | tr -d "\"' ")
+API="${PZ_API:-http://127.0.0.1:${PORTV:-8787}}"
 SVC="${PZ_SERVICE:-pazmoonak}"
 RESTART="${PZ_RESTART:-systemctl restart $SVC}"
 UNIT="pazmoonak-files"
@@ -39,7 +40,7 @@ PZCHK_END
 )
 [ -z "$MISS" ] || { echo "ERR: the database is missing: $MISS"; echo "(install the earlier updates first)"; exit 1; }
 KEYS=1
-grep -q "^SUPABASE_SERVICE_ROLE_KEY=." "$ENVF" 2>/dev/null || { echo "ERR: SUPABASE_SERVICE_ROLE_KEY not found in $ENVF"; exit 1; }
+grep -q -E "^(SUPABASE_SERVICE_ROLE_KEY|SERVICE_KEY)=." "$ENVF" 2>/dev/null || { echo "ERR: SERVICE_KEY not found in $ENVF"; exit 1; }
 grep -q "^DEEPSEEK_API_KEY=." "$ENVF" 2>/dev/null || { echo "ERR: DEEPSEEK_API_KEY not found in $ENVF (the topic generator needs the same key)"; exit 1; }
 echo "OK (node: $NODE)"
 
@@ -492,7 +493,7 @@ cat > "$T/files-worker.js" <<'PZJS_END'
    asks DeepSeek for the questions and hands the result back with fj_finish (which saves the quiz on the user's account and refunds unused pulaks).
    It keeps nothing in memory that matters: if it is stopped, unfinished exams are picked up again after a few minutes. */
 const API = (process.env.PZ_API || process.env.SUPABASE_URL || "http://127.0.0.1:8787").replace(/\/+$/, "");
-const SKEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SKEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_KEY || "";
 const DSKEY = process.env.DEEPSEEK_API_KEY || "";
 const DSMODEL = process.env.DEEPSEEK_MODEL || "deepseek-flash";
 const DSURL = process.env.DEEPSEEK_URL || "https://api.deepseek.com/chat/completions";
@@ -671,7 +672,7 @@ async function runExam(job) {
 let active = 0, stopping = false, warned = 0;
 async function tick() {
   if (stopping) return;
-  if (!DSKEY || !SKEY) { if (Date.now() - warned > 60000) { warned = Date.now(); log("waiting: DEEPSEEK_API_KEY or SUPABASE_SERVICE_ROLE_KEY is missing"); } return; }
+  if (!DSKEY || !SKEY) { if (Date.now() - warned > 60000) { warned = Date.now(); log("waiting: DEEPSEEK_API_KEY or SERVICE_KEY is missing"); } return; }
   while (!stopping && active < CONC) {
     let job;
     try { job = await rpc("fj_claim", {}); } catch (e) { if (Date.now() - warned > 60000) { warned = Date.now(); log("claim failed:", String(e).slice(0, 200)); } return; }
@@ -748,7 +749,8 @@ systemctl is-active --quiet "$UNIT" && echo "OK (service $UNIT is running)" || {
 
 echo "[5/6] smoke tests"
 get() { grep -m1 "^$1=" "$ENVF" 2>/dev/null | cut -d= -f2- | sed 's/^"//; s/"$//; s/^'"'"'//; s/'"'"'$//'; }
-SK=$(get SUPABASE_SERVICE_ROLE_KEY); AK=$(get SUPABASE_ANON_KEY)
+SK=$(get SUPABASE_SERVICE_ROLE_KEY); [ -n "$SK" ] || SK=$(get SERVICE_KEY); AK=$(get SUPABASE_ANON_KEY)
+[ -n "$AK" ] || AK=$(sed -n 's/.*SUPABASE_ANON_KEY[" ]*[:=][ ]*["\x27]\([^"\x27]*\)["\x27].*/\1/p' "${PZ_WEB:-/var/www/pazmoonak}/config.js" 2>/dev/null | head -1)
 call() { # key name json  -> prints "HTTP-code body"
   curl -sS -m 20 -o "$T/r.out" -w "%{http_code}" -X POST "$API/rest/v1/rpc/$2" -H "Content-Type: application/json" -H "apikey: $1" -H "Authorization: Bearer $1" -d "$3" 2>&1 | tr -d '\n'; echo " $(head -c 160 "$T/r.out" 2>/dev/null)"
 }
@@ -759,7 +761,7 @@ if [ -n "$AK" ]; then
   BIG=$(node -e 'process.stdout.write(JSON.stringify({p_token:"x",p_job:"00000000-0000-0000-0000-000000000000",p_n:1,p_call:0,p_part:0,p_text:"ب".repeat(24000)}))')
   R=$(call "$AK" fj_put "$BIG"); case "$R" in 200*no_session*) echo "  ok   a 24000-character upload chunk passes the server's size limit";; *) echo "  FAIL big upload chunk was refused: $R"; FAIL=1;; esac
 else
-  echo "  skip SUPABASE_ANON_KEY is not in $ENVF; public-key checks not run (the final check is to build one small exam on the site)"
+  echo "  skip the site's public key was not found (config.js); public-key checks not run (the final check is to build one small exam on the site)"
 fi
 sleep 1
 journalctl -u "$UNIT" -n 5 --no-pager 2>/dev/null | grep -qi "claim failed" && { echo "  FAIL the worker cannot reach the API:"; journalctl -u "$UNIT" -n 5 --no-pager | cut -c1-200; FAIL=1; } || echo "  ok   the worker is polling without errors"
