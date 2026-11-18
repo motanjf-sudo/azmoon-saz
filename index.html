@@ -28,7 +28,7 @@
   <meta name="twitter:description" content="آزمون تستی و درست/نادرست بسازید، لینک بفرستید و نتایج را ببینید.">
   <script type="application/ld+json">
   {"@context":"https://schema.org","@graph":[
-    {"@type":"Organization","@id":"https://pazmoonak.com/#org","name":"پازمونک","alternateName":["Pazmoonak","پازمونک آزمون‌ساز"],"url":"https://pazmoonak.com/","logo":{"@type":"ImageObject","url":"https://pazmoonak.com/favicon-512.png","width":512,"height":512},"contactPoint":{"@type":"ContactPoint","telephone":"+98-21-26378190","contactType":"customer support","availableLanguage":"fa"}},
+    {"@type":"Organization","@id":"https://pazmoonak.com/#org","name":"پازمونک","alternateName":["Pazmoonak","پازمونک آزمون‌ساز"],"url":"https://pazmoonak.com/","logo":{"@type":"ImageObject","url":"https://pazmoonak.com/favicon-512.png","width":512,"height":512},"contactPoint":{"@type":"ContactPoint","telephone":"+98-21-26378190","contactType":"customer support","availableLanguage":"fa"},"sameAs":["https://ble.ir/pazmoonak","https://www.instagram.com/pazmoonak/"]},
     {"@type":"WebSite","@id":"https://pazmoonak.com/#site","url":"https://pazmoonak.com/","name":"پازمونک","alternateName":["Pazmoonak","پازمونک آزمون‌ساز"],"inLanguage":"fa","publisher":{"@id":"https://pazmoonak.com/#org"}},
     {"@type":"WebApplication","name":"پازمونک","url":"https://pazmoonak.com/","applicationCategory":"EducationalApplication","operatingSystem":"Web","inLanguage":"fa","description":"پازمونک؛ آزمون‌ساز آنلاین فارسی. آزمون تستی و درست/نادرست بسازید یا با هوش مصنوعی از روی موضوع تولید کنید، لینکش را بفرستید و نتایج را ببینید.","featureList":["ساخت آزمون چندگزینه‌ای","آزمون درست/نادرست","ساخت آزمون با هوش مصنوعی","معلم هوشمند با کتاب‌های درسی پایه‌ی هفتم تا دوازدهم","نتایج و نمره‌ی زنده"],"publisher":{"@id":"https://pazmoonak.com/#org"},"offers":{"@type":"Offer","price":"0","priceCurrency":"IRR"}},
     {"@type":"FAQPage","mainEntity":[
@@ -1384,7 +1384,7 @@
     background:linear-gradient(135deg,#0B3D2E 0%,#0F5132 55%,#14684A 100%);
     border-top:1px solid rgba(255,255,255,.14);box-shadow:0 -10px 30px rgba(7,42,32,.18);color:#fff}
   .site-foot-in{max-width:1120px;margin:0 auto;padding:30px 18px 30px;display:grid;
-    grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:26px 44px;align-items:start}
+    grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr);gap:26px 36px;align-items:start}
   .ft-brand{grid-column:1 / -1;display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.35rem;color:#fff;line-height:1.4}
   .ft-logo{height:32px;width:auto;filter:none;display:block}
   .ft-brand{flex-wrap:wrap;row-gap:4px}
@@ -1406,10 +1406,19 @@
   .ft-tel{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:1.02rem !important;color:#fff !important;letter-spacing:.3px}
   .ft-tel svg{width:18px;height:18px;flex:none;color:#86BAA0}
   .ft-tel span{direction:ltr;unicode-bidi:embed}
+  .ft-socials{justify-self:start;width:max-content;max-width:100%}
+  .ft-socials h3{justify-content:center;text-align:center}
+  .ft-socials h3::before{display:none}
+  .ft-soc-row{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+  .ft-soc-it{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none !important;color:rgba(255,255,255,.86) !important;font-size:.78rem !important;line-height:1.4 !important}
+  .ft-soc-it svg{width:46px;height:46px;display:block;border-radius:13px;box-shadow:0 4px 12px rgba(0,0,0,.25);transition:transform .2s,box-shadow .2s}
+  .ft-soc-it:hover svg,.ft-soc-it:focus-visible svg{transform:translateY(-3px);box-shadow:0 8px 18px rgba(0,0,0,.35)}
+  @media (prefers-reduced-motion:reduce){.ft-soc-it svg{transition:none}}
   .ft-note{margin-top:6px !important;font-size:.82rem !important;color:rgba(255,255,255,.62) !important;line-height:1.8 !important}
   @media (max-width:900px){
     .site-foot-in{grid-template-columns:1fr 1fr;gap:24px 24px;padding:26px 16px 24px}
     .ft-about{grid-column:1 / -1}
+    .ft-socials{grid-column:1 / -1}
   }
   @media (max-width:420px){
     .site-foot-in{grid-template-columns:1fr}
@@ -1605,6 +1614,19 @@
       <p><a class="ft-tel" href="tel:+982126378190"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg><span>۰۲۱-۲۶۳۷۸۱۹۰</span></a></p>
     
     <div class="ft-seal"><div class="trust" id="trustSeal"><a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8331341&Code=8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8331341&Code=8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU' alt='' style='cursor:pointer' code='8nSAqXICAxQ4OvcLkLPPzPSbkrK0LQtU'></a></div><div id="zibal"></div></div>
+    </section>
+    <section class="ft-col ft-socials" aria-labelledby="ftSoc">
+      <h3 id="ftSoc">ما در شبکه‌های مجازی</h3>
+      <div class="ft-soc-row">
+        <a class="ft-soc-it" href="https://ble.ir/pazmoonak" target="_blank" rel="noopener" aria-label="کانال پازمونک در بله">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="13" fill="#fff"/><g transform="translate(24 24) scale(1.12) translate(-21 -20)"><path d="M9 8H12L13 9.500Q15 8 19 8H21C28 8 33 13 33 20C33 27 28 32 21 32C14 32 9 27 9 20Z" fill="#00B894"/><path d="M15 20.300L19.600 24.300L27.500 16.200" fill="none" stroke="#fff" stroke-width="3.600" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+          <span>بله</span>
+        </a>
+        <a class="ft-soc-it" href="https://www.instagram.com/pazmoonak/" target="_blank" rel="noopener" aria-label="پازمونک در اینستاگرام">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="igG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".3" stop-color="#FA7E1E"/><stop offset=".6" stop-color="#D62976"/><stop offset=".85" stop-color="#962FBF"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><rect width="48" height="48" rx="13" fill="url(#igG)"/><rect x="12" y="12" width="24" height="24" rx="7" fill="none" stroke="#fff" stroke-width="2.600"/><circle cx="24" cy="24" r="5.600" fill="none" stroke="#fff" stroke-width="2.600"/><circle cx="30.800" cy="17.200" r="1.600" fill="#fff"/></svg>
+          <span>اینستاگرام</span>
+        </a>
+      </div>
     </section>
   </div>
   </footer>
