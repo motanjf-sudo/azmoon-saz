@@ -319,7 +319,7 @@
   }
 
   function setTitle(t) {
-    document.title = t ? t + " | " + BASE_TITLE : BASE_TITLE + " | ساخت آزمون آنلاین با هوش مصنوعی";
+    document.title = t ? t + " | " + BASE_TITLE : "ساخت آزمون آنلاین با هوش مصنوعی | " + BASE_TITLE;
   }
 
   function copyHandlers(root) {
