@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>پازمونک | ساخت آزمون آنلاین با هوش مصنوعی</title>
+  <title>ساخت آزمون آنلاین با هوش مصنوعی | پازمونک</title>
   <meta name="description" content="پازمونک؛ آزمون‌ساز آنلاین فارسی. آزمون تستی و درست/نادرست بسازید یا با هوش مصنوعی از روی موضوع تولید کنید، لینکش را بفرستید و نتایج را ببینید.">
   <meta name="application-name" content="پازمونک">
   <meta name="apple-mobile-web-app-title" content="پازمونک">
@@ -15,7 +15,7 @@
   <meta property="og:locale" content="fa_IR">
   <meta property="og:site_name" content="پازمونک">
   <meta property="og:url" content="https://pazmoonak.com/">
-  <meta property="og:title" content="پازمونک | ساخت آزمون آنلاین با هوش مصنوعی">
+  <meta property="og:title" content="ساخت آزمون آنلاین با هوش مصنوعی | پازمونک">
   <meta property="og:description" content="پازمونک؛ آزمون‌ساز آنلاین فارسی. آزمون تستی و درست/نادرست بسازید یا با هوش مصنوعی از روی موضوع تولید کنید، لینکش را بفرستید و نتایج را ببینید.">
   <meta property="og:image" content="https://pazmoonak.com/og-image.png">
   <meta property="og:image:type" content="image/png">
@@ -24,7 +24,7 @@
   <meta property="og:image:alt" content="پازمونک؛ آزمون‌ساز آنلاین فارسی">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://pazmoonak.com/og-image.png">
-  <meta name="twitter:title" content="پازمونک | ساخت آزمون آنلاین">
+  <meta name="twitter:title" content="ساخت آزمون آنلاین با هوش مصنوعی | پازمونک">
   <meta name="twitter:description" content="آزمون تستی و درست/نادرست بسازید، لینک بفرستید و نتایج را ببینید.">
   <script type="application/ld+json">
   {"@context":"https://schema.org","@graph":[
@@ -1485,6 +1485,31 @@
     .lab-m.me .lab-b{max-width:92%}
   }
   @media (prefers-reduced-motion:reduce){.lab-panel,.lab-dot{animation:none}.lab-fab{transition:none}}
+  /* ---------- سئو: محتوای متنیِ صفحه‌ی اصلی (فقط در صفحه‌ی اصلی، زیر فهرست آزمون‌ها) ---------- */
+  .home-seo{position:relative;z-index:1;width:100%;max-width:1120px;margin:0 auto;padding:8px 18px 40px}
+  .home-seo[hidden],html.gate-on .home-seo{display:none}
+  .home-seo h2{margin:34px 0 10px;font-size:clamp(1.3rem,2.6vw,1.7rem);line-height:1.6;font-weight:900}
+  .home-seo h3{margin:0 0 6px;font-size:1.08rem;line-height:1.7}
+  .home-seo p,.home-seo li{color:var(--muted)}
+  .home-seo p{margin:0 0 12px;max-width:52em}
+  .home-seo ul{margin:0 0 12px;padding-inline-start:22px;max-width:52em}
+  .home-seo li{margin-bottom:6px}
+  .home-seo li::marker{color:var(--accent)}
+  .home-seo li b,.home-seo p b{color:var(--text)}
+  .hs-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:16px}
+  .hs-card{display:block;padding:18px 20px;border-radius:20px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);color:inherit;text-decoration:none;transition:transform .25s ease,border-color .25s ease}
+  .hs-card:hover{transform:translateY(-3px);border-color:var(--line-2)}
+  .hs-card p{margin:0 0 8px;font-size:.95rem}
+  .hs-card span{color:var(--accent);font-weight:700;font-size:.92rem}
+  .hs-faq{display:grid;gap:10px;max-width:860px}
+  .hs-faq details{border-radius:18px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden}
+  .hs-faq summary{list-style:none;cursor:pointer;padding:14px 18px;font-weight:800;line-height:1.8;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .hs-faq summary::-webkit-details-marker{display:none}
+  .hs-faq summary::after{content:"+";flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:10px;background:var(--chip);color:var(--accent);font-size:1.25rem;font-weight:500;transition:transform .3s ease}
+  .hs-faq details[open] summary::after{transform:rotate(45deg)}
+  .hs-faq details p{margin:0;padding:0 18px 16px;line-height:2}
+  @media (max-width:639px){.home-seo{padding:4px 14px 32px}.hs-grid{grid-template-columns:1fr}}
+  @media (prefers-reduced-motion:reduce){.hs-card,.hs-faq summary::after{transition:none}}
 </style>
 </head>
 <body>
@@ -1536,7 +1561,7 @@
       <div>
         <span class="eyebrow"><i></i> پازمونک · آزمون‌ساز آنلاین فارسی</span>
         <h1 id="heroTitle">
-          <span class="ln"><span>آزمون بساز،</span></span>
+          <span class="ln"><span>آزمون آنلاین بساز،</span></span>
           <span class="ln"><span>لینکش را بفرست،</span></span>
           <span class="ln"><span class="grad">نتیجه را ببین.</span></span>
         </h1>
@@ -1594,6 +1619,41 @@
   </section>
 
   <main id="app" class="wrap" tabindex="-1"></main>
+  <!-- سئو: متن صفحه‌ی اصلی برای موتورهای جست‌وجو و کاربر تازه‌وارد؛ فقط در صفحه‌ی اصلی دیده می‌شود (اسکریپت پایین صفحه، syncHero).
+       سؤال‌های پرتکرار اینجا باید دقیقاً با FAQPage در <head> یکی باشند. -->
+  <section class="home-seo" id="homeSeo" aria-labelledby="hsTitle">
+    <h2 id="hsTitle">آزمون‌ساز آنلاین فارسی؛ ساخت آزمون و امتحان آنلاین در چند دقیقه</h2>
+    <p><b>پازمونک</b> یک آزمون‌ساز آنلاین فارسی و راست‌به‌چپ است. سوال‌ها را خودتان می‌نویسید یا با هوش مصنوعی می‌سازید، لینک آزمون را در پیام‌رسان یا گروه کلاس می‌فرستید و نمره‌ی هر شرکت‌کننده بلافاصله بعد از ثبت پاسخ‌ها آماده است. نه کاغذ لازم است، نه تصحیح دستی، نه نصب برنامه؛ همه‌چیز روی موبایل و کامپیوتر کار می‌کند.</p>
+    <p>ساخت دستی آزمون، فرستادن لینک و دیدن نتایج رایگان است. فقط ساخت سؤال با هوش مصنوعی پولک مصرف می‌کند (هر سؤال یک پولک) و هنگام ثبت‌نام ۲۰ پولک هدیه می‌گیرید.</p>
+
+    <h2>چه آزمونی می‌خواهید بسازید؟</h2>
+    <div class="hs-grid">
+      <a class="hs-card" href="/azmoon-testi"><h3>ساخت آزمون تستی و چهارگزینه‌ای</h3><p>سؤال چندگزینه‌ای با ۲ تا ۸ گزینه، سؤال درست و غلط یا ترکیبی از هر دو؛ تا ۱۰۰ سؤال در هر آزمون.</p><span>راهنمای آزمون تستی ←</span></a>
+      <a class="hs-card" href="/azmoon-hoosh-masnoei"><h3>ساخت آزمون با هوش مصنوعی</h3><p>موضوع را بنویسید و نوع، تعداد و سختی سؤال‌ها را انتخاب کنید؛ آزمون ساخته می‌شود و هر سؤال قابل ویرایش است.</p><span>راهنمای ساخت با هوش مصنوعی ←</span></a>
+      <a class="hs-card" href="/azmoon-az-pdf"><h3>ساخت سوال از PDF و جزوه</h3><p>فایل جزوه، کتاب یا خلاصه‌درس را بدهید تا سؤال‌ها فقط از روی متن خود شما طراحی شوند.</p><span>راهنمای تبدیل جزوه به آزمون ←</span></a>
+      <a class="hs-card" href="/azmoon-baraye-moalem"><h3>آزمون آنلاین برای معلم‌ها و مدارس</h3><p>امتحان کلاسی، آزمونک پایان جلسه و تمرین شب امتحان با تصحیح خودکار و کارنامه‌ی همه‌ی دانش‌آموزان.</p><span>راهنمای معلم‌ها ←</span></a>
+    </div>
+
+    <h2>امکانات آزمون‌ساز پازمونک</h2>
+    <ul>
+      <li><b>نمره‌دهی خودکار و نتایج زنده:</b> نمره و پاسخ‌های هر نفر، میانگین، بهترین نمره و درصد پاسخ درست هر سؤال، با خروجی اکسل.</li>
+      <li><b>آزمون زمان‌دار:</b> زمان را خودتان تعیین کنید؛ زمان روی سرور حساب می‌شود و با تمام شدنش پاسخ‌ها خودکار ثبت می‌شود.</li>
+      <li><b>آزمون گروهی و خصوصی:</b> آزمون را برای همه باز بگذارید یا فقط اعضای یک گروه، مثلاً یک کلاس، بتوانند شرکت کنند.</li>
+      <li><b>فرمول ریاضی:</b> فرمول‌ها در سؤال‌ها و گزینه‌ها درست نمایش داده می‌شوند؛ مناسب ریاضی، فیزیک و شیمی.</li>
+      <li><b>معلم هوشمند:</b> پایه و درس را انتخاب کنید؛ کتاب درسی پایه‌ی هفتم تا دوازدهم می‌آید و هر جا را نفهمیدید می‌پرسید.</li>
+    </ul>
+
+    <h2>برای چه کسانی مناسب است؟</h2>
+    <p><b>معلم‌ها و دبیرها</b> برای امتحان کلاسی و آزمونک‌های کوتاه؛ <b>دانش‌آموزان و داوطلبان کنکور</b> برای ساختن تست از جزوه‌ی خودشان و تمرین با دوستان؛ <b>آموزشگاه‌ها و مدرسان خصوصی</b> برای سنجش پیشرفت شاگردان؛ و <b>شرکت‌ها</b> برای آزمون‌های آموزشی کارکنان. برای یک مسابقه‌ی اطلاعات عمومی میان دوستان هم کافی است لینک را در گروه بفرستید.</p>
+
+    <h2 id="hsFaq">سوال‌های پرتکرار</h2>
+    <div class="hs-faq">
+      <details><summary>پازمونک چیست؟</summary><p>پازمونک یک آزمون‌ساز آنلاین فارسی است که به شما اجازه می‌دهد آزمون تستی یا درست/نادرست بسازید، لینکش را برای دیگران بفرستید و نمره و نتایج را ببینید.</p></details>
+      <details><summary>برای ساخت آزمون یا شرکت در آن ثبت‌نام لازم است؟</summary><p>بله، هم سازنده و هم شرکت‌کننده با شماره‌ی موبایل یا ایمیل ثبت‌نام می‌کنند که کمتر از یک دقیقه طول می‌کشد.</p></details>
+      <details><summary>چطور با هوش مصنوعی آزمون بسازم؟</summary><p>در بخش ساخت با هوش مصنوعی، موضوع را بنویسید و نوع و تعداد سؤال و سختی را انتخاب کنید تا آزمون ساخته شود. هر سؤال یک پولک است و ۲۰ پولک هدیه‌ی ثبت‌نام می‌گیرید. بعد می‌توانید سؤال‌ها را ویرایش کنید.</p></details>
+      <details><summary>آیا می‌توانم برای تمرین کنکور از پازمونک استفاده کنم؟</summary><p>بله، می‌توانید سؤال‌های تستی خودتان یا آزمون‌های ساخته‌شده از جزوه‌ها را برای تمرین کنکور و امتحان‌های مدرسه بسازید و با دوستان یا دانش‌آموزان به اشتراک بگذارید.</p></details>
+    </div>
+  </section>
   <footer class="site-foot" id="siteFoot"><div class="site-foot-in">
     <div class="ft-brand" aria-label="پازمونک"><span>پازمونک</span><img class="logo ft-logo" src="/logo/mark.png" width="45" height="32" alt="" decoding="async"><span class="ft-en" lang="en" dir="ltr">Pazmoonak · pazmoonak.com</span></div>
     <section class="ft-col ft-about" aria-labelledby="ftAbout">
@@ -1725,10 +1785,12 @@
     var hero = document.getElementById('hero');
     function isHome() { return location.pathname === '/' || root.classList.contains('gate-on'); }
     var foot = document.getElementById('siteFoot');
+    var homeSeo = document.getElementById('homeSeo');
     var syncHero = guard(function () {
       var h = isHome();
       if (hero) hero.hidden = !h;
       if (foot) foot.hidden = !h;      /* فوتر فقط در صفحه‌ی اصلی */
+      if (homeSeo) homeSeo.hidden = location.pathname !== '/';   /* متن سئو فقط در خود صفحه‌ی اصلی */
     });
     window.addEventListener('pz:nav', syncHero);
     window.addEventListener('popstate', syncHero);

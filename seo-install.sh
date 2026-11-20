@@ -25,17 +25,40 @@ echo "[2/5] installing the new pz-front"
 cat > "$T/pz-front" <<'PZSYNC_END'
 #!/usr/bin/env bash
 # آخرین نسخه‌ی سایت را از GitHub می‌گیرد و جایگزین فایل‌های سایت می‌کند:  pz-front
+# فقط نسخه‌ای نصب می‌شود که بررسی خودکار GitHub (کار «check» در Actions) رویش موفق بوده است،
+# و دقیقاً همان نسخه (با شناسه‌ی commit) دانلود می‌شود، نه هر چه در همان لحظه روی main باشد.
+#   PZ_REF=<شاخه یا commit>   نصب یک نسخه‌ی مشخص (مثلاً برگشت به نسخه‌ی قبلی)
+#   PZ_SKIP_CI=1              نصب بدون بررسی (فقط در اضطرار)
 set -euo pipefail
 REPO=motanjf-sudo/azmoon-saz
 BRANCH=main
+REF=${PZ_REF:-$BRANCH}
 WEB=${PZ_WEB:-/var/www/pazmoonak}
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
+# خواندن یک مقدار از JSON پاسخ GitHub با node (روی سرور نصب است)
+jsget() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch(e){process.exit(1)}
+  if(process.argv[1]==="sha"){if(!/^[0-9a-f]{40}$/.test(j.sha||""))process.exit(1);console.log(j.sha);return}
+  const r=j.check_runs||[];
+  console.log(r.some(x=>x.conclusion==="success")?"success":!r.length?"none":r.some(x=>x.status!=="completed")?"pending":"failure")})' "$1"; }
 if [ -n "${PZ_FRONT_DIR:-}" ]; then
   D="${PZ_FRONT_DIR%/}/"            # فقط برای تست: به‌جای GitHub از یک پوشه‌ی محلی
 else
-  echo "دریافت آخرین نسخه از GitHub ..."
-  wget -q -T 40 -t 3 -O "$T/s.tgz" "https://codeload.github.com/${REPO}/tar.gz/refs/heads/${BRANCH}" || { echo "خطا: دانلود از GitHub انجام نشد. سایت دست‌نخورده ماند."; exit 1; }
+  API="https://api.github.com/repos/${REPO}"
+  SHA=$(wget -q -T 30 -t 3 -O - "${API}/commits/${REF}" | jsget sha) || { echo "خطا: شناسه‌ی نسخه‌ی ${REF} از GitHub گرفته نشد. سایت دست‌نخورده ماند."; exit 1; }
+  echo "نسخه: ${SHA:0:10} (${REF})"
+  if [ "${PZ_SKIP_CI:-}" != 1 ]; then
+    CI=$(wget -q -T 30 -t 3 -O - "${API}/commits/${SHA}/check-runs?check_name=check" | jsget ci) || CI=error
+    case "$CI" in
+      success) echo "بررسی خودکار GitHub: موفق ✅" ;;
+      pending) echo "بررسی خودکار GitHub هنوز تمام نشده است؛ یکی دو دقیقه بعد دوباره اجرا کنید. سایت دست‌نخورده ماند."; exit 1 ;;
+      none)    echo "برای این نسخه بررسی خودکاری اجرا نشده است. سایت دست‌نخورده ماند. (برای نصب بدون بررسی: PZ_SKIP_CI=1 pz-front)"; exit 1 ;;
+      failure) echo "خطا: بررسی خودکار GitHub روی این نسخه شکست خورده است (Actions را ببینید). سایت دست‌نخورده ماند."; exit 1 ;;
+      *)       echo "خطا: وضعیت بررسی خودکار از GitHub گرفته نشد. سایت دست‌نخورده ماند. (برای نصب بدون بررسی: PZ_SKIP_CI=1 pz-front)"; exit 1 ;;
+    esac
+  fi
+  echo "دریافت نسخه از GitHub ..."
+  wget -q -T 40 -t 3 -O "$T/s.tgz" "https://codeload.github.com/${REPO}/tar.gz/${SHA}" || { echo "خطا: دانلود از GitHub انجام نشد. سایت دست‌نخورده ماند."; exit 1; }
   tar xzf "$T/s.tgz" -C "$T"
   D=$(ls -d "$T"/*/ | head -1)
 fi
