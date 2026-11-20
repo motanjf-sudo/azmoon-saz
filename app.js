@@ -1184,7 +1184,8 @@
     fzCss();
     setTimeout(fillGroupChip, 0);
     tkSync(true);
-    const st = { mode: "mixed", level: "medium", count: 10, model: "deepseek" };   /* مدل ثابت است: DeepSeek V4.1 */
+    const st = { mode: "mixed", level: "medium", count: 10 };
+    const pick = exPick({ files: false, total: () => st.count, onChange: () => { if (!gone) paintCost(); } });
     let busy = false;
     let ctl = null;
     let gone = false;
@@ -1202,6 +1203,7 @@
       '<div class="card ai-form">' +
       '<div class="tk-strip">' + COIN + '<span class="tk-strip-t">موجودی شما: <b data-tk>' + tkTxt() + '</b> پولک</span><a class="tk-strip-a" href="/tokens">خرید پولک</a></div>' +
       '<label for="topic">موضوع آزمون</label><input id="topic" type="text" maxlength="300" placeholder="مثلاً: تاریخ ایران در دوره‌ی صفوی" autocomplete="off">' +
+      pick.html() +
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
       '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
       '<label for="count">تعداد سؤال</label><div class="stepper"><button type="button" id="cm" aria-label="کمتر">−</button><input id="count" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="cp" aria-label="بیشتر">+</button><span class="hint">از ۱ تا ۳۰</span></div>' +
@@ -1214,6 +1216,7 @@
 
     const $ = (id) => document.getElementById(id);
     const msg = $("msg");
+    pick.bind(app);
     const fail = (t, extraHtml) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + (extraHtml || "") + "</div>"; };
     const buyLink = ' <a class="err-a" href="/tokens">خرید پولک</a>';
 
@@ -1230,13 +1233,13 @@
     /* هزینه‌ی همین آزمون به پولک: همیشه روی صفحه و روی دکمه دیده می‌شود */
     const cost = $("tkCost"), goCost = $("goCost");
     const paintCost = () => {
-      const c = st.count, b = tk.bal;
-      const low = b != null && b < c;
+      const c = st.count, p = pick.price(), t = c * p, b = tk.bal;
+      const low = b != null && b < t;
       cost.className = "tk-cost" + (low ? " low" : "");
       cost.innerHTML = low
-        ? "برای " + faNum(c) + " سؤال، " + faNum(c) + " پولک لازم است و موجودی شما " + faNum(b) + " پولک است. تعداد سؤال را کمتر کنید یا " + '<a href="/tokens">پولک بخرید</a>.'
-        : "هر سؤال ۱ پولک است؛ این آزمون <b>" + faNum(c) + " پولک</b> مصرف می‌کند.";
-      goCost.textContent = pending ? "" : " · " + faNum(c) + " پولک";
+        ? "برای " + faNum(c) + " سؤال با «" + esc(pick.name()) + "»، " + faNum(t) + " پولک لازم است و موجودی شما " + faNum(b) + " پولک است. تعداد سؤال را کمتر کنید، مدل ارزان‌تر بردارید یا " + '<a href="/tokens">پولک بخرید</a>.'
+        : "هر سؤال با «" + esc(pick.name()) + "» " + faNum(p) + " پولک است؛ این آزمون <b>" + faNum(t) + " پولک</b> مصرف می‌کند.";
+      goCost.textContent = pending ? "" : " · " + faNum(t) + " پولک";
     };
     const setCount = (n) => { st.count = Math.min(30, Math.max(1, n)); $("count").value = faNum(st.count); paintCost(); };
     const parseCount = () => {
@@ -1255,6 +1258,7 @@
       busy = on;
       goBtn.disabled = on;
       goBtn.classList.toggle("loading", on);
+      pick.lock(on);
       $("wait").hidden = !on;
       app.querySelectorAll(".dur button,.dur input").forEach((x) => { x.disabled = on; });
       setGenLock(on);
@@ -1295,8 +1299,9 @@
       setCount(parseCount());
       const t = $("topic").value.trim();
       if (!t) { $("topic").classList.add("bad"); $("topic").focus(); return fail("موضوع آزمون را بنویسید."); }
-      if (tk.bal != null && tk.bal < st.count) return fail("پولک شما کافی نیست؛ موجودی شما " + faNum(tk.bal) + " پولک است و این آزمون " + faNum(st.count) + " پولک می‌خواهد. تعداد سؤال را کمتر کنید یا پولک بخرید.", buyLink);
-      const body = { mode: st.mode, difficulty: st.level, count: st.count, topic: t, model: st.model };
+      const need = st.count * pick.price();
+      if (tk.bal != null && tk.bal < need) return fail("پولک شما کافی نیست؛ موجودی شما " + faNum(tk.bal) + " پولک است و این آزمون " + faNum(need) + " پولک می‌خواهد. تعداد سؤال را کمتر کنید، مدل ارزان‌تر بردارید یا پولک بخرید.", buyLink);
+      const body = { mode: st.mode, difficulty: st.level, count: st.count, topic: t, model: pick.id() === "ds" ? "deepseek" : pick.id(), ai: pick.id() };
 
       const wantDur = durCtl.mode();
       lockUi(true);
@@ -1334,7 +1339,7 @@
           questions: questions,
           title: String((d && d.title) || "").trim().slice(0, LIMITS.title) || "آزمون",
           desc: String((d && d.description) || "").trim().slice(0, LIMITS.desc),
-          used: (d && d.used) || questions.length,
+          used: (d && d.cost) || ((d && d.used) || questions.length) * pick.price(),
           bal: d && typeof d.tokens === "number" ? d.tokens : null,
           duration: wantDur === "set" ? okDur(durCtl.min()) : wantDur === "auto" ? (okDur(Number(d && d.duration_min)) || estimateMinutes(questions, st.level)) : null,
         };
@@ -1353,6 +1358,7 @@
     return function cleanup() {
       gone = true;
       busy = false;
+      pick.destroy();
       setGenLock(false);
       window.removeEventListener("tkchange", onTk);
       if (ctl) ctl.abort();
@@ -1380,6 +1386,199 @@
   const fzSize = (b) => (b < 1048576 ? faNum(Math.max(1, Math.round(b / 1024))) + " کیلوبایت" : faNum((b / 1048576).toFixed(1)).replace(".", "٫") + " مگابایت");
 
   /* ---- استایل (فقط یک بار به صفحه اضافه می‌شود) ---- */
+  /* ---------- انتخاب مدل هوش مصنوعی در ساخت آزمون ----------
+     قیمت‌ها و فهرست مدل‌های قابل‌استفاده را سرور (تابع ex_models) می‌دهد؛ تا وقتی سرور آماده نیست فقط DeepSeek انتخاب‌پذیر است.
+     قیمت واقعی را همیشه سرور حساب می‌کند؛ این‌جا فقط برای نمایش است. */
+  const EX_MODELS = [
+    { id: "ds", name: "DeepSeek 4.1 Flash", by: "DeepSeek", price: 1, tag: "سریع و اقتصادی · پیش‌فرض" },
+    { id: "luna", name: "GPT-6 Luna", by: "OpenAI", price: 1, tag: "سبک و سریع" },
+    { id: "haiku", name: "Haiku 5.5", by: "Anthropic", price: 1, tag: "بسیار سریع" },
+    { id: "hyd", name: "Gemini Hydrogen", by: "Google", price: 2, tag: "متعادل" },
+    { id: "sonnet", name: "Sonnet 5.5", by: "Anthropic", price: 2, tag: "دقیق و روان" },
+    { id: "sol", name: "GPT Sol 6.2", by: "OpenAI", price: 2, tag: "استدلال قوی" },
+    { id: "neon", name: "Gemini Neon", by: "Google", price: 2, tag: "", soon: true },
+    { id: "carbon", name: "Gemini Carbon", by: "Google", price: 3, tag: "دقت بالا" },
+    { id: "argon", name: "Gemini Argon", by: "Google", price: 3, tag: "دقت بالا" },
+    { id: "opus", name: "Opus 5.5", by: "Anthropic", price: 3, tag: "تحلیل عمیق" },
+    { id: "astra", name: "Astra 6.2", by: "OpenAI", price: 6, tag: "قوی‌ترین مدل OpenAI" },
+    { id: "fable", name: "Fable 5.2", by: "Anthropic", price: 6, tag: "برترین مدل Anthropic" },
+  ];
+  const EX_TIER = { 1: ["اقتصادی", "سریع و کم‌هزینه"], 2: ["متعادل", "کیفیت خوب با قیمت مناسب"], 3: ["پیشرفته", "دقت بالاتر برای موضوع‌های سخت"], 6: ["حرفه‌ای", "برترین مدل‌ها برای بهترین نتیجه"] };
+  const EX_BY = { DeepSeek: ["#3D5FD9", "D"], OpenAI: ["#0E8A70", "O"], Anthropic: ["#C0583A", "A"], Google: ["#3A74DE", "G"] };
+  const EX_CHEV = '<svg class="xm-ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  const EX_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+  const EX_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  const exLoad = () => { try { return localStorage.getItem("pz:xm") || ""; } catch (e) { return ""; } };
+  const exSave = (id) => { try { localStorage.setItem("pz:xm", id); } catch (e) { /* ignore */ } };
+  let EX_CAP = null;
+  function exCaps() {
+    if (!EX_CAP || Date.now() - EX_CAP.at > 300000) {
+      EX_CAP = {
+        at: Date.now(),
+        p: rpc("ex_models", {}).then((d) => {
+          const arr = d && Array.isArray(d.models) ? d.models : null;
+          if (!arr) return null;
+          const m = {};
+          arr.forEach((x) => { if (x && x.id) m[String(x.id)] = { price: Math.max(1, Math.floor(Number(x.price) || 0)), on: x.on !== false }; });
+          return { m: m, files: d.files === true };
+        }).catch(() => null),
+      };
+    }
+    return EX_CAP.p;
+  }
+  function exCss() {
+    if (document.getElementById("pzXmCss")) return;
+    const s = document.createElement("style");
+    s.id = "pzXmCss";
+    s.textContent =
+      ".xm-l{display:block;margin-top:18px}" +
+      ".xm{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;margin-top:6px;border:1.5px solid var(--line-2);border-radius:18px;background:var(--field);color:var(--text);font:inherit;text-align:start;cursor:pointer;transition:border-color .2s,box-shadow .25s,transform .15s}" +
+      ".xm:hover{border-color:var(--accent)}.xm:active{transform:scale(.992)}.xm:disabled{opacity:.6;cursor:default;transform:none}" +
+      ".xm:focus-visible,.xm-row:focus-visible,.xm-x:focus-visible{outline:3px solid var(--accent);outline-offset:2px}" +
+      ".xm-mk{flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-weight:900;font-size:1.05rem;color:#fff;background:linear-gradient(145deg,var(--mk),color-mix(in srgb,var(--mk) 62%,#000));box-shadow:0 8px 16px -10px var(--mk);font-family:Tahoma,sans-serif}" +
+      ".xm-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}" +
+      ".xm-n{font-weight:800;font-size:1rem;line-height:1.55;overflow-wrap:break-word}" +
+      "@media (max-width:520px){.xm{gap:10px;padding:10px 12px}.xm-p small{display:none}.xm-p{padding:5px 11px}}" +
+      ".xm-s{font-size:.8rem;color:var(--muted);line-height:1.6}" +
+      ".xm-p{flex:none;display:inline-flex;align-items:baseline;gap:4px;padding:5px 12px;border-radius:999px;background:var(--chip);color:var(--accent-2);font-weight:800;font-size:.86rem;white-space:nowrap}.xm-p small{font-size:.7rem;font-weight:700;opacity:.8}" +
+      ".xm-ch{flex:none;width:18px;height:18px;color:var(--muted)}" +
+      "html.xm-open{overflow:hidden}" +
+      ".xm-ov{position:fixed;inset:0;z-index:400;display:flex;align-items:flex-end;justify-content:center;background:rgba(5,25,19,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);opacity:0;transition:opacity .22s}" +
+      ".xm-ov.on{opacity:1}" +
+      ".xm-sh{width:100%;max-width:640px;max-height:min(88dvh,780px);display:flex;flex-direction:column;background:var(--surface-solid);color:var(--text);border:1px solid var(--line);border-radius:26px 26px 0 0;box-shadow:var(--shadow);transform:translateY(32px);transition:transform .32s var(--ease)}" +
+      ".xm-ov.on .xm-sh{transform:none}" +
+      "@media (min-width:700px){.xm-ov{align-items:center;padding:20px}.xm-sh{border-radius:26px;max-height:min(84vh,800px)}}" +
+      ".xm-hd{display:flex;align-items:flex-start;gap:10px;padding:18px 18px 8px}" +
+      ".xm-hd h2{margin:0;font-size:1.12rem}.xm-hd p{margin:3px 0 0;color:var(--muted);font-size:.84rem;line-height:1.7}" +
+      ".xm-hd>div{flex:1 1 auto;min-width:0}" +
+      ".xm-x{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--field);color:var(--text);display:grid;place-items:center;cursor:pointer;padding:0}.xm-x svg{width:16px;height:16px}" +
+      ".xm-bd{overflow:auto;padding:0 14px 8px;overscroll-behavior:contain}" +
+      ".xm-tier{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:16px 4px 8px}" +
+      ".xm-tp{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:999px;background:var(--btn-grad);color:var(--on-accent);font-weight:800;font-size:.8rem}" +
+      ".xm-tier b{font-size:.92rem;color:var(--accent-2)}.xm-tier small{color:var(--muted);font-size:.78rem}" +
+      ".xm-row{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;margin:0 0 8px;border:1.5px solid var(--line);border-radius:16px;background:transparent;color:inherit;font:inherit;text-align:start;cursor:pointer;transition:border-color .2s,background .2s,transform .15s}" +
+      ".xm-row:hover{border-color:var(--line-2);background:var(--chip)}.xm-row:active{transform:scale(.99)}" +
+      ".xm-row[aria-checked=true]{border-color:var(--accent);background:var(--chip);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}" +
+      ".xm-row[aria-disabled=true]{opacity:.55;cursor:not-allowed}.xm-row[aria-disabled=true]:hover{background:transparent;border-color:var(--line)}.xm-row[aria-disabled=true] .xm-mk{filter:grayscale(.85)}" +
+      ".xm-row .xm-mk{width:38px;height:38px;border-radius:12px;font-size:.95rem}" +
+      ".xm-ck{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--line-2);color:transparent;transition:background .2s,border-color .2s,color .2s}.xm-ck svg{width:13px;height:13px}" +
+      ".xm-row[aria-checked=true] .xm-ck{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}" +
+      ".xm-soon{flex:none;padding:3px 10px;border-radius:999px;border:1px dashed var(--line-2);color:var(--muted);font-size:.74rem;font-weight:800;white-space:nowrap}" +
+      ".xm-ft{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);font-size:.82rem;color:var(--muted)}" +
+      ".xm-ft span{flex:1 1 auto;min-width:0;line-height:1.8}.xm-ft b{color:var(--text)}" +
+      ".xm-ft a{flex:none;font-weight:800;text-decoration:none;padding:5px 14px;border-radius:999px;border:1.5px solid var(--line-2);color:var(--accent)}.xm-ft a:hover{border-color:var(--accent)}" +
+      "@media (prefers-reduced-motion:reduce){.xm-ov,.xm-sh,.xm,.xm-row{transition:none}}";
+    document.head.appendChild(s);
+  }
+  /* o = { files: بخش «از روی فایل» است؟, total: () => تعداد کل سؤال‌های آزمون(ها), onChange: () => هزینه دوباره نمایش داده شود } */
+  function exPick(o) {
+    exCss();
+    let sel = exLoad() || "ds", caps = null, ov = null, opener = null, gone = false, locked = false, box = null, closeT = 0;
+    const mdl = (id) => EX_MODELS.find((m) => m.id === id) || EX_MODELS[0];
+    const priceOf = (m) => (caps && caps.m[m.id] && caps.m[m.id].price) || m.price;
+    const avail = (m) => !m.soon && (m.id === "ds" || !!(caps && caps.m[m.id] && caps.m[m.id].on && (!o.files || caps.files)));
+    const cur = () => { const m = mdl(sel); return avail(m) ? m : EX_MODELS[0]; };
+    const mark = (m) => '<span class="xm-mk" style="--mk:' + EX_BY[m.by][0] + '" aria-hidden="true">' + EX_BY[m.by][1] + "</span>";
+    const paintBtn = () => {
+      if (!box) return;
+      const m = cur();
+      box.innerHTML = '<label id="xmL" class="xm-l">مدل هوش مصنوعی</label>' +
+        '<button type="button" class="xm" id="xmBtn" aria-haspopup="dialog" aria-labelledby="xmL xmN"' + (locked ? " disabled" : "") + ">" + mark(m) +
+        '<span class="xm-t"><span class="xm-n" id="xmN"><bdi>' + esc(m.name) + '</bdi></span><span class="xm-s">' + esc(m.by) + (m.tag ? " · " + esc(m.tag) : "") + "</span></span>" +
+        '<span class="xm-p">' + faNum(priceOf(m)) + " پولک <small>برای هر سؤال</small></span>" + EX_CHEV + "</button>";
+    };
+    const rows = () => {
+      const c = cur(), n = Math.max(0, Math.floor(Number(o.total && o.total()) || 0));
+      const prices = Array.from(new Set(EX_MODELS.map(priceOf))).sort((a, b) => a - b);
+      return prices.map((p) => {
+        const t = EX_TIER[p] || ["", ""];
+        return '<div class="xm-tier"><span class="xm-tp">' + faNum(p) + " پولک</span>" + (t[0] ? "<b>" + t[0] + "</b><small>" + t[1] + "</small>" : "") + "</div>" +
+          EX_MODELS.filter((m) => priceOf(m) === p).map((m) => {
+            const ok = avail(m);
+            const sub = m.soon ? "" : (m.tag ? esc(m.tag) : "") + (ok && n ? (m.tag ? " · " : "") + '<span style="white-space:nowrap">آزمون شما: ' + faNum(n * p) + " پولک</span>" : "");
+            return '<button type="button" class="xm-row" role="radio" data-id="' + m.id + '" aria-checked="' + String(m.id === c.id) + '"' + (ok ? "" : ' aria-disabled="true"') + ' tabindex="' + (m.id === c.id ? "0" : "-1") + '">' + mark(m) +
+              '<span class="xm-t"><span class="xm-n"><bdi>' + esc(m.name) + '</bdi></span><span class="xm-s">' + (m.soon ? esc(m.by) : esc(m.by) + (sub ? " · " + sub : "")) + "</span></span>" +
+              (ok ? '<span class="xm-ck" aria-hidden="true">' + EX_TICK + "</span>" : '<span class="xm-soon">به‌زودی</span>') + "</button>";
+          }).join("");
+      }).join("");
+    };
+    const paintRows = () => { if (!ov) return; const g = ov.querySelector(".xm-bd"); const st = g.scrollTop; g.querySelector("[role=radiogroup]").innerHTML = rows(); g.scrollTop = st; };
+    const close = (instant) => {
+      if (!ov) return;
+      const el = ov; ov = null;
+      document.removeEventListener("keydown", onKey, true);
+      document.documentElement.classList.remove("xm-open");
+      el.classList.remove("on");
+      const done = () => { if (el.parentNode) el.parentNode.removeChild(el); };
+      if (instant) done(); else setTimeout(done, 240);
+      try { if (opener && opener.focus && !gone) opener.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+    };
+    function onKey(e) {
+      if (!ov) return;
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); return; }
+      if (e.key === "Tab") {
+        const f = Array.prototype.slice.call(ov.querySelectorAll("button:not([disabled]):not([tabindex='-1']),a[href]"));
+        if (!f.length) return;
+        const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        else if (!ov.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        const list = Array.prototype.slice.call(ov.querySelectorAll(".xm-row"));
+        const i = list.indexOf(document.activeElement);
+        if (i < 0) return;
+        e.preventDefault();
+        const nx = list[(i + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length];
+        list.forEach((x) => x.setAttribute("tabindex", x === nx ? "0" : "-1"));
+        nx.focus();
+      }
+    }
+    const choose = (id) => {
+      const m = mdl(id);
+      if (!avail(m)) return;
+      sel = m.id; exSave(sel);
+      paintBtn(); paintRows();
+      if (o.onChange) o.onChange();
+      setTimeout(() => { if (ov) close(); }, 170);
+    };
+    const open = () => {
+      if (ov || locked || gone) return;
+      opener = document.activeElement;
+      ov = document.createElement("div");
+      ov.className = "xm-ov";
+      ov.innerHTML = '<div class="xm-sh" role="dialog" aria-modal="true" aria-labelledby="xmT">' +
+        '<div class="xm-hd"><div><h2 id="xmT">انتخاب مدل هوش مصنوعی</h2><p>هر مدل در هر سؤال تعداد مشخصی پولک مصرف می‌کند. مدل‌های بالاتر معمولاً دقیق‌ترند.</p></div><button type="button" class="xm-x" aria-label="بستن">' + EX_X + "</button></div>" +
+        '<div class="xm-bd"><div role="radiogroup" aria-label="مدل هوش مصنوعی">' + rows() + "</div></div>" +
+        '<div class="xm-ft"><span>موجودی شما: <b data-tk>' + tkTxt() + '</b> پولک</span><a href="/tokens">خرید پولک</a></div></div>';
+      document.body.appendChild(ov);
+      document.documentElement.classList.add("xm-open");
+      document.addEventListener("keydown", onKey, true);
+      ov.addEventListener("click", (e) => {
+        if (e.target === ov || e.target.closest(".xm-x")) { close(); return; }
+        const r = e.target.closest(".xm-row");
+        if (r) choose(r.dataset.id);
+      });
+      requestAnimationFrame(() => { if (ov) ov.classList.add("on"); });
+      setTimeout(() => { const c = ov && ov.querySelector(".xm-row[aria-checked=true]"); if (c) { try { c.focus({ preventScroll: true }); c.scrollIntoView({ block: "center" }); } catch (e) { /* ignore */ } } }, 60);
+    };
+    exCaps().then((c) => { if (gone) return; caps = c; paintBtn(); paintRows(); if (o.onChange) { try { o.onChange(); } catch (e) { /* صفحه هنوز کامل ساخته نشده */ } } });
+    return {
+      html: () => '<div class="xm-box" id="xmBox"></div>',
+      bind: (root) => {
+        box = root.querySelector("#xmBox");
+        paintBtn();
+        box.addEventListener("click", (e) => { if (e.target.closest("#xmBtn")) open(); });
+      },
+      id: () => cur().id,
+      price: () => priceOf(cur()),
+      name: () => cur().name,
+      lock: (on) => { locked = !!on; if (on) close(true); paintBtn(); },
+      destroy: () => { gone = true; if (closeT) clearTimeout(closeT); close(true); },
+    };
+  }
+
   function fzCss() {
     if (document.getElementById("pzFzCss")) return;
     const st = document.createElement("style");
@@ -1769,6 +1968,7 @@
     tkSync(true);
     fzCss();
     const st = { mode: "mixed", level: "medium", count: 20, exams: 1, byFile: false };
+    const pick = exPick({ files: true, total: () => exCount() * st.count, onChange: () => { if (!gone) paint(); } });
     const files = [];
     let gone = false, sending = false, uid = 0, qChain = Promise.resolve();
     const $ = (id) => document.getElementById(id);
@@ -1796,6 +1996,7 @@
       '<p class="hint" style="margin:10px 2px 0">متن فایل‌ها داخل مرورگر شما استخراج و برای ساخت به سرور فرستاده می‌شود (خود فایل ذخیره نمی‌شود و متن ۲۴ ساعت بعد از پایان ساخت پاک می‌شود). بعد از شروع ساخت می‌توانید مرورگر را ببندید؛ ساخت روی سرور ادامه پیدا می‌کند. PDF اسکن‌شده (عکس) فعلاً پشتیبانی نمی‌شود.</p>' +
       '<label for="fzName">نام آزمون <small class="hint">(اختیاری)</small></label><input id="fzName" type="text" maxlength="120" autocomplete="off" placeholder="اگر خالی بماند، هوش مصنوعی نام می‌گذارد">' +
       '<label for="fzFocus">روی کدام بخش تمرکز کنیم؟ <small class="hint">(اختیاری)</small></label><input id="fzFocus" type="text" maxlength="200" autocomplete="off" placeholder="مثلاً: فقط فصل ۲ و ۳">' +
+      pick.html() +
       '<label>مدل سؤال‌ها</label>' + seg("mode", [["tf", "درست / نادرست"], ["mcq", "تستی"], ["mixed", "مخلوط"]]) +
       '<label>درجه‌ی سختی</label>' + seg("level", [["easy", "آسان"], ["medium", "متوسط"], ["hard", "سخت"]]) +
       '<label for="fzCount">تعداد سؤال در هر آزمون</label><div class="stepper"><button type="button" id="fzCm" aria-label="کمتر">−</button><input id="fzCount" type="text" inputmode="numeric" value="' + faNum(st.count) + '" aria-label="تعداد سؤال"><button type="button" id="fzCp" aria-label="بیشتر">+</button></div>' +
@@ -1812,6 +2013,7 @@
       "</div>";
 
     const msg = $("fzMsg");
+    pick.bind(app);
     const fail = (t, extra) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + (extra || "") + "</div>"; };
     const durCtl = durBind(app, "none", 15, null);
     app.querySelectorAll(".seg[data-seg]").forEach((g) => {
@@ -1908,15 +2110,15 @@
       $("fzByT").textContent = "هر فایل یک آزمون جدا (" + faNum(ok.length) + " آزمون)";
       $("fzEx").disabled = st.byFile; $("fzEm").disabled = st.byFile; $("fzEp").disabled = st.byFile;
       $("fzEx").value = faNum(exCount());
-      const n = exCount(), c = st.count, total = n * c, b = tk.bal;
+      const n = exCount(), c = st.count, p = pick.price(), total = n * c * p, b = tk.bal;
       const calls = n * Math.ceil(c / FZ.perCall);
       const mins = Math.max(1, Math.ceil((calls * FZ.secPerCall) / 60));
       const low = b != null && b < total;
       const cost = $("fzCost");
       cost.className = "tk-cost" + (low ? " low" : "");
       cost.innerHTML = low
-        ? "برای " + faNum(total) + " سؤال، " + faNum(total) + " پولک لازم است و موجودی شما " + faNum(b) + " پولک است. تعداد سؤال یا آزمون را کمتر کنید یا " + '<a href="/tokens">پولک بخرید</a>.'
-        : (n > 1 ? faNum(n) + " آزمون × " + faNum(c) + " سؤال = <b>" + faNum(total) + " پولک</b>" : "هر سؤال ۱ پولک است؛ این آزمون <b>" + faNum(c) + " پولک</b> مصرف می‌کند.") +
+        ? "برای " + faNum(n * c) + " سؤال با «" + esc(pick.name()) + "»، " + faNum(total) + " پولک لازم است و موجودی شما " + faNum(b) + " پولک است. تعداد سؤال یا آزمون را کمتر کنید، مدل ارزان‌تر بردارید یا " + '<a href="/tokens">پولک بخرید</a>.'
+        : (n > 1 ? faNum(n) + " آزمون × " + faNum(c) + " سؤال × " + faNum(p) + " پولک = <b>" + faNum(total) + " پولک</b>" : "هر سؤال با «" + esc(pick.name()) + "» " + faNum(p) + " پولک است؛ این آزمون <b>" + faNum(c * p) + " پولک</b> مصرف می‌کند.") +
           (ok.length ? " زمان ساخت: حدود " + faNum(mins) + " دقیقه (تخمینی)." : "");
       /* هشدار اگر متن برای این تعداد سؤال کم است */
       const warn = $("fzWarn");
@@ -2058,7 +2260,7 @@
       const ok = okFiles();
       if (!ok.length) return fail("اول یک فایل بدهید.");
       st.count = Math.min(FZ.maxQ, Math.max(1, numOf($("fzCount"), st.count)));
-      const n = exCount(), total = n * st.count;
+      const n = exCount(), total = n * st.count * pick.price();
       if (tk.bal != null && tk.bal < total) return fail("پولک شما کافی نیست؛ موجودی شما " + faNum(tk.bal) + " پولک است و این کار " + faNum(total) + " پولک می‌خواهد.", ' <a class="err-a" href="/tokens">خرید پولک</a>');
       if (fjActive(FJ.data && FJ.data.job)) { view.showId = FJ.data.job.id; paintRun(FJ.data); return; }
       const dm = durCtl.mode();
@@ -2066,7 +2268,7 @@
       const params = {
         mode: st.mode, level: st.level, focus: $("fzFocus").value.trim().slice(0, 200), name: $("fzName").value.trim().slice(0, 120),
         fallback: ok.length === 1 ? fzBase(ok[0].name) || "آزمون" : "آزمون از روی فایل‌ها",
-        by_file: st.byFile, group: createGroup || "", dur_mode: dm, dur_min: dm === "set" ? durCtl.min() : 0,
+        by_file: st.byFile, ai: pick.id(), group: createGroup || "", dur_mode: dm, dur_min: dm === "set" ? durCtl.min() : 0,
       };
       const exams = plan.map((ex) => ({
         count: ex.count, file_name: ex.fileName || "",
@@ -2081,13 +2283,14 @@
         if (er === "no_session") return "نشست شما تمام شده است؛ دوباره وارد حساب شوید.";
         if (er === "busy") return "یک ساخت دیگر در جریان است.";
         if (er === "group") return "گروه پیدا نشد یا شما مالک یا مدیر آن نیستید.";
+        if (er === "model") return "این مدل هوش مصنوعی الان در دسترس نیست؛ مدل دیگری انتخاب کنید.";
         if (er === "incomplete") return "ارسال متن کامل نشد؛ دوباره تلاش کنید.";
         if (er === "bad_text" || er === "bad_request") return "درخواست نامعتبر بود؛ فایل‌ها یا تنظیمات را بررسی کنید.";
         return "ساخت شروع نشد. دوباره تلاش کنید.";
       };
       sending = true; FJ.up = true;
       window.addEventListener("beforeunload", fzOnLeave);
-      goBtn.disabled = true;
+      goBtn.disabled = true; pick.lock(true);
       const setGo = (t) => { $("fzGoT").textContent = t; $("fzGoCost").textContent = ""; };
       setGo("در حال ارسال فایل‌ها…");
       const dis = [drop, listEl];
@@ -2148,7 +2351,7 @@
         if (e && e.soft) fail(e.soft, e.extra);
         else fail((e && e.message) || "خطایی رخ داد؛ دوباره تلاش کنید.");
       } finally {
-        sending = false; FJ.up = false;
+        sending = false; FJ.up = false; pick.lock(false);
         window.removeEventListener("beforeunload", fzOnLeave);
         dis.forEach((e) => e.style.pointerEvents = "");
         if (!gone) paint();
@@ -2173,6 +2376,7 @@
     return function cleanup() {
       gone = true;
       FJ.subs.delete(sub);
+      pick.destroy();
       window.removeEventListener("tkchange", onTk);
       window.removeEventListener("dragover", onWinDrop);
       window.removeEventListener("drop", onWinDrop);
@@ -2209,7 +2413,7 @@
     app.innerHTML =
       '<a class="back" href="/">' + ICONS.back + " بازگشت به صفحه‌ی اصلی</a>" +
       '<div class="page-head"><h1>خرید پولک</h1><a class="btn small ghost" href="/wallet">' + MENU_IC.wallet + " بخش مالی</a></div>" +
-      '<p class="tkp-lead"><b>۱ پولک = ۱ سؤال آزمون</b></p>' +
+      '<p class="tkp-lead"><b>۱ پولک = ۱ سؤال آزمون با مدل پایه</b><small> (مدل‌های قوی‌تر ۲ تا ۶ پولک برای هر سؤال)</small></p>' +
       '<div class="card tkp-res" id="tkRes" role="status" aria-live="polite" hidden></div>' +
       '<div class="card tkp-buy"><h2 class="tkp-h">چند پولک می‌خواهید؟</h2>' +
       '<div class="tkp-step"><button type="button" class="tkp-sb" id="tkM" aria-label="یک پولک کمتر">−</button>' +
