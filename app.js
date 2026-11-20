@@ -6815,6 +6815,8 @@
     if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
     const h = a.getAttribute("href") || "";
     if (h.charAt(0) !== "/" || h.charAt(1) === "/") return;
+    /* صفحه‌های راهنمای ثابت (/azmoon-…) صفحه‌ی جدا هستند، نه مسیر برنامه: با بارگذاری معمولی باز می‌شوند */
+    if (/^\/azmoon-[a-z0-9-]+\/?(?:[?#]|$)/.test(h)) return;
     e.preventDefault();
     go(h);
   });
