@@ -6316,7 +6316,7 @@
 
       /* نمایش زنده: متنی که از شبکه می‌رسد در صف می‌ماند و هر ~۶۰ میلی‌ثانیه یک (یا اگر صف بلند باشد چند) کلمه‌ی کامل از آن آشکار می‌شود؛ هر کلمه با یک محوشدگیِ نرم (fade) می‌آید.
          پس نه کلمه‌به‌کلمه می‌پرد و نه به سرعتِ تکه‌های شبکه بستگی دارد. پاراگراف‌های تمام‌شده یک بار رندر می‌شوند (فرمول‌ها هم) و فقط پاراگرافِ در حال نوشتن دوباره ساخته می‌شود. */
-      const FADE = reduceMotion() ? 0 : 460, TICK = 60;
+      const FADE = 0, TICK = 60;   /* هر کلمه همان لحظه که می‌رسد دیده می‌شود (بدون صف و محوشدگی) */
       let live = null, liveB = null, tail = null, cur = "", shown = 0, stableLen = 0, timer = 0, fin = false, ending = false, drainRes = null;
       let chunkLen = 0, lastEnd = 0;
       const marks = [];   /* [{a,b,t}]: نویسه‌های دیدنیِ a تا b در لحظه‌ی t آشکار شدند */
@@ -6416,6 +6416,8 @@
         if (cur.length > shown) timer = setTimeout(tick, TICK); else settle();
       };
       const kick = () => { if (!timer && !fin) timer = setTimeout(tick, TICK); };
+      let raf = 0;
+      const show = () => { shown = cur.length; if (!raf && !fin) raf = requestAnimationFrame(() => { raf = 0; if (!fin) render(); }); };
       const flushNow = () => { shown = cur.length; settle(); };
       const drain = () => new Promise((res) => {
         if (!live || cur.length <= shown) return res();
@@ -6426,6 +6428,7 @@
       const finish = (full) => {
         fin = true;
         if (timer) { clearTimeout(timer); timer = 0; }
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
         if (!live) return;
         const rest = full.slice(stableLen);
         if (rest.trim()) {
@@ -6446,7 +6449,6 @@
       const r = await ask(h, (t) => {
         if (!alive || !ok() || key !== st.active) return;
         cur = t;
-        if (document.hidden) shown = cur.length;
         if (!live) {
           ty.remove();
           live = bubble("ai", "", "in streaming");
@@ -6457,7 +6459,7 @@
           liveB.appendChild(tail);
           log.appendChild(live);
         }
-        kick();
+        show();
       }, (ids) => {   /* عکس‌ها روی دیتابیس ذخیره شد: از این به بعد فقط شناسه‌شان با گفت‌وگو می‌ماند */
         if (acked || !alive || !ids.length) return;
         acked = true;
