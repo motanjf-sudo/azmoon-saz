@@ -5394,7 +5394,10 @@
 
   /* ظاهرِ تمام‌صفحه‌ی چت، نمایشِ نرمِ متن و عکس‌های پیوست؛ فقط وقتی صفحه‌ی معلم باز می‌شود به صفحه اضافه می‌شود */
   const TT_CSS = [
-    "html.tt-chat,html.tt-chat body{height:var(--vvh,100dvh);min-height:0;overflow:hidden}",
+    "html.tt-chat,html.tt-chat body{height:var(--vvh,100dvh);min-height:0;overflow:hidden;overscroll-behavior:none}",
+    "html.tt-chat body{position:fixed;inset-inline:0;top:0;width:100%;transform:translateY(var(--vvt,0px));display:flex;flex-direction:column}",
+    ".tt-log>*{flex:none}",
+    ".tt-m.err{background:none;padding:0;border:0;border-radius:0;margin:0;animation:none;font-weight:inherit}",
     "html.tt-chat #hero,html.tt-chat #homeSeo,html.tt-chat #siteFoot{display:none !important}",
     "html.tt-chat #app.wrap{flex:1 1 auto;min-height:0;width:100%;max-width:none;margin:0;padding:0;display:flex;flex-direction:column;overflow:hidden;scroll-margin-top:0}",
     "html.tt-chat .tt{flex:1 1 auto;min-height:0;width:100%;max-width:none;margin:0;gap:0}",
@@ -5408,7 +5411,7 @@
     "@media (min-width:1100px){html.tt-chat.tt-side-on #app.wrap{padding:0 0 0 272px}}",
     ".tt-empty h2{margin:6px 0 2px}",
     ".tt-empty p.tt-price{margin:0;font-size:.78rem;color:var(--muted);line-height:1.6}",
-    ".tt-fd{animation:ttFd .52s ease-out both}",
+    ".tt-fd{animation:ttFd .46s ease-out both}",
     "@keyframes ttFd{from{opacity:0}to{opacity:1}}",
     "@media (prefers-reduced-motion:reduce){.tt-fd{animation:none}}",
     ".tt-down{position:absolute;inset-inline:0;bottom:10px;margin-inline:auto;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface-solid);color:var(--accent-2);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow);padding:0;-webkit-tap-highlight-color:transparent}",
@@ -5868,7 +5871,7 @@
       const vv = window.visualViewport;
       const H = Math.round(vv ? vv.height : window.innerHeight);
       document.documentElement.style.setProperty("--vvh", H + "px");
-      if (mode === "chat" && (window.scrollY || document.documentElement.scrollTop)) { try { window.scrollTo(0, 0); } catch (e) { /* ignore */ } }
+      document.documentElement.style.setProperty("--vvt", Math.round(vv ? vv.offsetTop : 0) + "px");
       downSync();
     };
     const onResize = () => { fit(); setTop(); };
@@ -6165,7 +6168,11 @@
       scrollEnd(); downSync();
     }
 
-    function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; }
+    function autosize() {
+      const was = log.scrollHeight - log.scrollTop - log.clientHeight < 4;   /* اگر ته گفت‌وگو بودی، با بلندشدن کادر نوشتن همان‌جا بمان */
+      ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px";
+      if (was) log.scrollTop = log.scrollHeight;
+    }
     let sendMode = "";
     function sync() {
       ["ttChg"].forEach((id) => { $(id).disabled = busy; });
@@ -6275,6 +6282,7 @@
       const firstMsg = !retry && !forced && !h.length;
       chat.t = Date.now();   /* تازه‌ترین گفت‌وگو بالای فهرست */
       log.querySelectorAll(".tt-m.err").forEach((n) => n.remove());
+      log.querySelectorAll(".tt-m").forEach((n) => { if (n.style.minHeight) n.style.minHeight = ""; });   /* جای خالیِ پیام قبلی دیگر لازم نیست */
       log.querySelectorAll(".tt-inc .btn").forEach((n) => n.remove());
       const mine = (!forced && aiModel(st.model).vision && atts.length) ? atts.slice() : [];   /* عکس‌هایی که با همین پیام می‌روند (هنوز روی سرور نیستند) */
       let ub = null;
@@ -6306,9 +6314,9 @@
       }
       downSync();
 
-      /* نمایش زنده: متنی که از شبکه می‌رسد در صف می‌ماند و هر ~۱۲۰ میلی‌ثانیه چند کلمه‌ی کامل از آن «دسته‌ای» آشکار می‌شود؛ هر دسته با یک محوشدگیِ نرم (fade) می‌آید.
+      /* نمایش زنده: متنی که از شبکه می‌رسد در صف می‌ماند و هر ~۶۰ میلی‌ثانیه یک (یا اگر صف بلند باشد چند) کلمه‌ی کامل از آن آشکار می‌شود؛ هر کلمه با یک محوشدگیِ نرم (fade) می‌آید.
          پس نه کلمه‌به‌کلمه می‌پرد و نه به سرعتِ تکه‌های شبکه بستگی دارد. پاراگراف‌های تمام‌شده یک بار رندر می‌شوند (فرمول‌ها هم) و فقط پاراگرافِ در حال نوشتن دوباره ساخته می‌شود. */
-      const FADE = reduceMotion() ? 0 : 520, TICK = 120;
+      const FADE = reduceMotion() ? 0 : 460, TICK = 60;
       let live = null, liveB = null, tail = null, cur = "", shown = 0, stableLen = 0, timer = 0, fin = false, ending = false, drainRes = null;
       let chunkLen = 0, lastEnd = 0;
       const marks = [];   /* [{a,b,t}]: نویسه‌های دیدنیِ a تا b در لحظه‌ی t آشکار شدند */
@@ -6388,7 +6396,7 @@
       const advance = () => {
         if (document.hidden) { shown = cur.length; return; }
         const bw = wordsIn(shown, cur.length);
-        const want = ending ? Math.max(8, Math.ceil(bw / 3)) : Math.min(14, Math.max(1, Math.ceil(bw / 8)));
+        const want = ending ? Math.max(4, Math.ceil(bw / 5)) : Math.max(1, Math.round(bw / 10));   /* معمولاً کلمه‌به‌کلمه؛ اگر صف بلند شد کمی تندتر تا عقب نماند */
         let i = shown, n = 0;
         while (i < cur.length && n < want) {
           let j = i;
@@ -6603,7 +6611,7 @@
       attDraw();
       if (bad && !atts.length) toast("این عکس باز نشد. یک عکس JPG یا PNG انتخاب کنید.");
       ta.placeholder = atts.length ? "درباره‌ی عکس بپرس…" : phText();
-      sync(); fit(); ta.focus();
+      sync(); fit(); if (fine.matches) { try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     });
     /* ---------- نوار کناریِ گفت‌وگوها (چند گفت‌وگوی مستقل) ---------- */
     const NEWT = "گفت‌وگوی جدید";
@@ -6916,7 +6924,7 @@
       window.removeEventListener("resize", onResize);
       if (window.visualViewport) { window.visualViewport.removeEventListener("resize", onResize); window.visualViewport.removeEventListener("scroll", fit); }
       document.documentElement.classList.remove("tt-page", "tt-side-on", "tt-chat");
-      document.documentElement.style.removeProperty("--vvh");
+      document.documentElement.style.removeProperty("--vvh"); document.documentElement.style.removeProperty("--vvt");
       closePic();
       fcache.forEach((pr) => { pr.then((u) => { if (u) { try { URL.revokeObjectURL(u); } catch (e) { /* ignore */ } } }); });
       fcache.clear();
