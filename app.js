@@ -5370,6 +5370,68 @@
   const TT_IMG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3.5"/><circle cx="9" cy="10" r="1.7"/><path d="m21 16-5.2-5.2L8 19"/></svg>';
   const TT_NEW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
+  /* ---------- اصلاحِ نگارشِ فارسیِ پاسخ‌ها (فقط هنگام نمایش و کپی؛ متنِ اصلی دست نمی‌خورد) ----------
+     نیم‌فاصله‌ی «می‌/نمی‌» و «‌ها/‌های»، چسبیدنِ «میشود»، و خط‌تیره بینِ دو کلمه‌ی فارسی (مثلاً «می-شود»). کد و فرمول دست نمی‌خورند. */
+  const FA_L = "؀-ۿ";
+  const FA_J = "بپتثجچحخسشصضطظعغفقکگلمنهیئكيى";
+  const FA_PL_NO = ["أي", "اي", "ای", "انت", "ابت"];
+  const FA_RE = {
+    miSp: new RegExp("(?<![" + FA_L + "‌])(ن?می)[  ]+(?=[" + FA_L + "])(?!و[  ])", "g"),
+    miGl: new RegExp("(?<![" + FA_L + "‌])(ن?می)(?=(?:شو[دنمیو]|کن[دمین]|ده[دمی]|خواه|خوان|توان|باش|گوی|گیر|رو[دنمی]|آی[دن]|بین|ساز|کش[دمین]|یاب|پذیر|نویس|پرس|ماند|افتد|رس[دن]|افزا|کاه|شناس|فهم|کوش|ریز|پرداز|دان(?:م|د|یم|ید|ند)(?![" + FA_L + "])))", "g"),
+    plSp: new RegExp("(?<=[" + FA_L + "])[  ]+(ها|های|هایی)(?![" + FA_L + "])", "g"),
+    plGl: new RegExp("(?<![" + FA_L + "‌])([" + FA_L + "]{2,}?)(هایی|های|ها)(?![" + FA_L + "])", "g"),
+    hy: new RegExp("(?<=[" + FA_L + "])[-‐‑](?=[" + FA_L + "])", "g"),
+  };
+  function faFix(t) {
+    if (!/[؀-ۿ]/.test(t)) return t;
+    return t.replace(FA_RE.miSp, "$1‌").replace(FA_RE.miGl, "$1‌")
+      .replace(FA_RE.plSp, "‌$1")
+      .replace(FA_RE.plGl, (m, w, suf) => (FA_J.indexOf(w.charAt(w.length - 1)) >= 0 && FA_PL_NO.indexOf(w) < 0 ? w + "‌" + suf : m))
+      .replace(FA_RE.hy, "‌");
+  }
+  /* همین اصلاح روی یک متنِ کامل (برای دکمه‌ی کپی)، به‌جز کد و فرمول */
+  const ttFa = (src) => String(src == null ? "" : src).split(/(```[\s\S]*?```|`[^`\n]*`|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$)/).map((x, i) => (i % 2 ? x : faFix(x))).join("");
+
+  /* ظاهرِ تمام‌صفحه‌ی چت، نمایشِ نرمِ متن و عکس‌های پیوست؛ فقط وقتی صفحه‌ی معلم باز می‌شود به صفحه اضافه می‌شود */
+  const TT_CSS = [
+    "html.tt-chat,html.tt-chat body{height:var(--vvh,100dvh);min-height:0;overflow:hidden}",
+    "html.tt-chat #hero,html.tt-chat #homeSeo,html.tt-chat #siteFoot{display:none !important}",
+    "html.tt-chat #app.wrap{flex:1 1 auto;min-height:0;width:100%;max-width:none;margin:0;padding:0;display:flex;flex-direction:column;overflow:hidden;scroll-margin-top:0}",
+    "html.tt-chat .tt{flex:1 1 auto;min-height:0;width:100%;max-width:none;margin:0;gap:0}",
+    "html.tt-chat .tt-ctx{flex:none;margin:0;border-width:0 0 1px;border-radius:0;padding:8px max(12px,calc((100% - 820px)/2))}",
+    "html.tt-chat .tt-box{flex:1 1 auto;min-height:0;height:auto;border:0;border-radius:0;display:flex;flex-direction:column}",
+    ".tt-logw{position:relative;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}",
+    "html.tt-chat .tt-log{flex:1 1 auto;min-height:0;overflow-anchor:none;padding:16px max(14px,calc((100% - 820px)/2))}",
+    "html.tt-chat .tt-att{padding-inline:max(12px,calc((100% - 820px)/2))}",
+    "html.tt-chat .tt-in{padding:10px max(12px,calc((100% - 820px)/2)) calc(10px + env(safe-area-inset-bottom,0px))}",
+    "html.tt-chat .tt-b{max-width:min(92%,680px)}",
+    "@media (min-width:1100px){html.tt-chat.tt-side-on #app.wrap{padding:0 0 0 272px}}",
+    ".tt-empty h2{margin:6px 0 2px}",
+    ".tt-empty p.tt-price{margin:0;font-size:.78rem;color:var(--muted);line-height:1.6}",
+    ".tt-fd{animation:ttFd .52s ease-out both}",
+    "@keyframes ttFd{from{opacity:0}to{opacity:1}}",
+    "@media (prefers-reduced-motion:reduce){.tt-fd{animation:none}}",
+    ".tt-down{position:absolute;inset-inline:0;bottom:10px;margin-inline:auto;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface-solid);color:var(--accent-2);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow);padding:0;-webkit-tap-highlight-color:transparent}",
+    ".tt-down[hidden]{display:none}.tt-down svg{width:20px;height:20px}",
+    ".tt-pic-b{display:block;padding:0;border:0;border-radius:12px;background:rgba(255,255,255,.2);cursor:zoom-in;overflow:hidden;line-height:0;font:inherit}",
+    ".tt-pic-b.ld{min-width:88px;min-height:88px;background:linear-gradient(110deg,rgba(255,255,255,.12) 30%,rgba(255,255,255,.3) 50%,rgba(255,255,255,.12) 70%) 0 0/200% 100%;animation:ttSh 1.2s linear infinite}",
+    ".tt-pic-b.gone{cursor:default;min-width:88px;min-height:88px;display:grid;place-items:center;font-size:.7rem;line-height:1.5;padding:6px;color:inherit;opacity:.8}",
+    "@keyframes ttSh{to{background-position:-200% 0}}",
+    ".tt-lb{position:fixed;inset:0;z-index:300;background:rgba(5,25,19,.86);display:grid;place-items:center;padding:16px;cursor:zoom-out}",
+    ".tt-lb img{max-width:100%;max-height:100%;border-radius:12px;background:#fff;object-fit:contain}",
+    ".tt-lb-x{position:absolute;inset-block-start:14px;inset-inline-end:14px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#0b3427;display:grid;place-items:center;cursor:pointer;padding:0}",
+    ".tt-lb-x svg{width:16px;height:16px}",
+  ].join("\n");
+  let ttCssOn = false;
+  const ttCss = () => {
+    if (ttCssOn) return;
+    ttCssOn = true;
+    const el = document.createElement("style");
+    el.id = "ttCss";
+    el.textContent = TT_CSS;
+    document.head.appendChild(el);
+  };
+
   /* نمایش متنِ پاسخ (Markdown ساده + فرمول‌های ریاضی) بدون innerHTML خام
      live=true: متنِ نیمه‌تمام (در حال استریم) است؛ کدِ باز مانده بسته فرض می‌شود */
   function ttMd(src, live) {
@@ -5390,6 +5452,7 @@
     }
     const maths = [];
     t = normalizeMath(t).replace(/\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)/g, (m) => { maths.push(m); return R + (maths.length - 1) + R; });
+    t = faFix(t);
     const inline = (x) => {
       let h = esc(x);
       h = h.replace(/\*\*([^*\n]+?)\*\*|__([^_\n]+?)__/g, (m, a1, b1) => "<strong>" + (a1 || b1) + "</strong>");
@@ -5490,8 +5553,13 @@
     return (i > 14 ? c.slice(0, i) : c).trim() + "…";
   };
   const ttUid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const TT_FID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const ttCleanMsgs = (a) => (Array.isArray(a) ? a : []).filter((m) => m && (m.r === "u" || m.r === "a") && typeof m.c === "string" && m.c)
-    .map((m) => (m.r === "a" && m.p ? { r: "a", c: m.c.slice(0, 9000), p: 1 } : { r: m.r, c: m.c.slice(0, 9000) })).slice(-40);
+    .map((m) => {
+      if (m.r === "a") return m.p ? { r: "a", c: m.c.slice(0, 9000), p: 1 } : { r: "a", c: m.c.slice(0, 9000) };
+      const f = Array.isArray(m.f) ? m.f.filter((x) => typeof x === "string" && TT_FID.test(x)).slice(0, 5) : [];   /* شناسه‌ی عکس‌های پیوست (خودِ عکس‌ها فقط روی سرورند) */
+      return f.length ? { r: "u", c: m.c.slice(0, 9000), f: f } : { r: "u", c: m.c.slice(0, 9000) };
+    }).slice(-40);
   const ttCleanChat = (c) => {
     if (!c || typeof c !== "object" || typeof c.id !== "string" || !/^[a-z0-9]{4,40}$/.test(c.id)) return null;
     return {
@@ -5512,7 +5580,7 @@
     const who = () => { const s = auth.get(); return s ? String(s.phone || s.email || "u" + s.token.slice(0, 16)) : ""; };
     const sigOf = (c) => {
       let n = 0;
-      for (let i = 0; i < c.msgs.length; i++) n += c.msgs[i].c.length;
+      for (let i = 0; i < c.msgs.length; i++) n += c.msgs[i].c.length + (c.msgs[i].f ? c.msgs[i].f.length * 37 : 0);
       const l = c.msgs[c.msgs.length - 1];
       return [c.t, c.title, c.ai ? 1 : 0, c.man ? 1 : 0, c.grade, c.subj, c.book, c.msgs.length, n, l ? l.r + l.c.length : ""].join("|");
     };
@@ -5760,6 +5828,7 @@
     };
     loadKatex();   /* فرمول‌ها از همین حالا آماده می‌شوند تا اولین پاسخ معطل نماند */
     document.documentElement.classList.add("tt-page");
+    ttCss();
     const subjName = () => (st.subject === TT_OTHER ? st.other.trim() : st.subject);
     const hist = () => { const c = curChat(); return c ? c.msgs : []; };
 
@@ -5775,11 +5844,11 @@
       '<button class="btn ghost small tt-ab" id="ttChg" type="button" aria-label="تغییر پایه و درس" title="تغییر پایه و درس">' + TT_SWAP + "<span>تغییر</span></button>" +
       '<button class="btn ghost small tt-ab" id="ttNew" type="button" aria-label="گفت‌وگوی جدید" title="گفت‌وگوی جدید">' + TT_NEW + "<span>جدید</span></button>" +
       '<button class="tt-sb" id="ttSb1" type="button" aria-label="فهرست گفت‌وگوها" aria-controls="ttSide" aria-expanded="false" title="گفت‌وگوها">' + TT_SIDE + "</button></div>" +
-      '<div class="tt-box" id="ttBox" hidden><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
-      '<div class="tt-att" id="ttAttBox" hidden><div class="tt-ats" id="ttAts"></div><span id="ttAttT">عکس‌ها همراه پیام‌های این گفت‌وگو فرستاده می‌شود.</span></div>' +
+      '<div class="tt-box" id="ttBox" hidden><div class="tt-logw"><div class="tt-log" id="ttLog" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="گفت‌وگو با معلم"></div>' +
+      '<button class="tt-down" id="ttDown" type="button" aria-label="رفتن به پایین گفت‌وگو" title="رفتن به پایین" hidden>' + TT_SVG('<path d="M12 5v14M6 13l6 6 6-6"/>', 2.4) + "</button></div>" +
+      '<div class="tt-att" id="ttAttBox" hidden><div class="tt-ats" id="ttAts"></div><span id="ttAttT">عکس‌ها با فرستادن پیام روی حساب شما ذخیره می‌شود.</span></div>' +
       '<form class="chat-in tt-in" id="ttForm" autocomplete="off"><button class="tt-clip" type="button" id="ttClip" aria-label="پیوست عکس" title="پیوست عکس" hidden>' + TT_IMG + '</button><input type="file" id="ttFile" accept="image/*" multiple hidden><textarea id="ttTa" rows="1" maxlength="2000" dir="auto" enterkeyhint="send" placeholder="سؤالت را بنویس…" aria-label="سؤال شما"></textarea>' +
-      '<button class="chat-send" type="submit" id="ttSend" aria-label="ارسال" disabled>' + CI.send + "</button></form></div>" +
-      '<p class="muted tt-note" id="ttNote" hidden>هر سؤال ۲ پولک است. معلم هوشمند ممکن است گاهی اشتباه کند؛ نکته‌های مهم را با کتاب درسی‌ات مقایسه کن.</p></section>';
+      '<button class="chat-send" type="submit" id="ttSend" aria-label="ارسال" disabled>' + CI.send + "</button></form></div></section>";
 
     const $ = (id) => document.getElementById(id);
     const log = $("ttLog"), ta = $("ttTa"), sendBtn = $("ttSend"), box = $("ttBox"), pickEl = $("ttPick");
@@ -5787,26 +5856,24 @@
     let busy = false;
     let alive = true;
     let lastFailed = null;
-    let atts = [], attShown = false, reading = false;   /* عکس‌های پیوست: data URL کوچک‌شده */
+    let atts = [], reading = false;   /* عکس‌های پیوستِ پیامِ در حال نوشتن: {u: عکسِ کوچک‌شده, t: بندانگشتی}؛ فقط در حافظه‌ی همین صفحه تا لحظه‌ی ارسال */
     const toast = (m) => { if (window.__pzToast) window.__pzToast(m); };
-    let follow = true;
     let ctl = null, userStop = false, stopHook = null, autoLeft = 0;
     let mode = curChat().grade && curChat().subj ? "chat" : "pick";   /* گفت‌وگوی فعال پایه و درس دارد: مستقیم به چت؛ وگرنه صفحه‌ی انتخاب */
     let prevSel = null;   /* اگر «تغییر» را بزند و پشیمان شود، به همین انتخاب برمی‌گردد */
 
-    /* ارتفاع جعبه‌ی چت = همه‌ی جای خالیِ صفحه (بدون اسکرولِ اضافه‌ی صفحه؛ با کیبورد موبایل هم درست می‌شود) */
+    /* چت تمام‌صفحه است (چیدمان با CSS و کلاس tt-chat)؛ این‌جا فقط ارتفاعِ واقعاً دیدنیِ صفحه (با کیبورد موبایل) به CSS داده می‌شود */
     const fit = () => {
-      if (!alive || !box.isConnected || mode !== "chat") return;
+      if (!alive) return;
       const vv = window.visualViewport;
-      const H = vv ? vv.height : window.innerHeight;
-      const top = box.getBoundingClientRect().top + window.scrollY;
-      const pad = parseFloat(getComputedStyle(app).paddingBottom) || 0;
-      const avail = H - top - $("ttNote").offsetHeight - 12 - pad - 2;
-      box.style.height = Math.max(260, Math.floor(avail)) + "px";
+      const H = Math.round(vv ? vv.height : window.innerHeight);
+      document.documentElement.style.setProperty("--vvh", H + "px");
+      if (mode === "chat" && (window.scrollY || document.documentElement.scrollTop)) { try { window.scrollTo(0, 0); } catch (e) { /* ignore */ } }
+      downSync();
     };
-    const onResize = () => { fit(); setTop(); if (follow) log.scrollTop = log.scrollHeight; };
+    const onResize = () => { fit(); setTop(); };
     window.addEventListener("resize", onResize);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
+    if (window.visualViewport) { window.visualViewport.addEventListener("resize", onResize); window.visualViewport.addEventListener("scroll", fit); }
 
     /* ---------- انتخاب پایه ← درس ← کتاب ---------- */
     let books = [], booksState = 0;   /* 0 در حال بارگیری، 1 آماده، 2 نشد */
@@ -5913,8 +5980,9 @@
     const phText = () => (curBook() ? "سؤالت یا شماره‌ی صفحه را بنویس…" : "سؤالت را بنویس…");
     const applyCfg = () => {
       const chat = mode === "chat";
-      pickEl.hidden = chat; $("ttCtx").hidden = !chat; box.hidden = !chat; $("ttNote").hidden = !chat;
-      if (!chat) return;
+      pickEl.hidden = chat; $("ttCtx").hidden = !chat; box.hidden = !chat;
+      document.documentElement.classList.toggle("tt-chat", chat);
+      if (!chat) { fit(); return; }
       const cb = curBook();
       $("ttCtxT").textContent = (st.grade === "عمومی" ? "" : st.grade + " · ") + (subjName() || "؟");
       $("ttCtxS").textContent = cb ? (() => { const p = bookParts(cb); return p.n + (p.t ? " · " + p.t : ""); })() : (booksState === 0 && st.book !== "0" ? "…" : "بدون کتاب");
@@ -5969,13 +6037,85 @@
       b.appendChild(n);
     };
 
-    const bubble = (role, text, extra, inc) => {
+    /* عکس‌های پیوست روی دیتابیس‌اند. این‌جا فقط برای نمایش، و فقط در حافظه‌ی همین صفحه (blob)، گرفته می‌شوند؛ چیزی در مرورگر ذخیره نمی‌شود. */
+    const fcache = new Map();
+    const fwait = [];
+    let fbusy = 0;
+    const fslot = () => new Promise((res) => { const go = () => { if (fbusy < 4) { fbusy++; res(); } else fwait.push(go); }; go(); });
+    const fdone = () => { fbusy--; const n = fwait.shift(); if (n) n(); };
+    /* نتیجه: آدرس blob، یا "" (دیگر روی سرور نیست)، یا null (اینترنت؛ بعداً دوباره امتحان می‌شود) */
+    const fileUrl = (id, thumb) => {
+      const k = id + (thumb ? "t" : "f");
+      if (fcache.has(k)) return fcache.get(k);
+      const pr = (async () => {
+        await fslot();
+        try {
+          const se = auth.get();
+          if (!se) return null;
+          const res = await fetch(cfg.SUPABASE_URL + "/functions/v1/tutor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
+            body: JSON.stringify({ token: se.token, action: "file", id: id, thumb: !!thumb }),
+          });
+          if (res.status === 404) return "";
+          if (!res.ok) return null;
+          return URL.createObjectURL(await res.blob());
+        } catch (e) { return null; } finally { fdone(); }
+      })();
+      fcache.set(k, pr);
+      pr.then((u) => { if (u === null) fcache.delete(k); });
+      return pr;
+    };
+    let lightbox = null;
+    const closePic = () => { if (lightbox) { lightbox.remove(); lightbox = null; } document.removeEventListener("keydown", picKey, true); };
+    const picKey = (e) => { if (e.key === "Escape" && lightbox) { e.preventDefault(); e.stopPropagation(); closePic(); } };
+    const openPic = async (it) => {
+      closePic();
+      const ov = document.createElement("div");
+      ov.className = "tt-lb"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", "عکس پیوست‌شده");
+      const im = document.createElement("img"); im.alt = "عکس پیوست‌شده";
+      const x = document.createElement("button"); x.type = "button"; x.className = "tt-lb-x"; x.setAttribute("aria-label", "بستن"); x.innerHTML = CI.close;
+      ov.appendChild(im); ov.appendChild(x);
+      document.body.appendChild(ov);
+      lightbox = ov;
+      document.addEventListener("keydown", picKey, true);
+      ov.addEventListener("click", closePic);
+      if (it.u) im.src = it.u;
+      else { const u = await fileUrl(it.id, false); if (lightbox !== ov) return; if (u) im.src = u; else { closePic(); toast("این عکس دیگر در دسترس نیست."); } }
+    };
+    const picBox = (items) => {
+      const wrap = document.createElement("div");
+      wrap.className = "tt-pics";
+      items.forEach((it) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "tt-pic-b"; b.setAttribute("aria-label", "دیدن عکس");
+        const im = document.createElement("img");
+        im.className = "tt-pic"; im.alt = "عکس پیوست‌شده"; im.decoding = "async";
+        b.appendChild(im);
+        if (it.u) im.src = it.t || it.u;
+        else {
+          b.classList.add("ld");
+          fileUrl(it.id, true).then((u) => {
+            if (!alive) return;
+            b.classList.remove("ld");
+            if (u) im.src = u;
+            else { im.remove(); b.classList.add("gone"); b.disabled = true; b.textContent = u === "" ? "عکس دیگر در دسترس نیست" : "عکس بارگیری نشد"; }
+          });
+        }
+        b.addEventListener("click", () => { if (!b.disabled) openPic(it); });
+        wrap.appendChild(b);
+      });
+      return wrap;
+    };
+
+    const bubble = (role, text, extra, inc, pics) => {
       const d = document.createElement("div");
       d.className = "tt-m " + (role === "user" ? "me" : "ai") + (extra ? " " + extra : "");
       if (role === "user") {
         const b = document.createElement("div");
         b.className = "tt-b";
-        b.textContent = text;
+        if (pics && pics.length) b.appendChild(picBox(pics));
+        b.appendChild(document.createTextNode(text));
         d.appendChild(b);
       } else {
         const av = document.createElement("span");
@@ -5991,16 +6131,24 @@
         cp.title = "کپی";
         cp.innerHTML = TT_COPY;
         d._t = text;
-        cp.addEventListener("click", async () => { const r = await copyText(d._t); if (window.__pzToast) window.__pzToast(r === false ? "کپی نشد" : "کپی شد"); });
+        cp.addEventListener("click", async () => { const r = await copyText(ttFa(d._t)); if (window.__pzToast) window.__pzToast(r === false ? "کپی نشد" : "کپی شد"); });
         d.appendChild(av); d.appendChild(b); d.appendChild(cp);
         if (text) renderMath(b);
         if (inc) incNote(d, "", inc.btn);
       }
       return d;
     };
+    /* صفحه هیچ‌وقت خودش اسکرول نمی‌شود: فقط وقتی پیامی می‌فرستی، پیامِ تو بالای کادر می‌آید (یک بار) و پاسخ زیرش نوشته می‌شود */
     const scrollEnd = () => { log.scrollTop = log.scrollHeight; };
     const scrollToEl = (el) => { log.scrollTop = Math.max(0, el.offsetTop - 10); };
-    log.addEventListener("scroll", () => { follow = log.scrollHeight - log.scrollTop - log.clientHeight < 80; }, { passive: true });
+    const downBtn = $("ttDown");
+    function downSync() {
+      if (!downBtn || !log) return;
+      const far = log.scrollHeight - log.scrollTop - log.clientHeight > 140;
+      downBtn.hidden = !(far && mode === "chat" && hist().length > 0);
+    }
+    log.addEventListener("scroll", downSync, { passive: true });
+    downBtn.addEventListener("click", () => { try { log.scrollTo({ top: log.scrollHeight, behavior: reduceMotion() ? "auto" : "smooth" }); } catch (e) { scrollEnd(); } });
 
     function renderLog() {
       log.innerHTML = "";
@@ -6008,13 +6156,13 @@
       if (!h.length) {
         const e = document.createElement("div");
         e.className = "tt-empty";
-        const cb = curBook();
-        e.innerHTML = '<span class="tt-ic big">' + TT_CAP + "</span><h2>" + (cb ? "از چه صفحه‌ای شروع کنیم؟" : "چه سؤالی داری؟") + "</h2>";
+        e.innerHTML = '<span class="tt-ic big">' + TT_CAP + "</span><h2>از کجا شروع کنیم؟</h2><p class=\"tt-price\">هر سوال = ۲ پولک</p>";
         log.appendChild(e);
+        downSync();
         return;
       }
-      h.forEach((m, i) => log.appendChild(bubble(m.r === "u" ? "user" : "ai", m.c, "", m.r === "a" && m.p && i === h.length - 1 ? { btn: true } : null)));
-      follow = true; scrollEnd();
+      h.forEach((m, i) => log.appendChild(bubble(m.r === "u" ? "user" : "ai", m.c, "", m.r === "a" && m.p && i === h.length - 1 ? { btn: true } : null, m.r === "u" && m.f ? m.f.map((id) => ({ id: id })) : null)));
+      scrollEnd(); downSync();
     }
 
     function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 132) + "px"; }
@@ -6044,7 +6192,7 @@
 
     /* درخواست به معلم. onText(متنِ تا‌اکنون) با رسیدن هر تکه صدا زده می‌شود.
        نتیجه: {reply, left, inc, error?, stopped?}  یا  {error, code?, stopped?} */
-    async function ask(history, onText) {
+    async function ask(history, onText, onFiles, imgs) {
       const M = aiModel(st.model);
       const s = auth.get();
       if (!s) return { error: "نشست شما منقضی شده است. دوباره وارد شوید.", code: "no_session" };
@@ -6057,7 +6205,12 @@
           method: "POST",
           signal: ctl ? ctl.signal : undefined,
           headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
-          body: JSON.stringify({ token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), book: curBook() ? curBook().slug : undefined, provider: M.provider, model: M.model, stream: true, images: (M.vision && atts.length) ? atts : undefined, messages: history.slice(-16).map((m) => ({ role: m.r === "u" ? "user" : "assistant", content: m.c })) }),
+          body: JSON.stringify({
+            token: s.token, grade: st.grade === "عمومی" ? "" : st.grade, subject: subjName(), book: curBook() ? curBook().slug : undefined, provider: M.provider, model: M.model, stream: true, chat: st.active,
+            images: (M.vision && imgs && imgs.length) ? imgs.map((x) => x.u) : undefined,
+            thumbs: (M.vision && imgs && imgs.length) ? imgs.map((x) => x.t) : undefined,
+            messages: history.slice(-16).map((m) => { const o = { role: m.r === "u" ? "user" : "assistant", content: m.c }; if (m.r === "u" && m.f && m.f.length) o.files = m.f; return o; }),
+          }),
         });
       } catch (e) {
         clearTimeout(hdr);
@@ -6074,6 +6227,7 @@
           if (ln.indexOf("data:") !== 0) return;
           let j; try { j = JSON.parse(ln.slice(5)); } catch (e) { return; }
           if (typeof j.d === "string") { txt += j.d; onText(txt); }
+          else if (Array.isArray(j.files)) { if (onFiles) onFiles(j.files); }
           else if (j.done) { done = true; left = j.left; left2 = j.tokens; trunc = !!j.truncated; }
           else if (j.error) err = String(j.error);
         };
@@ -6099,11 +6253,13 @@
       }
       let d = null;
       try { d = await res.json(); } catch (e) { /* ignore */ }
+      if (d && Array.isArray(d.files) && onFiles) onFiles(d.files);
       if (res.ok && d && d.reply) return { reply: String(d.reply), left: d.left, tokens: d.tokens, inc: false };
       if (res.status === 401 && d && d.code === "no_session") { auth.clear(); }
       return { error: (d && d.error) || "پاسخ دادن ممکن نشد. دوباره تلاش کنید.", code: d && d.code, tokens: d && d.tokens };
     }
 
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     async function submit(retry, forced) {
       if (busy) return;
       let text;
@@ -6120,89 +6276,165 @@
       chat.t = Date.now();   /* تازه‌ترین گفت‌وگو بالای فهرست */
       log.querySelectorAll(".tt-m.err").forEach((n) => n.remove());
       log.querySelectorAll(".tt-inc .btn").forEach((n) => n.remove());
+      const mine = (!forced && aiModel(st.model).vision && atts.length) ? atts.slice() : [];   /* عکس‌هایی که با همین پیام می‌روند (هنوز روی سرور نیستند) */
+      let ub = null;
       if (!retry) {
         if (!h.length) log.innerHTML = "";
         h.push({ r: "u", c: text });
-        const ub = bubble("user", text);
-        if (atts.length && aiModel(st.model).vision && !attShown) {   /* کوچکِ عکس‌ها فقط در اولین پیامی که با آن‌ها فرستاده می‌شود */
-          const wrap = document.createElement("div");
-          wrap.className = "tt-pics";
-          atts.forEach((u) => { const im = document.createElement("img"); im.className = "tt-pic"; im.alt = "عکس پیوست‌شده"; im.src = u; wrap.appendChild(im); });
-          ub.querySelector(".tt-b").insertBefore(wrap, ub.querySelector(".tt-b").firstChild);
-          attShown = true;
-        }
+        ub = bubble("user", text, "", null, mine.map((x) => ({ u: x.u, t: x.t })));
         log.appendChild(ub);
         if (!forced) { ta.value = ""; autosize(); }
+      } else {
+        const ms = log.querySelectorAll(".tt-m.me");
+        ub = ms.length ? ms[ms.length - 1] : null;
       }
+      const um = h[h.length - 1];   /* پیامِ کاربر که الان جواب می‌گیرد */
       if (firstMsg) nameChat(chat, text);   /* همان لحظه‌ی اولین پیام، نام‌گذاری شروع می‌شود (موازی با پاسخ) */
       persist();
       renderSide();
       busy = true; sync();
       const ty = typing();
       log.appendChild(ty);
-      follow = true; scrollEnd();
-      /* نمایش زنده، حرف‌به‌حرف: متنی که از شبکه می‌رسد در صف می‌ماند و «ماشین‌تحریر» آن را با سرعتِ وفقی (هرچه صف بلندتر، سریع‌تر) نمایش می‌دهد؛
-         پس حتی اگر شبکه دسته‌دسته بفرستد، نوشتن نرم و یکنواخت دیده می‌شود. پاراگراف‌های تمام‌شده یک بار رندر می‌شوند (فرمول‌ها هم) و فقط پاراگرافِ در حال نوشتن هر ~۵۵ms دوباره ساخته می‌شود. */
-      let live = null, liveB = null, tail = null, cur = "", shown = 0, stableLen = 0, raf = 0, lastT = 0, acc = 0, lastRender = 0, fin = false, ending = false, drainRes = null;
-      const addChunk = (html) => {
-        const tmp = document.createElement("div");
-        tmp.innerHTML = html;
-        const added = [];
-        while (tmp.firstChild) { added.push(tmp.firstChild); liveB.insertBefore(tmp.firstChild, tail); }
-        added.forEach((n) => { if (n.nodeType === 1) renderMath(n); });
+      /* پیامِ تو یک بار بالای کادر می‌نشیند و پاسخ زیرش نوشته می‌شود؛ از این به بعد کادر خودش جابه‌جا نمی‌شود، هر قدر پاسخ بلند باشد */
+      let room = 0;
+      if (ub) {
+        const cs = getComputedStyle(log);
+        const padT = parseFloat(cs.paddingTop) || 0, padB = parseFloat(cs.paddingBottom) || 0;
+        room = Math.max(0, log.clientHeight - padT - padB - ub.offsetHeight - 12);
+        ty.style.minHeight = room + "px";
+        log.scrollTop = Math.max(0, ub.offsetTop - padT);
+      }
+      downSync();
+
+      /* نمایش زنده: متنی که از شبکه می‌رسد در صف می‌ماند و هر ~۱۲۰ میلی‌ثانیه چند کلمه‌ی کامل از آن «دسته‌ای» آشکار می‌شود؛ هر دسته با یک محوشدگیِ نرم (fade) می‌آید.
+         پس نه کلمه‌به‌کلمه می‌پرد و نه به سرعتِ تکه‌های شبکه بستگی دارد. پاراگراف‌های تمام‌شده یک بار رندر می‌شوند (فرمول‌ها هم) و فقط پاراگرافِ در حال نوشتن دوباره ساخته می‌شود. */
+      const FADE = reduceMotion() ? 0 : 520, TICK = 120;
+      let live = null, liveB = null, tail = null, cur = "", shown = 0, stableLen = 0, timer = 0, fin = false, ending = false, drainRes = null;
+      let chunkLen = 0, lastEnd = 0;
+      const marks = [];   /* [{a,b,t}]: نویسه‌های دیدنیِ a تا b در لحظه‌ی t آشکار شدند */
+      const tlen = (root) => { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n = 0, x; while ((x = w.nextNode())) n += x.nodeValue.length; return n; };
+      const settled = (endPos, now) => {
+        if (!FADE) return true;
+        for (let i = 0; i < marks.length; i++) if (marks[i].b >= endPos) return marks[i].a >= endPos || now - marks[i].t >= FADE;
+        return true;
+      };
+      const fadeWrap = (root, off, now) => {
+        const rec = marks.filter((m) => now - m.t < FADE);
+        if (!rec.length) return;
+        const lo = rec[0].a;
+        const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        let n;
+        while ((n = w.nextNode())) nodes.push(n);
+        let pos = off;
+        nodes.forEach((node) => {
+          const txt = node.nodeValue, a0 = pos, b0 = pos + txt.length;
+          pos = b0;
+          if (b0 <= lo) return;
+          const frag = document.createDocumentFragment();
+          let cursor = 0;
+          for (let k = 0; k < rec.length; k++) {
+            const r = rec[k];
+            if (r.b <= a0 || r.a >= b0) continue;
+            const s0 = Math.max(r.a, a0) - a0, e0 = Math.min(r.b, b0) - a0;
+            if (s0 > cursor) frag.appendChild(document.createTextNode(txt.slice(cursor, s0)));
+            const sp = document.createElement("span");
+            sp.className = "tt-fd";
+            sp.style.animationDelay = "-" + Math.round(now - r.t) + "ms";
+            sp.textContent = txt.slice(s0, e0);
+            frag.appendChild(sp);
+            cursor = e0;
+          }
+          if (cursor === 0) return;
+          if (cursor < txt.length) frag.appendChild(document.createTextNode(txt.slice(cursor)));
+          node.parentNode.replaceChild(frag, node);
+        });
+      };
+      const trimMarks = (total) => {
+        if (total > lastEnd) { marks.push({ a: lastEnd, b: total, t: performance.now() }); lastEnd = total; }
+        else if (total < lastEnd) {   /* متنِ دیدنی کوتاه شد (مثلاً فرمولِ نیمه‌کاره کنار رفت) */
+          lastEnd = total;
+          while (marks.length && marks[marks.length - 1].a >= total) marks.pop();
+          if (marks.length) marks[marks.length - 1].b = Math.min(marks[marks.length - 1].b, total);
+        }
       };
       const render = () => {
-        lastRender = performance.now();
         if (!live) return;
+        const now = performance.now();
         const v = cur.slice(0, shown);
         const cut = ttSplit(v, stableLen);
-        if (cut > stableLen) { addChunk(ttMd(v.slice(stableLen, cut))); stableLen = cut; }
         tail.innerHTML = ttMd(v.slice(stableLen), true);
-        if (follow) log.scrollTop = log.scrollHeight;
+        trimMarks(chunkLen + tlen(tail));   /* کلماتِ این دسته همین حالا ثبت می‌شوند */
+        if (cut > stableLen) {
+          const tmp = document.createElement("div");
+          tmp.innerHTML = ttMd(v.slice(stableLen, cut));
+          const len = tlen(tmp);
+          if (settled(chunkLen + len, now)) {   /* پاراگراف وقتی ثابت می‌شود که محوشدگیِ کلماتش تمام شده باشد (تا نپرد) */
+            const added = [];
+            while (tmp.firstChild) { const nd = tmp.firstChild; added.push(nd); liveB.insertBefore(nd, tail); }
+            added.forEach((nd) => { if (nd.nodeType === 1) renderMath(nd); });
+            chunkLen += len; stableLen = cut;
+            tail.innerHTML = ttMd(v.slice(stableLen), true);
+            trimMarks(chunkLen + tlen(tail));
+          }
+        }
+        if (FADE) fadeWrap(tail, chunkLen, now);
+        while (marks.length > 1 && now - marks[0].t > FADE + 1500) marks.shift();
+        downSync();
       };
       const settle = () => { if (drainRes) { const f = drainRes; drainRes = null; f(); } };
-      const step = (t) => {
-        raf = 0;
-        if (fin) return;
-        const dt = Math.min(100, t - (lastT || t));
-        lastT = t;
-        if (document.hidden) shown = cur.length;
-        let backlog = cur.length - shown;
-        if (backlog > 0) {
-          const rate = Math.min(1200, Math.max(40, backlog * (ending ? 8 : 1.5)));
-          acc += (rate * dt) / 1000;
-          const n = Math.floor(acc);
-          if (n > 0) {
-            acc -= n;
-            shown = Math.min(cur.length, shown + n);
-            if (shown < cur.length && /[\uD800-\uDBFF]/.test(cur.charAt(shown - 1))) shown++;   /* ایموجی نصفه نشود */
-            backlog = cur.length - shown;
-          }
-          if (live && (backlog === 0 || performance.now() - lastRender >= 55)) render();
+      const wordsIn = (a, b) => { let n = 0; for (let i = a; i < b; i++) { const c = cur.charCodeAt(i); if (c === 32 || c === 10 || c === 160) n++; } return n; };
+      const isWs = (c) => c === " " || c === "\n" || c === "\t" || c === "\u00a0";
+      const advance = () => {
+        if (document.hidden) { shown = cur.length; return; }
+        const bw = wordsIn(shown, cur.length);
+        const want = ending ? Math.max(8, Math.ceil(bw / 3)) : Math.min(14, Math.max(1, Math.ceil(bw / 8)));
+        let i = shown, n = 0;
+        while (i < cur.length && n < want) {
+          let j = i;
+          while (j < cur.length && !isWs(cur.charAt(j))) j++;
+          if (j >= cur.length) { if (ending || j - i > 40) { i = cur.length; n++; } break; }   /* کلمه‌ی آخر هنوز کامل نشده */
+          while (j < cur.length && isWs(cur.charAt(j))) j++;
+          i = j; n++;
         }
-        if (cur.length - shown > 0) raf = requestAnimationFrame(step);
-        else { lastT = 0; acc = 0; settle(); }
+        shown = i;
       };
-      const kick = () => { if (!raf && !fin) raf = requestAnimationFrame(step); };
+      const tick = () => {
+        timer = 0;
+        if (fin) return;
+        const before = shown;
+        advance();
+        if (shown !== before) render();
+        if (cur.length > shown) timer = setTimeout(tick, TICK); else settle();
+      };
+      const kick = () => { if (!timer && !fin) timer = setTimeout(tick, TICK); };
       const flushNow = () => { shown = cur.length; settle(); };
       const drain = () => new Promise((res) => {
         if (!live || cur.length <= shown) return res();
         ending = true; drainRes = res; kick();
-        setTimeout(flushNow, 2500);   /* اگر به هر دلیل رندر نشد، گیر نکن */
+        setTimeout(flushNow, 4000);   /* اگر به هر دلیل تمام نشد، گیر نکن */
       });
       stopHook = flushNow;
       const finish = (full) => {
         fin = true;
-        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        if (timer) { clearTimeout(timer); timer = 0; }
         if (!live) return;
         const rest = full.slice(stableLen);
-        if (rest.trim()) addChunk(ttMd(rest));
+        if (rest.trim()) {
+          const tmp = document.createElement("div");
+          tmp.innerHTML = ttMd(rest);
+          const added = [];
+          while (tmp.firstChild) { const nd = tmp.firstChild; added.push(nd); liveB.insertBefore(nd, tail); }
+          added.forEach((nd) => { if (nd.nodeType === 1) renderMath(nd); });
+        }
         tail.remove();
         live.classList.remove("streaming");
         live._t = full;
+        downSync();
       };
       log.setAttribute("aria-busy", "true");
       log.setAttribute("aria-live", "off");
+      let acked = false;
       const r = await ask(h, (t) => {
         if (!alive || !ok() || key !== st.active) return;
         cur = t;
@@ -6210,6 +6442,7 @@
         if (!live) {
           ty.remove();
           live = bubble("ai", "", "in streaming");
+          if (room) live.style.minHeight = room + "px";
           liveB = live.querySelector(".tt-b");
           tail = document.createElement("div");
           tail.className = "tt-tail";
@@ -6217,10 +6450,16 @@
           log.appendChild(live);
         }
         kick();
-      });
-      if (alive && ok() && live && !r.stopped) await drain(); else flushNow();
+      }, (ids) => {   /* عکس‌ها روی دیتابیس ذخیره شد: از این به بعد فقط شناسه‌شان با گفت‌وگو می‌ماند */
+        if (acked || !alive || !ids.length) return;
+        acked = true;
+        const f = ids.filter((x) => typeof x === "string" && TT_FID.test(x)).slice(0, 5);
+        if (f.length) { um.f = f; persist(); }
+        if (mine.length && key === st.active) { atts = []; attDraw(); clipSync(); }
+      }, mine);
+      if (alive && ok() && live && !r.stopped) { await drain(); if (FADE && alive && ok() && !userStop) await sleep(FADE); } else flushNow();
       stopHook = null;
-      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      if (timer) { clearTimeout(timer); timer = 0; }
       fin = true;
       log.removeAttribute("aria-busy");
       log.setAttribute("aria-live", "polite");
@@ -6241,9 +6480,9 @@
           if (live && live.isConnected) {
             finish(r.reply);
             if (r.inc && !willAuto) incNote(live, ttSafe(r.error), true);
-            if (follow) scrollEnd();
           } else {
             const el = bubble("ai", r.reply, "in", r.inc && !willAuto ? { btn: true } : null);
+            if (room) el.style.minHeight = room + "px";
             log.appendChild(el);
             scrollToEl(el);
           }
@@ -6256,7 +6495,7 @@
           const arr = chat.msgs;
           if (arr.length && arr[arr.length - 1].r === "u") arr.pop();
           if (!arr.length && !chat.man) { chat.title = ""; chat.ai = false; chat.seq++; }   /* پیامی نمانده؛ عنوان هم پاک می‌شود تا با پیام بعدی دوباره ساخته شود */
-          persist(); renderSide(); lastFailed = null; attShown = false;
+          persist(); renderSide(); lastFailed = null;
           if (!forced) { ta.value = text; autosize(); }
           renderLog();
         }
@@ -6278,7 +6517,7 @@
           e.querySelector(".tt-b").appendChild(rb);
         }
         log.appendChild(e);
-        follow = true; scrollEnd();
+        downSync();
         if (r.code === "no_session") setTimeout(() => { if (ok()) go("/signup"); }, 1800);
       }
       sync();
@@ -6299,20 +6538,20 @@
       sync(); fit();
     };
     const attDraw = () => {
-      const box = $("ttAts");
-      box.textContent = "";
-      atts.forEach((u, i) => {
+      const bx = $("ttAts");
+      bx.textContent = "";
+      atts.forEach((it, i) => {
         const w = document.createElement("span");
         w.className = "tt-at";
-        const im = document.createElement("img"); im.alt = "عکس پیوست‌شده"; im.src = u;
+        const im = document.createElement("img"); im.alt = "عکس پیوست‌شده"; im.src = it.t || it.u;
         const x = document.createElement("button"); x.type = "button"; x.setAttribute("aria-label", "حذف عکس"); x.innerHTML = CI.close; x.disabled = busy;
-        x.addEventListener("click", () => { if (busy) return; atts.splice(i, 1); attShown = false; attDraw(); clipSync(); ta.focus(); });
-        w.appendChild(im); w.appendChild(x); box.appendChild(w);
+        x.addEventListener("click", () => { if (busy) return; atts.splice(i, 1); attDraw(); clipSync(); ta.focus(); });
+        w.appendChild(im); w.appendChild(x); bx.appendChild(w);
       });
       $("ttAttBox").hidden = !atts.length;
     };
-    const attReset = () => { atts = []; attShown = false; attDraw(); ta.placeholder = phText(); };
-    /* عکس را کوچک می‌کنیم (حداکثر ۱۲۸۰ پیکسل، JPEG) تا سریع بالا برود و روی گوشی‌های ضعیف هم کند نشود */
+    const attReset = () => { atts = []; attDraw(); ta.placeholder = phText(); };
+    /* عکس را کوچک می‌کنیم (حداکثر ۱۲۸۰ پیکسل، JPEG) تا سریع بالا برود، و یک بندانگشتیِ کوچک هم برای نمایش در گفت‌وگو می‌سازیم */
     const readImg = (file) => new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const im = new Image();
@@ -6320,16 +6559,20 @@
         try {
           let w = im.naturalWidth, h = im.naturalHeight;
           if (!w || !h) throw new Error("size");
-          const k = Math.min(1, 1280 / Math.max(w, h));
-          w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k));
-          const c = document.createElement("canvas");
-          c.width = w; c.height = h;
-          const g = c.getContext("2d");
-          g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0, w, h);
-          let q = 0.84, out = c.toDataURL("image/jpeg", q);
-          while (out.length > 1600000 && q > 0.4) { q -= 0.12; out = c.toDataURL("image/jpeg", q); }
-          c.width = c.height = 0;
-          URL.revokeObjectURL(url); resolve(out);
+          const draw = (max, q0, limit) => {
+            const k = Math.min(1, max / Math.max(w, h));
+            const cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+            const c = document.createElement("canvas");
+            c.width = cw; c.height = ch;
+            const g = c.getContext("2d");
+            g.fillStyle = "#fff"; g.fillRect(0, 0, cw, ch); g.drawImage(im, 0, 0, cw, ch);
+            let q = q0, out = c.toDataURL("image/jpeg", q);
+            while (out.length > limit && q > 0.35) { q -= 0.12; out = c.toDataURL("image/jpeg", q); }
+            c.width = c.height = 0;
+            return out;
+          };
+          const u = draw(1280, 0.84, 1600000), t = draw(256, 0.72, 55000);
+          URL.revokeObjectURL(url); resolve({ u: u, t: t });
         } catch (e) { URL.revokeObjectURL(url); reject(e); }
       };
       im.onerror = () => { URL.revokeObjectURL(url); reject(new Error("decode")); };
@@ -6357,7 +6600,6 @@
         }
       } finally { reading = false; }
       if (!alive) return;
-      attShown = false;
       attDraw();
       if (bad && !atts.length) toast("این عکس باز نشد. یک عکس JPG یا PNG انتخاب کنید.");
       ta.placeholder = atts.length ? "درباره‌ی عکس بپرس…" : phText();
@@ -6672,8 +6914,12 @@
       window.removeEventListener("online", onOnline);
       try { if (ctl) ctl.abort(); } catch (e) { /* ignore */ }
       window.removeEventListener("resize", onResize);
-      if (window.visualViewport) window.visualViewport.removeEventListener("resize", onResize);
-      document.documentElement.classList.remove("tt-page", "tt-side-on");
+      if (window.visualViewport) { window.visualViewport.removeEventListener("resize", onResize); window.visualViewport.removeEventListener("scroll", fit); }
+      document.documentElement.classList.remove("tt-page", "tt-side-on", "tt-chat");
+      document.documentElement.style.removeProperty("--vvh");
+      closePic();
+      fcache.forEach((pr) => { pr.then((u) => { if (u) { try { URL.revokeObjectURL(u); } catch (e) { /* ignore */ } } }); });
+      fcache.clear();
       document.removeEventListener("pointerdown", onDocDown, true);
       document.removeEventListener("keydown", onDocKey);
       window.removeEventListener("resize", closeMenu);
