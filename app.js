@@ -3012,8 +3012,8 @@
     const fSize = (n) => n >= 1048576 ? faNum((n / 1048576).toFixed(1).replace(/\.0$/, "")) + " مگابایت" : faNum(Math.max(1, Math.round(n / 1024))) + " کیلوبایت";
     const filesCard = qfiles.length
       ? '<div class="card"><h2>این آزمون با این فایل‌ها ساخته شده</h2>' +
-        qfiles.map((f, i) => '<div class="actions" style="justify-content:space-between;align-items:center;flex-wrap:nowrap;gap:10px;margin:6px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" dir="auto" title="' + esc(f.name) + '">' + esc(f.name) + ' <span class="hint">· ' + fSize(f.size) + '</span></span>' +
-          '<button class="btn ghost small" type="button" data-fdl="' + i + '">دانلود</button></div>').join("") +
+        qfiles.map((f, i) => '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" dir="auto" title="' + esc(f.name) + '">' + esc(f.name) + ' <span class="hint">· ' + fSize(f.size) + '</span></span>' +
+          '<button class="btn ghost small" type="button" style="flex:none;width:auto" data-fdl="' + i + '">دانلود</button></div>').join("") +
         "</div>"
       : "";
 
