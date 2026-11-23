@@ -2002,7 +2002,6 @@
       '<input type="file" id="fzIn" multiple accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" hidden>' +
       '<ul class="fz-list" id="fzList" aria-live="polite"></ul>' +
       '<p class="fz-sum" id="fzSum" hidden></p>' +
-      '<p class="hint" style="margin:10px 2px 0">متن فایل‌ها داخل مرورگر شما استخراج و برای ساخت به سرور فرستاده می‌شود (خود فایل ذخیره نمی‌شود و متن ۲۴ ساعت بعد از پایان ساخت پاک می‌شود). بعد از شروع ساخت می‌توانید مرورگر را ببندید؛ ساخت روی سرور ادامه پیدا می‌کند. PDF اسکن‌شده (عکس) فعلاً پشتیبانی نمی‌شود.</p>' +
       '<label for="fzName">نام آزمون <small class="hint">(اختیاری)</small></label><input id="fzName" type="text" maxlength="120" autocomplete="off" placeholder="اگر خالی بماند، هوش مصنوعی نام می‌گذارد">' +
       '<label for="fzFocus">روی کدام بخش تمرکز کنیم؟ <small class="hint">(اختیاری)</small></label><input id="fzFocus" type="text" maxlength="200" autocomplete="off" placeholder="مثلاً: فقط فصل ۲ و ۳">' +
       pick.html() +
@@ -2068,7 +2067,7 @@
       arr.forEach((file) => {
         if (files.length >= FZ.maxFiles) { skipped++; return; }
         if (files.some((f) => f.name === file.name && f.size === file.size)) { dup++; return; }
-        const f = { id: "f" + (++uid), name: file.name, size: file.size, status: "read", text: "", pages: 0, err: "", prog: 0.05 };
+        const f = { id: "f" + (++uid), name: file.name, size: file.size, status: "read", text: "", pages: 0, err: "", prog: 0.05, file: file };
         files.push(f);
         qChain = qChain.then(async () => {
           if (gone || files.indexOf(f) < 0) return;
@@ -2307,6 +2306,46 @@
       try {
         const t0 = tokenOf();
         if (!t0) throw { soft: "نشست شما تمام شده است؛ دوباره وارد حساب شوید." };
+        /* فایل‌های اصلی هم در دیتابیس ذخیره می‌شود تا در صفحه‌ی نتایج آزمون دیده شود؛ اگر ذخیره نشد، ساخت آزمون ادامه پیدا می‌کند */
+        const stored = new Map();
+        const sfChunk = 300 * 1024;
+        const b64Of = (blob) => new Promise((res, rej) => {
+          const fr = new FileReader();
+          fr.onload = () => res(String(fr.result).split(",")[1] || "");
+          fr.onerror = () => rej(new Error("read"));
+          fr.readAsDataURL(blob);
+        });
+        const sfCall = async (name, args) => {
+          let lastE = null;
+          for (let a = 0; a < 3; a++) {
+            try { return await rpc(name, args); } catch (e) { lastE = e; await fzSleep(800 * (a + 1)); }
+          }
+          throw lastE;
+        };
+        const upTotal = ok.reduce((sum, f) => sum + (f.file ? f.file.size : 0), 0) || 1;
+        let upDone = 0;
+        for (const f of ok) {
+          if (!f.file) continue;
+          try {
+            const parts = Math.max(1, Math.ceil(f.file.size / sfChunk));
+            const b = await sfCall("sf_begin", { p_token: tokenOf(), p_name: f.name, p_mime: f.file.type || "application/octet-stream", p_size: f.file.size, p_parts: parts });
+            if (!b || !b.ok) { if (b && b.error === "no_session") throw { soft: explain("no_session") }; continue; }
+            let good = true;
+            for (let p = 0; p < parts && good; p++) {
+              const blob = f.file.slice(p * sfChunk, Math.min(f.file.size, (p + 1) * sfChunk));
+              const r = await sfCall("sf_put", { p_token: tokenOf(), p_file: b.id, p_part: p, p_data: await b64Of(blob) });
+              if (!r || !r.ok) { good = false; break; }
+              upDone += blob.size;
+              setGo("در حال ارسال فایل‌ها… " + faNum(Math.min(99, Math.round((upDone / upTotal) * 100))) + "٪");
+            }
+            if (good) stored.set(f, b.id);
+          } catch (e) { if (e && e.soft) throw e; }
+        }
+        exams.forEach((ex, i) => {
+          const list = st.byFile ? [ok[i]] : ok;
+          const ids = list.map((f) => stored.get(f)).filter(Boolean);
+          if (ids.length) ex.files = ids;
+        });
         const cr = await rpc("fj_create", { p_token: t0, p_params: params, p_exams: exams });
         if (!cr || !cr.ok) {
           if (cr && cr.error === "busy") fzPoll();
@@ -2967,6 +3006,17 @@
     const best = subs.length ? Math.max.apply(null, subs.map(ratio)) : 0;
     const when = (v) => { const t = new Date(v); return isNaN(t) ? "" : t.toLocaleDateString("fa-IR") + " — " + t.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }); };
 
+    let qfiles = [];
+    try { const fl = await rpc("quiz_files_list", { p_id: id, p_secret: secret }); if (Array.isArray(fl)) qfiles = fl; } catch (e) { /* فایلی ذخیره نشده یا قابلیت نصب نیست */ }
+    if (token !== routeToken) return;
+    const fSize = (n) => n >= 1048576 ? faNum((n / 1048576).toFixed(1).replace(/\.0$/, "")) + " مگابایت" : faNum(Math.max(1, Math.round(n / 1024))) + " کیلوبایت";
+    const filesCard = qfiles.length
+      ? '<div class="card"><h2>این آزمون با این فایل‌ها ساخته شده</h2>' +
+        qfiles.map((f, i) => '<div class="actions" style="justify-content:space-between;align-items:center;flex-wrap:nowrap;gap:10px;margin:6px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" dir="auto" title="' + esc(f.name) + '">' + esc(f.name) + ' <span class="hint">· ' + fSize(f.size) + '</span></span>' +
+          '<button class="btn ghost small" type="button" data-fdl="' + i + '">دانلود</button></div>').join("") +
+        "</div>"
+      : "";
+
     const qstat = qs.map((q, i) => {
       const ok = subs.filter((s) => Array.isArray(s.answers) && s.answers[i] === q.correct).length;
       const p = subs.length ? Math.round((ok / subs.length) * 100) : 0;
@@ -2989,6 +3039,7 @@
       '<div class="actions"><a class="btn ghost small" href="/q/' + encodeURIComponent(id) + '">پیش‌نمایش آزمون</a>' +
       '<a class="btn small" href="/edit/' + encodeURIComponent(id) + '">ویرایش آزمون</a>' +
       (navigator.share ? '<button class="btn small" type="button" id="shareBtn">اشتراک‌گذاری</button>' : "") + "</div></div>" +
+      filesCard +
       '<div class="stats"><div class="stat"><b>' + faNum(subs.length) + "</b><span>شرکت‌کننده</span></div>" +
       '<div class="stat"><b>' + faNum(Math.round(avg * 100)) + "٪</b><span>میانگین</span></div>" +
       '<div class="stat"><b>' + faNum(Math.round(best * 100)) + "٪</b><span>بهترین نمره</span></div></div>" +
@@ -3046,6 +3097,36 @@
       btn.addEventListener("click", () => openDetails(subs[Number(btn.getAttribute("data-det"))], btn));
     });
 
+    app.querySelectorAll("[data-fdl]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const f = qfiles[Number(btn.getAttribute("data-fdl"))];
+        if (!f || btn.disabled) return;
+        const old = btn.textContent;
+        btn.disabled = true;
+        try {
+          const chunks = [];
+          for (let p = 0; p < f.parts; p++) {
+            btn.textContent = "…" + faNum(Math.round((p / f.parts) * 100)) + "٪";
+            const b64 = await rpc("quiz_file_part", { p_id: id, p_secret: secret, p_file: f.id, p_part: p });
+            const bin = atob(String(b64));
+            const u = new Uint8Array(bin.length);
+            for (let k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+            chunks.push(u);
+          }
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(new Blob(chunks, { type: f.mime || "application/octet-stream" }));
+          a.download = f.name || "file";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        } catch (e) {
+          btn.disabled = false; btn.textContent = "ناموفق؛ دوباره تلاش کنید";
+          return;
+        }
+        btn.disabled = false; btn.textContent = old;
+      });
+    });
     copyHandlers(app);
     renderMath(app);
     document.getElementById("refresh").addEventListener("click", () => viewManage(id, secret, false, token));
