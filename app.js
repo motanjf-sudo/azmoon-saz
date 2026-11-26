@@ -1396,7 +1396,7 @@
     { id: "hyd", name: "Gemini Hydrogen", by: "Google", price: 2, pf: 4, tag: "متعادل" },
     { id: "sonnet", name: "Sonnet 5.5", by: "Anthropic", price: 2, pf: 4, tag: "دقیق و روان" },
     { id: "sol", name: "GPT Sol 6.2", by: "OpenAI", price: 2, pf: 4, tag: "استدلال قوی" },
-    { id: "neon", name: "Gemini Neon", by: "Google", price: 2, pf: 4, tag: "", soon: true },
+    { id: "neon", name: "Gemini Neon", by: "Google", price: 4, pf: 8, tag: "" },
     { id: "carbon", name: "Gemini Carbon", by: "Google", price: 3, pf: 6, tag: "دقت بالا" },
     { id: "argon", name: "Gemini Argon", by: "Google", price: 3, pf: 6, tag: "دقت بالا" },
     { id: "opus", name: "Opus 5.5", by: "Anthropic", price: 3, pf: 10, tag: "تحلیل عمیق" },
