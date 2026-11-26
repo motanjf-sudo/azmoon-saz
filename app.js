@@ -1385,6 +1385,67 @@
   const fzSleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const fzSize = (b) => (b < 1048576 ? faNum(Math.max(1, Math.round(b / 1024))) + " کیلوبایت" : faNum((b / 1048576).toFixed(1)).replace(".", "٫") + " مگابایت");
 
+  /* ---- هزینه‌ی پردازش فایل: هر ۲ مگابایتِ کامل = ۱ پولک (برای هر فایل جدا؛ اعشار حساب نمی‌شود: ۵۷٫۹۹ مگابایت = ۲۸ پولک) ---- */
+  const FZ_MB2 = 2 * 1048576;
+  const fzFee = (f) => Math.floor(((f && f.file && f.file.size) || 0) / FZ_MB2);
+  const fzFeeSum = (list) => list.reduce((sum, f) => sum + fzFee(f), 0);
+  /* پنجره‌ی تأیید قیمت، پیش از ارسال فایل‌ها و شروع ساخت */
+  function fzConfirm(o) {
+    return new Promise((resolve) => {
+      const prev = document.activeElement;
+      const ov = document.createElement("div");
+      ov.className = "modal confirm";
+      const row = (a, b, strong) => '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:7px 0' + (strong ? ";font-weight:800;font-size:1.05em" : "") + '"><span style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + a + '</span><span style="white-space:nowrap">' + b + "</span></div>";
+      const head = (t) => '<div style="font-weight:800;margin:14px 0 2px">' + t + "</div>";
+      const left = o.bal == null ? null : o.bal - o.total;
+      ov.innerHTML =
+        '<div class="modal-box confirm-box" role="dialog" aria-modal="true" aria-labelledby="fcT" style="text-align:right;max-width:460px;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;box-sizing:border-box">' +
+        '<h2 id="fcT">تأیید هزینه‌ی ساخت</h2>' +
+        '<p style="margin:0 0 4px;opacity:.8">هزینه‌ی این ساخت را ببینید؛ بعد از تأیید شما، ساخت شروع می‌شود.</p>' +
+        head("۱) پردازش فایل‌ها") +
+        '<div style="font-size:.85em;opacity:.7;margin-bottom:4px">هر ۲ مگابایت = ۱ پولک (بخش اعشاری حساب نمی‌شود)</div>' +
+        o.files.map((f) => row("<bdi>" + esc(f.name) + '</bdi> <small style="opacity:.7">(' + fzSize(f.size) + ")</small>", f.fee ? faNum(f.fee) + " پولک" : "رایگان")).join("") +
+        row("جمع پردازش فایل‌ها", faNum(o.fee) + " پولک", true) +
+        head("۲) ساخت سؤال‌ها") +
+        row((o.exams > 1 ? faNum(o.exams) + " آزمون × " : "") + faNum(o.count) + " سؤال × " + faNum(o.unit) + " پولک (" + esc(o.model) + ")", faNum(o.qcost) + " پولک") +
+        '<div style="border-top:1px solid var(--line,rgba(128,128,128,.35));margin:12px 0 4px"></div>' +
+        row("جمع کل", faNum(o.total) + " پولک", true) +
+        (o.bal != null ? row("موجودی شما", faNum(o.bal) + " پولک") + row("موجودی بعد از ساخت", faNum(Math.max(0, left)) + " پولک") : "") +
+        '<p style="font-size:.82em;opacity:.7;margin:10px 0 0">اگر ساخت یک آزمون انجام نشود، پولک سؤال‌های همان آزمون برمی‌گردد. هزینه‌ی پردازش فایل‌ها فقط وقتی برمی‌گردد که هیچ آزمونی ساخته نشود.</p>' +
+        '<div class="actions" style="margin-top:16px"><button class="btn ghost" type="button" id="fcNo">برگشت</button><button class="btn" type="button" id="fcYes">تأیید و ساخت</button></div></div>';
+      document.body.appendChild(ov);
+      const prevOv = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      let done = false;
+      const finish = (v) => {
+        if (done) return;
+        done = true;
+        document.removeEventListener("keydown", onKey, true);
+        window.removeEventListener("pz:nav", onNav);
+        document.body.style.overflow = prevOv;
+        ov.remove();
+        if (prev && prev.isConnected && v !== "nav") { try { prev.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+        resolve(v === true);
+      };
+      const onNav = () => finish("nav");
+      const onKey = (e) => {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false); }
+        else if (e.key === "Tab") {
+          const b = [ov.querySelector("#fcNo"), ov.querySelector("#fcYes")];
+          const i = b.indexOf(document.activeElement);
+          e.preventDefault();
+          b[(i + (e.shiftKey ? -1 : 1) + 2) % 2].focus();
+        }
+      };
+      document.addEventListener("keydown", onKey, true);
+      window.addEventListener("pz:nav", onNav);
+      ov.addEventListener("click", (e) => { if (e.target === ov) finish(false); });
+      ov.querySelector("#fcNo").addEventListener("click", () => finish(false));
+      ov.querySelector("#fcYes").addEventListener("click", () => finish(true));
+      ov.querySelector("#fcNo").focus();
+    });
+  }
+
   /* ---- استایل (فقط یک بار به صفحه اضافه می‌شود) ---- */
   /* ---------- انتخاب مدل هوش مصنوعی در ساخت آزمون ----------
      قیمت‌ها و فهرست مدل‌های قابل‌استفاده را سرور (تابع ex_models) می‌دهد؛ تا وقتی سرور آماده نیست فقط DeepSeek انتخاب‌پذیر است.
@@ -1403,7 +1464,7 @@
     { id: "astra", name: "Astra 6.2", by: "OpenAI", price: 6, pf: 15, tag: "قوی‌ترین مدل OpenAI" },
     { id: "fable", name: "Fable 5.2", by: "Anthropic", price: 6, pf: 15, tag: "برترین مدل Anthropic" },
   ];
-  const EX_TIER = { 1: ["اقتصادی", "سریع و کم‌هزینه"], 2: ["متعادل", "کیفیت خوب با قیمت مناسب"], 3: ["پیشرفته", "دقت بالاتر برای موضوع‌های سخت"], 6: ["حرفه‌ای", "برترین مدل‌ها برای بهترین نتیجه"] };
+  const EX_TIER = { 1: ["اقتصادی", "سریع و کم‌هزینه"], 2: ["متعادل", "کیفیت خوب با قیمت مناسب"], 3: ["پیشرفته", "دقت بالاتر برای موضوع‌های سخت"], 4: ["ویژه", "کیفیت بالاتر برای موضوع‌های دشوار"], 6: ["حرفه‌ای", "برترین مدل‌ها برای بهترین نتیجه"] };
   const EX_TIER_F = { 2: ["اقتصادی", "سریع و کم‌هزینه برای فایل‌های ساده"], 4: ["متعادل", "کیفیت خوب با قیمت مناسب"], 6: ["پیشرفته", "دقت بالاتر برای فایل‌های سنگین و موضوع‌های سخت"], 10: ["حرفه‌ای", "تحلیل عمیق فایل و تصویرها"], 15: ["ویژه", "برترین مدل‌ها برای بهترین نتیجه"] };
   const EX_BY = { DeepSeek: "deepseek", OpenAI: "openai", Anthropic: "claude", Google: "gemini" };
   const EX_LOGO = {
@@ -1483,7 +1544,7 @@
     let sel = exLoad() || "ds", caps = null, ov = null, opener = null, gone = false, locked = false, box = null, closeT = 0;
     const mdl = (id) => EX_MODELS.find((m) => m.id === id) || EX_MODELS[0];
     const isF = () => (typeof o.files === "function" ? !!o.files() : !!o.files);
-    const priceOf = (m) => (isF() ? (caps && caps.m[m.id] && caps.m[m.id].pf) || m.pf || m.price : (caps && caps.m[m.id] && caps.m[m.id].price) || m.price);
+    const priceOf = (m) => (caps && caps.m[m.id] && caps.m[m.id].price) || m.price;
     const avail = (m) => !m.soon && (m.id === "ds" || !!(caps && caps.m[m.id] && caps.m[m.id].on && (!isF() || caps.files)));
     const cur = () => { const m = mdl(sel); return avail(m) ? m : EX_MODELS[0]; };
     const mark = (m) => '<span class="xm-mk" aria-hidden="true"><img src="' + EX_LOGO[EX_BY[m.by]] + '" alt="" width="120" height="120" draggable="false"></span>';
@@ -1499,7 +1560,7 @@
       const c = cur(), n = Math.max(0, Math.floor(Number(o.total && o.total()) || 0));
       const prices = Array.from(new Set(EX_MODELS.map(priceOf))).sort((a, b) => a - b);
       return prices.map((p) => {
-        const t = (isF() ? EX_TIER_F : EX_TIER)[p] || ["", ""];
+        const t = EX_TIER[p] || ["", ""];
         return '<div class="xm-tier"><span class="xm-tp">' + faNum(p) + " پولک</span>" + (t[0] ? "<b>" + t[0] + "</b><small>" + t[1] + "</small>" : "") + "</div>" +
           EX_MODELS.filter((m) => priceOf(m) === p).map((m) => {
             const ok = avail(m);
@@ -2118,15 +2179,16 @@
       $("fzByT").textContent = "هر فایل یک آزمون جدا (" + faNum(ok.length) + " آزمون)";
       $("fzEx").disabled = st.byFile; $("fzEm").disabled = st.byFile; $("fzEp").disabled = st.byFile;
       $("fzEx").value = faNum(exCount());
-      const n = exCount(), c = st.count, p = pick.price(), total = n * c * p, b = tk.bal;
+      const n = exCount(), c = st.count, p = pick.price(), qcost = n * c * p, fee = fzFeeSum(ok), total = qcost + fee, b = tk.bal;
       const calls = n * Math.ceil(c / FZ.perCall);
       const mins = Math.max(1, Math.ceil((calls * FZ.secPerCall) / 60));
       const low = b != null && b < total;
       const cost = $("fzCost");
       cost.className = "tk-cost" + (low ? " low" : "");
       cost.innerHTML = low
-        ? "برای " + faNum(n * c) + " سؤال با «" + esc(pick.name()) + "»، " + faNum(total) + " پولک لازم است و موجودی شما " + faNum(b) + " پولک است. تعداد سؤال یا آزمون را کمتر کنید، مدل ارزان‌تر بردارید یا " + '<a href="/tokens">پولک بخرید</a>.'
-        : (n > 1 ? faNum(n) + " آزمون × " + faNum(c) + " سؤال × " + faNum(p) + " پولک = <b>" + faNum(total) + " پولک</b>" : "هر سؤال با «" + esc(pick.name()) + "» " + faNum(p) + " پولک است؛ این آزمون <b>" + faNum(c * p) + " پولک</b> مصرف می‌کند.") +
+        ? "برای " + (fee ? "پردازش فایل (" + faNum(fee) + " پولک) و " : "") + faNum(n * c) + " سؤال با «" + esc(pick.name()) + "»، " + faNum(total) + " پولک لازم است و موجودی شما " + faNum(b) + " پولک است. تعداد سؤال یا آزمون را کمتر کنید، مدل ارزان‌تر بردارید یا " + '<a href="/tokens">پولک بخرید</a>.'
+        : (fee ? "پردازش فایل‌ها: " + faNum(fee) + " پولک (هر ۲ مگابایت ۱ پولک) + ساخت " + faNum(n * c) + " سؤال: " + faNum(qcost) + " پولک = <b>" + faNum(total) + " پولک</b>"
+          : n > 1 ? faNum(n) + " آزمون × " + faNum(c) + " سؤال × " + faNum(p) + " پولک = <b>" + faNum(total) + " پولک</b>" : "هر سؤال با «" + esc(pick.name()) + "» " + faNum(p) + " پولک است؛ این آزمون <b>" + faNum(c * p) + " پولک</b> مصرف می‌کند.") +
           (ok.length ? " زمان ساخت: حدود " + faNum(mins) + " دقیقه (تخمینی)." : "");
       /* هشدار اگر متن برای این تعداد سؤال کم است */
       const warn = $("fzWarn");
@@ -2262,15 +2324,25 @@
 
     /* ---- شروع: ارسال متن به دیتابیس و سپردن کار به سرور ---- */
     const goBtn = $("fzGo");
+    let fzAsk = false;
     async function startJob() {
       msg.innerHTML = "";
-      if (sending || FJ.up || !canGo) return;
+      if (sending || FJ.up || !canGo || fzAsk) return;
       const ok = okFiles();
       if (!ok.length) return fail("اول یک فایل بدهید.");
       st.count = Math.min(FZ.maxQ, Math.max(1, numOf($("fzCount"), st.count)));
-      const n = exCount(), total = n * st.count * pick.price();
+      const n = exCount(), qcost = n * st.count * pick.price(), fee = fzFeeSum(ok), total = qcost + fee;
       if (tk.bal != null && tk.bal < total) return fail("پولک شما کافی نیست؛ موجودی شما " + faNum(tk.bal) + " پولک است و این کار " + faNum(total) + " پولک می‌خواهد.", ' <a class="err-a" href="/tokens">خرید پولک</a>');
       if (fjActive(FJ.data && FJ.data.job)) { view.showId = FJ.data.job.id; paintRun(FJ.data); return; }
+      fzAsk = true;
+      let agreed = false;
+      try {
+        agreed = await fzConfirm({
+          files: ok.map((f) => ({ name: f.name, size: f.file ? f.file.size : 0, fee: fzFee(f) })), fee: fee,
+          exams: n, count: st.count, unit: pick.price(), model: pick.name(), qcost: qcost, total: total, bal: tk.bal,
+        });
+      } finally { fzAsk = false; }
+      if (!agreed) return;
       const dm = durCtl.mode();
       const plan = fzPlan(ok, n, st.byFile, st.count);
       const params = {
@@ -2292,7 +2364,7 @@
         if (er === "busy") return "یک ساخت دیگر در جریان است.";
         if (er === "group") return "گروه پیدا نشد یا شما مالک یا مدیر آن نیستید.";
         if (er === "model") return "این مدل هوش مصنوعی الان در دسترس نیست؛ مدل دیگری انتخاب کنید.";
-        if (er === "incomplete") return "ارسال متن کامل نشد؛ دوباره تلاش کنید.";
+        if (er === "incomplete" || er === "no_files") return "ارسال کامل نشد؛ دوباره تلاش کنید.";
         if (er === "bad_text" || er === "bad_request") return "درخواست نامعتبر بود؛ فایل‌ها یا تنظیمات را بررسی کنید.";
         return "ساخت شروع نشد. دوباره تلاش کنید.";
       };
@@ -2306,7 +2378,7 @@
       try {
         const t0 = tokenOf();
         if (!t0) throw { soft: "نشست شما تمام شده است؛ دوباره وارد حساب شوید." };
-        /* فایل‌های اصلی هم در دیتابیس ذخیره می‌شود تا در صفحه‌ی نتایج آزمون دیده شود؛ اگر ذخیره نشد، ساخت آزمون ادامه پیدا می‌کند */
+        /* فایل‌های اصلی در دیتابیس ذخیره می‌شود (هم برای محاسبه‌ی هزینه‌ی پردازش و هم برای صفحه‌ی نتایج)؛ اگر ذخیره نشد، ساخت شروع نمی‌شود */
         const stored = new Map();
         const sfChunk = 300 * 1024;
         const b64Of = (blob) => new Promise((res, rej) => {
@@ -2341,6 +2413,8 @@
             if (good) stored.set(f, b.id);
           } catch (e) { if (e && e.soft) throw e; }
         }
+        const miss = ok.find((f) => f.file && !stored.has(f));
+        if (miss) throw { soft: "ارسال فایل «" + miss.name + "» کامل نشد؛ اتصال اینترنت را بررسی و دوباره تلاش کنید." };
         exams.forEach((ex, i) => {
           const list = st.byFile ? [ok[i]] : ok;
           const ids = list.map((f) => stored.get(f)).filter(Boolean);
