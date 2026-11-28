@@ -1179,17 +1179,326 @@
     else { genLockHash = null; window.removeEventListener("beforeunload", onBeforeUnload); }
   }
 
+
+  /* ---------- ساخت پایدار آزمون با هوش مصنوعی ----------
+     با زدن دکمه، پولک همان لحظه کم می‌شود و ساخت روی سرور (دیتابیس + سرویس پس‌زمینه) انجام می‌شود؛
+     مرورگر فقط می‌پرسد و نشان می‌دهد. بستن سایت یا خاموش‌شدن گوشی چیزی را عوض نمی‌کند. */
+  const GEN = { jobs: [], busy: null, timer: 0, fails: 0, dock: null, hide: new Set(), marked: new Set(), prefill: null };
+  const genActive = (j) => !!j && (j.status === "queued" || j.status === "running");
+  const genHere = () => /^\/gen(\/|$)/.test(location.pathname);
+  const genKey = () => {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) { /* ignore */ }
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8);
+  };
+  function genMerge(j) {
+    if (!j || !j.id) return;
+    const i = GEN.jobs.findIndex((x) => x.id === j.id);
+    if (i >= 0) GEN.jobs[i] = j; else GEN.jobs.unshift(j);
+  }
+  function genAdopt(id, topic, count) {
+    genMerge({ id: id, status: "queued", topic: topic, count: count, seen: false, created: new Date().toISOString(), stub: true });
+    genSchedule();
+  }
+  function genMarkSeen(j) {
+    if (!j || genActive(j) || j.seen || GEN.marked.has(j.id) || !tokenOf()) return;
+    GEN.marked.add(j.id);
+    rpc("gen_seen", { p_token: tokenOf(), p_job: j.id }).then(() => { j.seen = true; genDockPaint(); }).catch(() => GEN.marked.delete(j.id));
+  }
+  async function genPoll() {
+    const t = tokenOf();
+    if (!t) { if (GEN.jobs.length) { GEN.jobs = []; genDockPaint(); } return null; }
+    if (GEN.busy) return GEN.busy;
+    GEN.busy = rpc("gen_status", { p_token: t }).then((r) => {
+      if (tokenOf() !== t || !r || !r.ok) return GEN.jobs;
+      GEN.fails = 0;
+      const mine = GEN.jobs.filter((x) => x.stub && Date.now() - Date.parse(x.created) < 30000 && !(Array.isArray(r.jobs) && r.jobs.some((y) => y.id === x.id)));
+      GEN.jobs = (Array.isArray(r.jobs) ? r.jobs : []).concat(mine);
+      if (typeof r.tokens === "number") tkSet(r.tokens);
+      genDockPaint();
+      return GEN.jobs;
+    }).catch(() => { GEN.fails++; return GEN.jobs; }).then((v) => { GEN.busy = null; return v; });
+    return GEN.busy;
+  }
+  function genSchedule() {
+    clearTimeout(GEN.timer);
+    GEN.timer = 0;
+    if (!tokenOf()) return;
+    const act = GEN.jobs.some(genActive);
+    const ms = GEN.fails > 2 ? 300000 : genHere() ? 20000 : act ? 5000 : (document.hidden ? 180000 : 60000);
+    GEN.timer = setTimeout(async () => { await genPoll(); genSchedule(); }, ms);
+  }
+  async function genSync() {
+    clearTimeout(GEN.timer);
+    GEN.timer = 0;
+    if (!tokenOf()) { if (GEN.jobs.length) { GEN.jobs = []; genDockPaint(); } return; }
+    await genPoll();
+    genSchedule();
+  }
+
+  /* ---- نوار کوچک روی صفحه‌های دیگر: در حال ساخت / آماده شد ---- */
+  function genCss() {
+    if (document.getElementById("pzGenCss")) return;
+    const st = document.createElement("style");
+    st.id = "pzGenCss";
+    st.textContent =
+      ".gv{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:min(70vh,560px);padding:8px 0 36px}" +
+      ".gv-stage{position:relative;width:280px;max-width:100%;aspect-ratio:280/260;margin-bottom:6px}" +
+      ".gv-cv{position:absolute;inset:0;width:100%;height:100%;display:block}" +
+      ".gv-body{display:flex;flex-direction:column;align-items:center;width:100%;max-width:340px}" +
+      ".gv-h{margin:4px 0 0;font-size:22px;font-weight:800;line-height:1.6;color:var(--text)}" +
+      ".gv-d{display:inline-block;animation:gvBlink 1.2s infinite}.gv-d:nth-child(2){animation-delay:.2s}.gv-d:nth-child(3){animation-delay:.4s}" +
+      "@keyframes gvBlink{0%,80%,100%{opacity:.2}40%{opacity:1}}" +
+      ".gv-msg{position:relative;height:24px;margin-top:10px;width:100%;font-size:13.5px;color:var(--muted)}" +
+      ".gv-msg span{position:absolute;inset:0;opacity:0;animation:gvMsg 9s infinite}" +
+      ".gv-msg span:nth-child(2){animation-delay:3s}.gv-msg span:nth-child(3){animation-delay:6s}" +
+      "@keyframes gvMsg{0%{opacity:0;transform:translateY(5px)}5%,30%{opacity:1;transform:none}36%,100%{opacity:0;transform:translateY(-5px)}}" +
+      ".gv-sub{margin:8px 0 0;font-size:13px;color:var(--muted);line-height:1.9;max-width:320px;overflow-wrap:anywhere}" +
+      ".gv-fade{animation:gvFade .5s .55s both}.gv-fade.f2{animation-delay:.7s}.gv-fade.f3{animation-delay:.85s}" +
+      "@keyframes gvFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}" +
+      ".gv-btn{margin-top:22px;width:min(300px,100%);height:50px;padding:0 18px;border-radius:16px;font-size:15px;font-weight:800}" +
+      ".gv-btn+.gv-btn{margin-top:10px}" +
+      ".gv-more{margin-top:14px;font-size:13px;color:var(--accent);font-weight:700;text-decoration:none}.gv-more:hover{text-decoration:underline}" +
+      ".gd{position:fixed;z-index:91;inset-inline-start:16px;bottom:16px;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:10px;padding:9px 14px 9px 12px;border:1px solid var(--line-2);border-radius:999px;background:color-mix(in srgb,var(--surface-solid) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:var(--shadow);font-size:.88rem;font-weight:700;animation:gvFade .35s both}" +
+      ".gd.up{bottom:70px}" +
+      ".gd-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+      ".gd a{color:var(--accent);text-decoration:none;font-weight:800;white-space:nowrap}.gd button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:1.1rem;line-height:1;cursor:pointer;padding:0 2px}" +
+      ".gd-o{position:relative;flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:.72rem;font-weight:800;overflow:hidden;background:radial-gradient(circle at 35% 30%,#2fb585,#0a3b2b);box-shadow:0 0 0 3px color-mix(in srgb,#2a9a73 22%,transparent)}" +
+      ".gd-o.run::before{content:\"\";position:absolute;inset:-30%;background:conic-gradient(from 0deg,transparent 0 55%,rgba(255,255,255,.55) 78%,transparent);animation:gdSp 1.6s linear infinite}" +
+      ".gd-o.run::after{content:\"\";position:absolute;inset:3px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#2fb585,#0c4a37)}" +
+      ".gd-o.bad{background:radial-gradient(circle at 35% 30%,#e0a24a,#7a4a0a)}" +
+      "@keyframes gdSp{to{transform:rotate(360deg)}}" +
+      "@media (prefers-reduced-motion:reduce){.gv-msg span{animation:none}.gv-msg span:first-child{opacity:1}.gv-d,.gd-o.run::before{animation:none}.gv-fade,.gd{animation:none}}";
+    document.head.appendChild(st);
+  }
+  function genDockPick() {
+    const act = GEN.jobs.filter(genActive);
+    if (act.length) return { kind: "run", job: act[0], n: act.length };
+    const done = GEN.jobs.filter((j) => !j.seen && !GEN.hide.has(j.id) && (j.status === "done" || j.status === "failed"));
+    if (done.length) return { kind: done[0].status === "done" ? "ok" : "bad", job: done[0], n: done.length };
+    return null;
+  }
+  function genDockPaint() {
+    const pick = tokenOf() && !genHere() && !/^\/q\//.test(location.pathname) ? genDockPick() : null;   /* وسط آزمون دادن مزاحم نمی‌شود */
+    let el = GEN.dock;
+    if (!pick) { if (el) { el.remove(); GEN.dock = null; } return; }
+    genCss();
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "gd";
+      el.setAttribute("role", "status");
+      document.body.appendChild(el);
+      GEN.dock = el;
+      el.addEventListener("click", (e) => {
+        const cur = el._job;
+        if (!cur) return;
+        if (e.target.closest("[data-x]")) {
+          GEN.hide.add(cur.id);
+          genMarkSeen(cur);
+          genDockPaint();
+        } else if (e.target.closest("a[data-q]")) {
+          tkLast = { used: cur.spent || 0, bal: tk.bal };
+          GEN.hide.add(cur.id);
+          genMarkSeen(cur);
+        }
+      });
+    }
+    const j = pick.job;
+    el._job = j;
+    el.classList.toggle("up", !!FJ.pill);
+    const orb = '<span class="gd-o ' + (pick.kind === "run" ? "run" : pick.kind === "bad" ? "bad" : "") + '" aria-hidden="true">' + (pick.kind === "ok" ? "✓" : pick.kind === "bad" ? "!" : "") + "</span>";
+    const text = pick.kind === "run" ? (pick.n > 1 ? "در حال ساخت " + faNum(pick.n) + " آزمون…" : "در حال ساخت آزمون…") : pick.kind === "ok" ? "آزمونت آماده شد" : "ساخت آزمون انجام نشد";
+    const link = pick.kind === "ok" && j.quiz ? '<a href="/m/' + encodeURIComponent(j.quiz) + '?new=1" data-q>مشاهده‌ی آزمون</a>' : '<a href="/gen/' + encodeURIComponent(j.id) + '">مشاهده</a>';
+    el.innerHTML = orb + '<span class="gd-t">' + esc(text) + "</span>" + link + (pick.kind === "run" ? "" : '<button type="button" data-x aria-label="بستن">×</button>');
+  }
+  window.addEventListener("pz:nav", () => setTimeout(() => { genDockPaint(); genSchedule(); }, 0));
+  window.addEventListener("authchange", () => { GEN.hide.clear(); GEN.marked.clear(); GEN.jobs = []; GEN.fails = 0; genDockPaint(); genSync(); });
+  window.addEventListener("online", () => { GEN.fails = 0; if (tokenOf()) genSync(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && tokenOf()) genSync(); });
+
+  /* ---- گوی «در حال فکر» (بوم دوبعدی، بدون هیچ کتابخانه‌ای) ---- */
+  const GEN_PAL = {
+    ok: { base: ["#1f8f66", "#0a3b2b"], glow: "42,154,115", blobs: [[.9, 0, "#2fb585", .34], [-.7, 2.1, "#14a37a", .36], [1.3, 4.0, "#e0b866", .3], [-1.1, 5.2, "#5fcfa8", .26], [.6, 3.1, "#0f7a58", .42]] },
+    bad: { base: ["#c98a2b", "#4f3008"], glow: "201,138,43", blobs: [[.9, 0, "#e0a24a", .34], [-.7, 2.1, "#c98a2b", .36], [1.3, 4.0, "#f0cf8a", .3], [-1.1, 5.2, "#e8b66a", .26], [.6, 3.1, "#a8701d", .42]] },
+  };
+  function GenOrb(cv) {
+    const W = 280, H = 260, CX = 140, CY = 130, OR = 56, TAU = Math.PI * 2;
+    const clamp = (x) => Math.max(0, Math.min(1, x));
+    const sm = (x) => { x = clamp(x); return x * x * (3 - 2 * x); };
+    const ctx = cv.getContext("2d");
+    const dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    let mode = "busy", t = 0, t0 = 0, last = 0, raf = 0, dead = false, pal = GEN_PAL.ok;
+    const still = reduceMotion();
+    function orb(c, tt, calm, scale) {
+      c.save(); c.translate(CX, CY); c.scale(scale, scale);
+      let g = c.createRadialGradient(0, 0, OR * .7, 0, 0, OR * 2);
+      g.addColorStop(0, "rgba(" + pal.glow + ",.30)"); g.addColorStop(1, "rgba(" + pal.glow + ",0)");
+      c.fillStyle = g; c.beginPath(); c.arc(0, 0, OR * 2, 0, TAU); c.fill();
+      c.save(); c.beginPath(); c.arc(0, 0, OR, 0, TAU); c.clip();
+      g = c.createRadialGradient(-OR * .3, -OR * .4, 4, 0, 0, OR * 1.05);
+      g.addColorStop(0, pal.base[0]); g.addColorStop(1, pal.base[1]);
+      c.fillStyle = g; c.fillRect(-OR, -OR, OR * 2, OR * 2);
+      c.globalCompositeOperation = "lighter";
+      pal.blobs.forEach((b) => {
+        const w = b[0], ph = b[1], col = b[2], al = b[3];
+        const sp = 1 - .8 * calm, ang = tt * w * .9 * sp + ph, d = OR * (.42 + .12 * Math.sin(tt * .8 * w + ph));
+        const x = Math.cos(ang) * d, y = Math.sin(ang) * d, rr = OR * (.85 + .15 * Math.sin(tt * 1.1 + ph));
+        const bg = c.createRadialGradient(x, y, 0, x, y, rr);
+        bg.addColorStop(0, col + "ff"); bg.addColorStop(1, col + "00");
+        c.globalAlpha = al * (1 - .5 * calm); c.fillStyle = bg; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.fill();
+      });
+      c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
+      const hg = c.createLinearGradient(-OR * .6, -OR * .8, OR * .2, OR * .1);
+      hg.addColorStop(0, "rgba(255,255,255,.38)"); hg.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = hg; c.beginPath(); c.ellipse(-OR * .28, -OR * .42, OR * .55, OR * .32, -.6, 0, TAU); c.fill();
+      c.restore();
+      c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = 1.2; c.beginPath(); c.arc(0, 0, OR - .6, 0, TAU); c.stroke();
+      c.restore();
+    }
+    function drawBusy(tt) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      orb(ctx, tt, 0, 1 + .035 * Math.sin(tt * 2.2));
+    }
+    function drawEnd(tt, bad) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      const k = sm(tt / .7), pop = 1 + .1 * Math.sin(clamp(tt / .7) * Math.PI);
+      orb(ctx, 10.5 + tt * .3, k, pop);
+      const bp = clamp(tt / 1);
+      if (bp < 1) { ctx.strokeStyle = "rgba(" + pal.glow + "," + (.55 * (1 - bp)) + ")"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(CX, CY, OR + bp * 70, 0, TAU); ctx.stroke(); }
+      const tp = sm((tt - .4) / .5);
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 6; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.shadowColor = "rgba(0,0,0,.25)"; ctx.shadowBlur = 6;
+      ctx.beginPath();
+      if (!bad) {
+        const A = [CX - 19, CY + 1], B = [CX - 6, CY + 14], C = [CX + 21, CY - 14];
+        const l1 = Math.hypot(B[0] - A[0], B[1] - A[1]), l2 = Math.hypot(C[0] - B[0], C[1] - B[1]), d = tp * (l1 + l2);
+        ctx.moveTo(A[0], A[1]);
+        if (d <= l1) ctx.lineTo(A[0] + (B[0] - A[0]) * d / l1, A[1] + (B[1] - A[1]) * d / l1);
+        else { ctx.lineTo(B[0], B[1]); const e = (d - l1) / l2; ctx.lineTo(B[0] + (C[0] - B[0]) * e, B[1] + (C[1] - B[1]) * e); }
+        ctx.stroke();
+      } else {
+        const y1 = CY - 20, y2 = CY + 3;
+        ctx.moveTo(CX, y1); ctx.lineTo(CX, y1 + (y2 - y1) * tp); ctx.stroke();
+        ctx.beginPath(); ctx.fillStyle = "#fff"; ctx.globalAlpha = clamp((tt - .7) / .3); ctx.arc(CX, CY + 15, 3.6, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      ctx.shadowBlur = 0;
+    }
+    function frame(now) {
+      raf = 0;
+      if (dead) return;
+      const dt = last ? Math.min(.1, (now - last) / 1000) : 0;
+      last = now;
+      t += dt;
+      if (mode === "busy") { drawBusy(t); raf = requestAnimationFrame(frame); return; }
+      const tt = t - t0;
+      drawEnd(tt, mode === "bad");
+      if (tt < 2.4) raf = requestAnimationFrame(frame);
+    }
+    function kick() { if (!raf && !dead && !still) { last = 0; raf = requestAnimationFrame(frame); } }
+    drawBusy(0);
+    kick();
+    return {
+      finish(ok) {
+        if (mode !== "busy") return;
+        mode = ok ? "ok" : "bad"; pal = ok ? GEN_PAL.ok : GEN_PAL.bad; t0 = t;
+        if (still) drawEnd(3, !ok); else kick();
+      },
+      destroy() { dead = true; if (raf) cancelAnimationFrame(raf); raf = 0; },
+    };
+  }
+
+  /* ---- صفحه‌ی «در حال ساخت آزمون» ---- */
+  function viewGen(id, token) {
+    genCss();
+    setTitle("در حال ساخت آزمون…");
+    app.innerHTML =
+      '<section class="gv"><div class="gv-stage"><canvas class="gv-cv" aria-hidden="true"></canvas></div><div class="gv-body" id="gvBody" role="status" aria-live="polite"></div></section>';
+    const body = document.getElementById("gvBody");
+    const orb = GenOrb(app.querySelector(".gv-cv"));
+    let gone = false, timer = 0, job = null, shown = "", fails = 0;
+    const known = GEN.jobs.filter((x) => x.id === id)[0];
+    if (known) job = known;
+
+    const short = (s, n) => { s = String(s || "").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+    function paint() {
+      const st = !job ? "load" : genActive(job) ? "busy" : job.status === "done" ? "done" : "fail";
+      if (st === shown) return;
+      shown = st;
+      if (st === "load" || st === "busy") {
+        body.innerHTML = '<h1 class="gv-h">در حال ساخت آزمون<span class="gv-d">.</span><span class="gv-d">.</span><span class="gv-d">.</span></h1>' +
+          '<div class="gv-msg" aria-hidden="true"><span>موضوع را تحلیل می‌کنم</span><span>سؤال‌ها را طراحی می‌کنم</span><span>گزینه‌ها را می‌سنجم</span></div>';
+        return;
+      }
+      setTitle(st === "done" ? "آزمونت آماده شد" : "ساخت آزمون انجام نشد");
+      orb.finish(st === "done");
+      if (st === "done") {
+        const n = job.got || job.count || 0;
+        body.innerHTML = '<h1 class="gv-h gv-fade">آزمونت آماده شد</h1>' +
+          '<p class="gv-sub gv-fade f2">' + faNum(n) + " سؤال · " + esc(short(job.title || job.topic, 40)) + "</p>" +
+          '<a class="btn gv-btn gv-fade f3" id="gvOpen" href="/m/' + encodeURIComponent(job.quiz) + '?new=1">مشاهده‌ی آزمون</a>' +
+          '<a class="gv-more gv-fade f3" href="/create/ai">ساخت آزمون دیگر</a>';
+        document.getElementById("gvOpen").addEventListener("click", () => { tkLast = { used: job.spent || 0, bal: tk.bal }; });
+        genMarkSeen(job);
+      } else {
+        body.innerHTML = '<h1 class="gv-h gv-fade">ساخت آزمون انجام نشد</h1>' +
+          '<p class="gv-sub gv-fade f2">' + esc(job.err || "مشکلی پیش آمد.") + "<br>پولک شما کامل برگشت داده شد.</p>" +
+          '<button class="btn gv-btn gv-fade f3" type="button" id="gvRetry">تلاش دوباره</button>' +
+          '<a class="gv-more gv-fade f3" href="/create">بازگشت</a>';
+        document.getElementById("gvRetry").addEventListener("click", () => {
+          GEN.prefill = { topic: job.topic || "", count: job.count, mode: job.mode, level: job.level };
+          go("/create/ai");
+        });
+        genMarkSeen(job);
+      }
+    }
+    function missing() {
+      shown = "none";
+      orb.finish(false);
+      setTitle("ساخت آزمون");
+      body.innerHTML = '<h1 class="gv-h gv-fade">این ساخت پیدا نشد</h1><a class="btn gv-btn gv-fade f3" href="/create/ai">ساخت آزمون جدید</a>';
+    }
+    async function tick() {
+      timer = 0;
+      let r = null;
+      try { r = await rpc("gen_status", { p_token: tokenOf(), p_job: id }); fails = 0; } catch (e) { fails++; }
+      if (gone || token !== routeToken) return;
+      if (r && r.ok) {
+        if (typeof r.tokens === "number") tkSet(r.tokens);
+        job = (r.jobs && r.jobs[0]) || null;
+        if (!job) return missing();
+        genMerge(job);
+        paint();
+        if (!genActive(job)) return;
+      } else if (r && r.error === "no_session") { auth.clear(); return; }
+      timer = setTimeout(tick, fails ? Math.min(15000, 3000 + fails * 2000) : 2500);
+    }
+    paint();
+    tick();
+    return function cleanup() {
+      gone = true;
+      clearTimeout(timer);
+      orb.destroy();
+      setTimeout(genDockPaint, 0);
+    };
+  }
+
   function viewAI() {
     setTitle("ساخت آزمون با هوش مصنوعی");
     fzCss();
     setTimeout(fillGroupChip, 0);
     tkSync(true);
+    const pf = GEN.prefill;
+    GEN.prefill = null;
     const st = { mode: "mixed", level: "medium", count: 10 };
+    if (pf) {
+      if (pf.mode === "tf" || pf.mode === "mcq" || pf.mode === "mixed") st.mode = pf.mode;
+      if (pf.level === "easy" || pf.level === "medium" || pf.level === "hard") st.level = pf.level;
+      if (pf.count >= 1 && pf.count <= 30) st.count = Math.floor(pf.count);
+    }
     const pick = exPick({ files: false, total: () => st.count, onChange: () => { if (!gone) paintCost(); } });
     let busy = false;
-    let ctl = null;
     let gone = false;
-    let pending = null;     /* آزمونی که ساخته شد ولی ذخیره‌اش نشد؛ پولکش کم شده، پس برای ذخیره‌ی دوباره نگه داشته می‌شود */
+    let idem = null;        /* کلید یکتای همین درخواست: اگر پاسخ سرور گم شد و دوباره دکمه را زد، ساخت دوباره و پولک دوباره‌ای در کار نیست */
 
     const seg = (name, items) =>
       '<div class="seg" role="group" data-seg="' + name + '">' +
@@ -1211,12 +1520,12 @@
       '<p class="tk-cost" id="tkCost" aria-live="polite"></p>' +
       "</div>" +
       '<div id="msg"></div>' +
-      '<div class="actions"><a class="btn ghost" href="' + withG("/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' <span id="goT">ساخت آزمون و دریافت لینک</span><span class="go-cost" id="goCost"></span></button></div>' +
-      '<p class="hint" id="wait" hidden>در حال ساخت آزمون… معمولاً ۱۰ تا ۶۰ ثانیه طول می‌کشد. تا پایان کار، همه‌ی دکمه‌ها قفل است. این صفحه را نبندید و از آن خارج نشوید.</p>';
+      '<div class="actions"><a class="btn ghost" href="' + withG("/create") + '">' + ICONS.back + ' بازگشت</a><button class="btn" id="go" type="button">' + ICONS.spark + ' <span id="goT">ساخت آزمون و دریافت لینک</span><span class="go-cost" id="goCost"></span></button></div>';
 
     const $ = (id) => document.getElementById(id);
     const msg = $("msg");
     pick.bind(app);
+    if (pf && pf.topic) $("topic").value = String(pf.topic).slice(0, 300);
     const fail = (t, extraHtml) => { msg.innerHTML = '<div class="err" role="alert">' + esc(t) + (extraHtml || "") + "</div>"; };
     const buyLink = ' <a class="err-a" href="/tokens">خرید پولک</a>';
 
@@ -1239,7 +1548,7 @@
       cost.innerHTML = low
         ? "برای " + faNum(c) + " سؤال با «" + esc(pick.name()) + "»، " + faNum(t) + " پولک لازم است و موجودی شما " + faNum(b) + " پولک است. تعداد سؤال را کمتر کنید، مدل ارزان‌تر بردارید یا " + '<a href="/tokens">پولک بخرید</a>.'
         : "هر سؤال با «" + esc(pick.name()) + "» " + faNum(p) + " پولک است؛ این آزمون <b>" + faNum(t) + " پولک</b> مصرف می‌کند.";
-      goCost.textContent = pending ? "" : " · " + faNum(t) + " پولک";
+      goCost.textContent = " · " + faNum(t) + " پولک";
     };
     const setCount = (n) => { st.count = Math.min(30, Math.max(1, n)); $("count").value = faNum(st.count); paintCost(); };
     const parseCount = () => {
@@ -1258,110 +1567,55 @@
       busy = on;
       goBtn.disabled = on;
       goBtn.classList.toggle("loading", on);
-      pick.lock(on);
-      $("wait").hidden = !on;
-      app.querySelectorAll(".dur button,.dur input").forEach((x) => { x.disabled = on; });
-      setGenLock(on);
     };
 
-    /* ذخیره‌ی آزمونِ ساخته‌شده؛ اگر نشد، سؤال‌ها نگه داشته می‌شوند تا بدون خرج دوباره‌ی پولک دوباره ذخیره شوند */
-    const saveQuiz = async (p) => {
-      lockUi(true);
-      let res = null, err = null;
-      try {
-        const secret = randomSecret();
-        const id = await rpc("create_quiz", Object.assign({
-          p_title: p.title, p_description: p.desc, p_questions: p.questions, p_secret: secret, p_token: tokenOf(), p_group: createGroup || null,
-        }, p.duration ? { p_duration: p.duration } : {}));
-        await keepQuiz({ id: id, secret: secret, title: p.title });
-        res = { id: id, secret: secret };
-      } catch (e) { err = e; }
-      if (gone) return;
-      if (res) {
-        pending = null;
-        tkLast = { used: p.used, bal: p.bal };
-        lockUi(false);
-        memSecrets[res.id] = res.secret;
-        go("/m/" + encodeURIComponent(res.id) + "?new=1");
-        return;
-      }
-      pending = p;
-      lockUi(false);
-      $("goT").textContent = "ذخیره‌ی دوباره‌ی آزمون";
-      paintCost();
-      fail("آزمون ساخته شد و پولک‌تان مصرف شد، ولی ذخیره‌ی آن ناموفق بود (" + ((err && err.message) || "خطای نامشخص") + "). دکمه‌ی «ذخیره‌ی دوباره‌ی آزمون» را بزنید؛ پولک دوباره کم نمی‌شود.");
-    };
-
+    /* دکمه: پولک همین‌جا کم می‌شود و ساخت روی سرور شروع می‌شود؛ بعد صفحه‌ی «در حال ساخت» باز می‌شود و هیچ چیز قفل نمی‌شود */
     goBtn.addEventListener("click", async () => {
       if (busy) return;
       msg.innerHTML = "";
-      if (pending) return saveQuiz(pending);
       setCount(parseCount());
       const t = $("topic").value.trim();
       if (!t) { $("topic").classList.add("bad"); $("topic").focus(); return fail("موضوع آزمون را بنویسید."); }
       const need = st.count * pick.price();
       if (tk.bal != null && tk.bal < need) return fail("پولک شما کافی نیست؛ موجودی شما " + faNum(tk.bal) + " پولک است و این آزمون " + faNum(need) + " پولک می‌خواهد. تعداد سؤال را کمتر کنید، مدل ارزان‌تر بردارید یا پولک بخرید.", buyLink);
-      const body = { mode: st.mode, difficulty: st.level, count: st.count, topic: t, model: pick.id() === "ds" ? "deepseek" : pick.id(), ai: pick.id() };
-
       const wantDur = durCtl.mode();
+      const params = { mode: st.mode, level: st.level, count: st.count, topic: t, ai: pick.id(), dur_mode: wantDur, dur_min: wantDur === "set" ? okDur(durCtl.min()) : null, group: createGroup || null };
+      const sig = JSON.stringify(params);
+      if (!idem || idem.sig !== sig) idem = { sig: sig, key: genKey() };
       lockUi(true);
-      ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), 130000);
-      let made = null;
-      try {
-        let res;
-        try {
-          res = await fetch(cfg.SUPABASE_URL + "/functions/v1/" + AI_FN, {
-            method: "POST",
-            signal: ctl.signal,
-            headers: { "Content-Type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY },
-            body: JSON.stringify(Object.assign({}, body, { token: tokenOf() })),
-          });
-        } catch (e) {
-          console.error("generate fetch failed", e);
-          throw new Error(e && e.name === "AbortError" ? "ساخت آزمون بیش از حد طول کشید. دوباره تلاش کنید." : "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.");
-        }
-        let d = null;
-        try { d = await res.json(); } catch (e) { /* ignore */ }
-        if (!res.ok) {
-          if (res.status === 402) {
-            if (d && typeof d.tokens === "number") tkSet(d.tokens);
-            const e402 = new Error("پولک شما کافی نیست؛ موجودی شما " + faNum((d && d.tokens) || 0) + " پولک است و این آزمون " + faNum((d && d.need) || st.count) + " پولک می‌خواهد. تعداد سؤال را کمتر کنید یا پولک بخرید.");
-            e402.buy = true;
-            throw e402;
-          }
-          throw new Error((d && d.error) || (res.status === 404 ? "بخش هوش مصنوعی هنوز روی سرور راه‌اندازی نشده است." : "خطایی رخ داد (" + res.status + ")."));
-        }
-        const questions = normalizeAI(d);
-        if (!questions.length) throw new Error("آزمون معتبری ساخته نشد. دوباره تلاش کنید.");
-        if (d && typeof d.tokens === "number") tkSet(d.tokens);
-        made = {
-          questions: questions,
-          title: String((d && d.title) || "").trim().slice(0, LIMITS.title) || "آزمون",
-          desc: String((d && d.description) || "").trim().slice(0, LIMITS.desc),
-          used: (d && d.cost) || ((d && d.used) || questions.length) * pick.price(),
-          bal: d && typeof d.tokens === "number" ? d.tokens : null,
-          duration: wantDur === "set" ? okDur(durCtl.min()) : wantDur === "auto" ? (okDur(Number(d && d.duration_min)) || estimateMinutes(questions, st.level)) : null,
-        };
-      } catch (e) {
-        if (gone) return;
+      let r = null, err = null;
+      try { r = await rpc("gen_start", { p_token: tokenOf(), p_params: params, p_idem: idem.key }); } catch (e) { err = e; }
+      if (r && r.ok) {
+        idem = null;
+        if (typeof r.tokens === "number") tkSet(r.tokens);
+        genAdopt(r.id, t, st.count);
+        if (gone) { genSync(); return; }
         lockUi(false);
-        tkSync(true);   /* اگر پولک برگردانده شده باشد موجودی همین حالا درست دیده می‌شود */
-        fail(e.message, e.buy ? buyLink : "");
+        go("/gen/" + encodeURIComponent(r.id));
         return;
-      } finally {
-        clearTimeout(timer);
       }
-      await saveQuiz(made);
+      if (gone) return;
+      lockUi(false);
+      if (err) return fail(err.message || "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.");
+      idem = null;
+      const e = r && r.error;
+      if (e === "insufficient") {
+        if (typeof r.tokens === "number") tkSet(r.tokens);
+        return fail("پولک شما کافی نیست؛ موجودی شما " + faNum(r.tokens || 0) + " پولک است و این آزمون " + faNum(r.need || need) + " پولک می‌خواهد. تعداد سؤال را کمتر کنید یا پولک بخرید.", buyLink);
+      }
+      if (e === "no_session") { auth.clear(); return fail("نشست شما تمام شده؛ دوباره وارد شوید."); }
+      if (e === "busy") return fail("همین حالا دو آزمون در حال ساخت دارید؛ بعد از آماده‌شدن یکی از آن‌ها می‌توانید آزمون جدید بسازید.");
+      if (e === "model") return fail("این مدل هوش مصنوعی فعلاً در دسترس نیست؛ مدل دیگری را انتخاب کنید.");
+      if (e === "group") return fail("گروه پیدا نشد یا شما مالک یا مدیر آن نیستید.");
+      if (e === "topic") { $("topic").classList.add("bad"); $("topic").focus(); return fail("موضوع آزمون را بنویسید."); }
+      fail("ساخت آزمون شروع نشد؛ دوباره تلاش کنید.");
     });
 
     return function cleanup() {
       gone = true;
       busy = false;
       pick.destroy();
-      setGenLock(false);
       window.removeEventListener("tkchange", onTk);
-      if (ctl) ctl.abort();
     };
   }
 
@@ -7387,6 +7641,9 @@
     } else if (parts[0] === "m" || parts[0] === "edit") {
       if (!okId(parts[1])) showError("لینک مدیریت نامعتبر است.");
       else cleanup = withSecret(parts[0], parts[1], query, token);
+    } else if (parts[0] === "gen") {
+      if (!/^[0-9a-fA-F-]{36}$/.test(parts[1] || "")) showError("لینک نامعتبر است.");
+      else cleanup = auth.get() ? viewGen(parts[1].toLowerCase(), token) : viewGate("gen/" + parts[1], token);
     } else if (parts[0] === "groups") {
       cleanup = auth.get() ? viewGroups(token) : viewGate("groups", token);
     } else if (parts[0] === "g") {
@@ -7453,4 +7710,5 @@
   syncInviteWatch();
   validateSession();
   fzSync();
+  genSync();
 })();
